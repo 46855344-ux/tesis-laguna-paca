@@ -1,0 +1,45 @@
+# --- Java / Maven ---
+target/
+*.class
+*.jar
+*.war
+!**/.mvn/wrapper/maven-wrapper.jar
+
+# --- Python (ia-model) ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# --- Android (android-app) ---
+*.apk
+*.aab
+build/
+.gradle/
+local.properties
+
+# --- PlatformIO (iot-firmware) ---
+.pio/
+.pioenvs/
+.piolibdeps/
+
+# --- IDE / SO ---
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
+
+# --- Secretos y datos locales ---
+.env
+*.local
+
+# Credenciales del nodo ESP32 (ver include/secrets.example.h)
+iot-firmware/include/secrets.h
+
+# --- Material de referencia ---
+# Tesis y bibliografia (257 MB de PDFs y libros de terceros): se consultan en
+# local y no se versionan, porque inflarian el repositorio sin aportar codigo.
+docs/
