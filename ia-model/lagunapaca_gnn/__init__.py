@@ -2,6 +2,8 @@
 
 Estructura del paquete:
 
+- :mod:`lagunapaca_gnn.stations`: las 4 estaciones de muestreo y la matriz de
+  distancias en kilómetros entre ellas.
 - :mod:`lagunapaca_gnn.graph`: grafo de estaciones (adyacencia gaussiana y poda
   por árbol de expansión mínima + k vecinos más cercanos).
 - :mod:`lagunapaca_gnn.windows`: construcción del tensor de entrada
@@ -24,11 +26,21 @@ from lagunapaca_gnn.metrics import (
     r2_score,
     root_mean_squared_error,
 )
+from lagunapaca_gnn.stations import (
+    PROVISIONAL_STATIONS,
+    Station,
+    distance_matrix_km,
+    haversine_km,
+)
 from lagunapaca_gnn.windows import build_windows
 
 __all__ = [
+    "PROVISIONAL_STATIONS",
+    "Station",
     "build_windows",
+    "distance_matrix_km",
     "gaussian_adjacency",
+    "haversine_km",
     "knn_neighbors",
     "mean_absolute_error",
     "minimum_spanning_tree",

@@ -4,7 +4,7 @@ Repositorio de tesis: **"Sistema de software e IoT con Redes Neuronales de Grafo
 
 ## Estado actual (importante)
 
-- `backend/` tiene el esqueleto Spring Boot + ingesta de telemetría (HTTP y MQTT), alertas ECA-Agua y consulta histórica, con Swagger UI y un simulador del nodo. `iot-firmware/` tiene el **núcleo portable** del nodo ESP32 (con tests). `ia-model/` tiene ya el **grafo de estaciones, las ventanas temporales, las métricas y el modelo ST-GNN** (TCN + GCN + Attention; 68 tests con pytest), pero **todavía no el entrenamiento**. `android-app/` sigue **vacío**.
+- `backend/` tiene el esqueleto Spring Boot + ingesta de telemetría (HTTP y MQTT), alertas ECA-Agua y consulta histórica, con Swagger UI y un simulador del nodo. `iot-firmware/` tiene el **núcleo portable** del nodo ESP32 (con tests). `ia-model/` tiene ya las **estaciones, el grafo, las ventanas temporales, las métricas y el modelo ST-GNN** (TCN + GCN + Attention; 88 tests con pytest), pero **todavía no el entrenamiento**. `android-app/` sigue **vacío**.
 - `docs/` está **sin trackear** y es material de referencia, no código.
 - No hay CI. Las carpetas vacías no se versionan en git hasta que contengan archivos.
 
@@ -145,6 +145,7 @@ Comandos (desde `ia-model/`):
 
 Estructura y decisiones:
 
+- `lagunapaca_gnn/stations.py` — las 4 estaciones (`N1`…`N4`, los mismos identificadores del campo `node_id` del ESP32) y la matriz de distancias en km con la fórmula de **haversine**. `PROVISIONAL_STATIONS` está marcado con una advertencia: las coordenadas se derivaron del polígono del lago en OpenStreetMap (`way 26947746`, extremos norte/este/sur/oeste desplazados 5 % hacia el centroide y verificados con *point-in-polygon*), **no son puntos medidos en campo**. Deben reemplazarse por las coordenadas reales antes de reportar resultados.
 - `lagunapaca_gnn/graph.py` — kernel gaussiano `exp(-d² / (2σ²))` y poda por **MST ∪ KNN**. El MST no es decorativo: es lo que **garantiza que el grafo nunca quede desconectado**; sin él, una estación sin vecinos cercanos quedaría aislada y no recibiría información del resto de la laguna. Se conservan los pesos gaussianos (no se binariza), porque la intensidad de la relación espacial también informa.
 - `lagunapaca_gnn/windows.py` — construye el tensor de entrada `[nodos, tiempo, variables]` (la `T` de la tesis). La ventana objetivo empieza **justo después** de la de entrada y hay un test específico que lo comprueba: es la forma de evitar la fuga de información.
 - `lagunapaca_gnn/metrics.py` — R², RMSE y MAE **sin depender de scikit-learn**, para que el criterio de éxito (`R² > 0.90`) quede explícito y sea auditable. Convenio heredado de scikit-learn para series constantes: `1.0` si la predicción es exacta, `0.0` si no (nunca `NaN` ni infinito).
@@ -157,7 +158,7 @@ Estructura y decisiones:
 
 Hardware de desarrollo (**importante para planificar**): Ryzen 5 2500U, 10.9 GB de RAM, sin GPU dedicada (Radeon Vega 8 integrada). Sirve para desarrollar y validar el modelo con datos sintéticos o series cortas; el entrenamiento pesado con datos reales tendrá que ir a Colab o a una máquina con GPU.
 
-**Pendiente de datos**: las 4 estaciones de la laguna (identificadores y su matriz de distancias en km) no están definidas. Sin ellas no hay grafo real: por eso `graph.py` recibe las distancias como parámetro y no las inventa.
+**Pendiente de datos**: las coordenadas de `PROVISIONAL_STATIONS` son **propuestas** (derivadas de OpenStreetMap), no medidas. El grafo ya es geográficamente realista y el modelo se puede entrenar, pero la tesis exige reemplazarlas por los puntos de muestreo reales antes de reportar resultados. `graph.py` sigue recibiendo las distancias como parámetro justamente para que ese reemplazo no obligue a tocar la lógica del grafo.
 
 ## Notas para agentes
 
