@@ -1,0 +1,9 @@
+# Configuración de pytest para el módulo de IA.
+#
+# `pythonpath = ["."]` permite que los tests importen el paquete
+# `lagunapaca_gnn` sin instalar el proyecto y sin manipular `sys.path`.
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "--tb=short"

@@ -4,7 +4,7 @@ Repositorio de tesis: **"Sistema de software e IoT con Redes Neuronales de Grafo
 
 ## Estado actual (importante)
 
-- `backend/` tiene el esqueleto Spring Boot + ingesta de telemetría (HTTP y MQTT), alertas ECA-Agua y consulta histórica. `iot-firmware/` tiene el **núcleo portable** del nodo ESP32 (con tests). `ia-model/` y `android-app/` siguen **vacíos**.
+- `backend/` tiene el esqueleto Spring Boot + ingesta de telemetría (HTTP y MQTT), alertas ECA-Agua y consulta histórica, con Swagger UI y un simulador del nodo. `iot-firmware/` tiene el **núcleo portable** del nodo ESP32 (con tests). `ia-model/` tiene ya el **grafo de estaciones, las ventanas temporales, las métricas y el modelo ST-GNN** (TCN + GCN + Attention; 68 tests con pytest), pero **todavía no el entrenamiento**. `android-app/` sigue **vacío**.
 - `docs/` está **sin trackear** y es material de referencia, no código.
 - No hay CI. Las carpetas vacías no se versionan en git hasta que contengan archivos.
 
@@ -121,6 +121,43 @@ Estructura y credenciales:
 - Tópico MQTT: `laguna-paca/telemetry`, debe coincidir con `app.mqtt.topic`. El canal MQTT **no usa JWT**: se autentica con las credenciales del broker (nuevas variables `MQTT_BROKER_HOST`, `MQTT_USERNAME`, `MQTT_PASSWORD` en `secrets.h`).
 - El client id MQTT se construye con `buildMqttClientId()` (núcleo, testeado): `lp-<8 hex de la MAC>-<nodeId>`, recortado a **23 bytes** porque MQTT 3.1.1 solo obliga al broker a aceptar ese largo. La MAC va antes del node id para que el recorte nunca sacrifique la unicidad.
 - Presupuesto de flash: **HTTP 72.4 %** (948 KB) vs **MQTT 60.1 %** (787 KB). La vía HTTP arrastra `HTTPClient` + `WiFiClientSecure` + bundle de CA. `build_src_filter` excluye de cada entorno el transporte que no usa.
+
+## Modelo de IA (`ia-model/`) — comandos
+
+Toolchain: **Python 3.12.10** con **entorno virtual propio** en `ia-model/.venv` (no se instala nada en el Python global). Se creó con:
+
+```powershell
+& "C:\Users\USER\AppData\Local\Programs\Python\Python312\python.exe" -m venv ia-model\.venv
+ia-model\.venv\Scripts\python.exe -m pip install numpy pytest
+# PyTorch CPU no está en PyPI con el sufijo "+cpu": se pide a su propio índice.
+ia-model\.venv\Scripts\python.exe -m pip install torch==2.14.1+cpu --index-url https://download.pytorch.org/whl/cpu
+ia-model\.venv\Scripts\python.exe -m pip install torch_geometric
+```
+
+Versiones instaladas (en `requirements.txt`): torch 2.14.1+cpu, torch_geometric 2.8.1, numpy 2.5.4, pytest 9.1.1.
+
+Comandos (desde `ia-model/`):
+
+| Objetivo | Comando |
+|---|---|
+| Todos los tests | `.venv\Scripts\python.exe -m pytest` |
+| Un solo archivo | `.venv\Scripts\python.exe -m pytest tests/test_graph.py` |
+
+Estructura y decisiones:
+
+- `lagunapaca_gnn/graph.py` — kernel gaussiano `exp(-d² / (2σ²))` y poda por **MST ∪ KNN**. El MST no es decorativo: es lo que **garantiza que el grafo nunca quede desconectado**; sin él, una estación sin vecinos cercanos quedaría aislada y no recibiría información del resto de la laguna. Se conservan los pesos gaussianos (no se binariza), porque la intensidad de la relación espacial también informa.
+- `lagunapaca_gnn/windows.py` — construye el tensor de entrada `[nodos, tiempo, variables]` (la `T` de la tesis). La ventana objetivo empieza **justo después** de la de entrada y hay un test específico que lo comprueba: es la forma de evitar la fuga de información.
+- `lagunapaca_gnn/metrics.py` — R², RMSE y MAE **sin depender de scikit-learn**, para que el criterio de éxito (`R² > 0.90`) quede explícito y sea auditable. Convenio heredado de scikit-learn para series constantes: `1.0` si la predicción es exacta, `0.0` si no (nunca `NaN` ni infinito).
+- `lagunapaca_gnn/model.py` — el ST-GNN: **TCN causales** (dilatación exponencial 1, 2, 4…) sobre el tiempo, **GCN** sobre el grafo y **atención multi-cabeza enmascarada por la adyacencia**. Salida `(lote, estaciones, horizonte)`, una predicción por estación y paso.
+  - La máscara de atención es lo que mantiene la estructura del grafo: sin ella la atención sería completamente densa y el GCN quedaría de adorno. Hay tests de que **una comunidad desconectada no se contamina** y de que **una estación aislada no produce `NaN`** (por eso la diagonal de la máscara siempre se permite: un `softmax` sobre una fila de `-infinitos` daría `NaN`).
+  - Los tests del modelo verifican **propiedades**, no valores: formas, causalidad del TCN, que la topología del grafo cambie la salida, que los gradientes lleguen a todas las capas y que la atención sume 1.
+- `pyproject.toml` fija `pythonpath = ["."]` para que pytest importe `lagunapaca_gnn` sin instalarlo.
+- `lagunapaca_gnn/__init__.py` **no reexporta** el modelo a propósito: importar el paquete no debe arrastrar PyTorch. Se usa `from lagunapaca_gnn.model import SpatioTemporalGNN`.
+- **Falta el bucle de entrenamiento y el conjunto de datos.** Todavía no hay nada que entrene, ni una demostración de extremo a extremo del criterio de la tesis (`R² > 0.90`).
+
+Hardware de desarrollo (**importante para planificar**): Ryzen 5 2500U, 10.9 GB de RAM, sin GPU dedicada (Radeon Vega 8 integrada). Sirve para desarrollar y validar el modelo con datos sintéticos o series cortas; el entrenamiento pesado con datos reales tendrá que ir a Colab o a una máquina con GPU.
+
+**Pendiente de datos**: las 4 estaciones de la laguna (identificadores y su matriz de distancias en km) no están definidas. Sin ellas no hay grafo real: por eso `graph.py` recibe las distancias como parámetro y no las inventa.
 
 ## Notas para agentes
 

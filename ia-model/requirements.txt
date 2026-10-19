@@ -1,0 +1,17 @@
+# Dependencias del modelo ST-GNN (Python 3.12).
+#
+# Instalacion (dos pasos, porque la rueda CPU de PyTorch no esta en PyPI con el
+# sufijo "+cpu"; hay que pedirla al indice propio de PyTorch):
+#
+#   .venv\Scripts\python.exe -m pip install torch==2.14.1+cpu --index-url https://download.pytorch.org/whl/cpu
+#   .venv\Scripts\python.exe -m pip install -r requirements.txt
+#
+# Se usa la rueda CPU porque la maquina de desarrollo no tiene GPU NVIDIA.
+
+# --- Base ---
+numpy==2.5.4
+pytest==9.1.1
+
+# --- PyTorch (ver la nota de arriba) ---
+torch==2.14.1+cpu
+torch_geometric==2.8.1
