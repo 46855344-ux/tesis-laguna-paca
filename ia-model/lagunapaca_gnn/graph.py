@@ -166,3 +166,37 @@ def sparsify(adjacency, distances, k: int) -> np.ndarray:
         sparse[i, j] = weights[i, j]
         sparse[j, i] = weights[j, i]
     return sparse
+
+
+def adjacency_to_edge_index(adjacency, threshold: float = 0.0) -> tuple[np.ndarray, np.ndarray]:
+    """Convierte una matriz de adyacencia densa al formato de PyTorch Geometric.
+
+    PyG representa el grafo como una lista de aristas (``edge_index``) más un
+    peso por arista. Este es el punto exacto donde el grafo de numpy que
+    construye la tesis se entrega al modelo.
+
+    Args:
+        adjacency: matriz ``(n, n)`` de pesos, por ejemplo la salida de
+            :func:`sparsify`.
+        threshold: peso mínimo para conservar una arista. Un valor mayor que
+            cero permite descartar las relaciones prácticamente nulas.
+
+    Returns:
+        ``(edge_index, edge_weight)`` con forma ``(2, E)`` y ``(E,)``. Cada
+        arista aparece en **las dos direcciones**, porque el grafo no es
+        dirigido, y la diagonal nunca se incluye.
+
+    Raises:
+        ValueError: si la adyacencia no es cuadrada.
+    """
+    matrix = np.asarray(adjacency, dtype=float)
+    if matrix.ndim != 2 or matrix.shape[0] != matrix.shape[1]:
+        raise ValueError(f"la adyacencia debe ser cuadrada, no de forma {matrix.shape}")
+
+    rows, columns = np.nonzero(matrix > threshold)
+    keep = rows != columns
+    rows, columns = rows[keep], columns[keep]
+
+    edge_index = np.vstack([rows, columns]).astype(np.int64)
+    edge_weight = matrix[rows, columns]
+    return edge_index, edge_weight

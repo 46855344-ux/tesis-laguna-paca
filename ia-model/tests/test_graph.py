@@ -10,6 +10,7 @@ import numpy as np
 import pytest
 
 from lagunapaca_gnn.graph import (
+    adjacency_to_edge_index,
     gaussian_adjacency,
     knn_neighbors,
     minimum_spanning_tree,
@@ -205,3 +206,47 @@ class TestSparsify:
 
         with pytest.raises(ValueError, match="forma"):
             sparsify(adjacency, DISTANCES[:3, :3], k=1)
+
+
+class TestAdjacencyToEdgeIndex:
+    """Puente entre el grafo de numpy y el formato que consume PyG."""
+
+    def test_devuelve_las_dos_direcciones(self):
+        sparse = sparsify(gaussian_adjacency(DISTANCES, sigma=1.0), DISTANCES, k=1)
+
+        edge_index, _ = adjacency_to_edge_index(sparse)
+
+        edges = {tuple(edge) for edge in edge_index.T.tolist()}
+        assert (0, 1) in edges
+        assert (1, 0) in edges
+
+    def test_los_pesos_coinciden_con_la_matriz(self):
+        sparse = sparsify(gaussian_adjacency(DISTANCES, sigma=1.0), DISTANCES, k=1)
+
+        edge_index, edge_weight = adjacency_to_edge_index(sparse)
+
+        for (i, j), weight in zip(edge_index.T.tolist(), edge_weight.tolist()):
+            assert weight == pytest.approx(sparse[i, j])
+
+    def test_no_incluye_autolazos(self):
+        sparse = sparsify(gaussian_adjacency(DISTANCES, sigma=1.0), DISTANCES, k=2)
+
+        edge_index, _ = adjacency_to_edge_index(sparse)
+
+        assert all(i != j for i, j in edge_index.T.tolist())
+
+    def test_el_umbral_descarta_los_pesos_pequenos(self):
+        adjacency = gaussian_adjacency(DISTANCES, sigma=1.0)
+
+        edge_index, _ = adjacency_to_edge_index(adjacency, threshold=0.5)
+
+        # Con sigma = 1 km y umbral 0.5, solo sobrevive la pareja a 1 km.
+        edges = {tuple(edge) for edge in edge_index.T.tolist()}
+        assert (0, 1) in edges
+        assert (0, 2) not in edges
+
+    def test_un_grafo_vacio_devuelve_dos_por_cero(self):
+        edge_index, edge_weight = adjacency_to_edge_index(np.zeros((3, 3)))
+
+        assert edge_index.shape == (2, 0)
+        assert edge_weight.shape == (0,)

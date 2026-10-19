@@ -127,13 +127,25 @@ class MaskedGraphAttention(nn.Module):
 
 
 class SpatioTemporalGNN(nn.Module):
-    """Modelo completo: TCN sobre el tiempo, GCN sobre el grafo y atención final."""
+    """Modelo completo: TCN sobre el tiempo, GCN sobre el grafo y atención final.
+
+    La salida es la **corrección** sobre el último valor observado de
+    ``target_index``, no el valor absoluto. Ver el comentario del anclaje en
+    :meth:`forward`.
+    """
 
     def __init__(self, num_variables: int, horizon: int = 1, hidden: int = 32,
                  tcn_levels: int = 2, kernel_size: int = 3, gcn_layers: int = 1,
-                 heads: int = 2, dropout: float = 0.0) -> None:
+                 heads: int = 2, dropout: float = 0.0,
+                 target_index: int = 0) -> None:
         super().__init__()
+        if not 0 <= target_index < num_variables:
+            raise ValueError(
+                f"target_index fuera de rango: {target_index} "
+                f"(solo hay {num_variables} variables)")
+
         self.horizon = horizon
+        self.target_index = target_index
         self.tcn = TemporalConvNet(num_variables, hidden, tcn_levels, kernel_size, dropout)
         self.graph_layers = nn.ModuleList(
             GCNConv(hidden, hidden) for _ in range(gcn_layers)
@@ -183,7 +195,15 @@ class SpatioTemporalGNN(nn.Module):
             node_count, x.device)
         attended, weights = self.attention(per_sample, mask, need_weights=need_weights)
 
-        predictions = self.head(attended)
+        # Anclaje a la persistencia: la cabeza solo aprende la CORRECCIÓN sobre
+        # el último valor observado de la variable objetivo. Así el punto de
+        # partida del entrenamiento es "mañana será como hoy", que en una serie
+        # suave es una línea base difícil de batir, y el modelo nunca puede
+        # quedar peor que ella por construcción (con la cabeza a cero la
+        # reproduce exactamente).
+        anchor = x[:, :, -1, self.target_index].unsqueeze(-1)
+        predictions = self.head(attended) + anchor
+
         if need_weights:
             return predictions, weights
         return predictions

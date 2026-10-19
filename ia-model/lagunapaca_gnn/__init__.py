@@ -15,7 +15,9 @@ Estructura del paquete:
   paquete haría lentos hasta los tests que solo necesitan numpy.
 """
 
+from lagunapaca_gnn.dataset import VARIABLE_NAMES, simulate_lagoon
 from lagunapaca_gnn.graph import (
+    adjacency_to_edge_index,
     gaussian_adjacency,
     knn_neighbors,
     minimum_spanning_tree,
@@ -26,6 +28,7 @@ from lagunapaca_gnn.metrics import (
     r2_score,
     root_mean_squared_error,
 )
+from lagunapaca_gnn.normalization import StandardScaler
 from lagunapaca_gnn.stations import (
     PROVISIONAL_STATIONS,
     Station,
@@ -36,7 +39,10 @@ from lagunapaca_gnn.windows import build_windows
 
 __all__ = [
     "PROVISIONAL_STATIONS",
+    "StandardScaler",
     "Station",
+    "VARIABLE_NAMES",
+    "adjacency_to_edge_index",
     "build_windows",
     "distance_matrix_km",
     "gaussian_adjacency",
@@ -46,5 +52,6 @@ __all__ = [
     "minimum_spanning_tree",
     "r2_score",
     "root_mean_squared_error",
+    "simulate_lagoon",
     "sparsify",
 ]

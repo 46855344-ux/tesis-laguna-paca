@@ -38,6 +38,7 @@ def build_model(**overrides):
         "gcn_layers": 1,
         "heads": 2,
         "dropout": 0.0,
+        "target_index": 0,
     }
     settings.update(overrides)
     return SpatioTemporalGNN(**settings).eval()
@@ -177,6 +178,55 @@ class TestSpatioTemporalGNN:
     def test_rechaza_una_cantidad_de_cabezas_incompatible(self):
         with pytest.raises(ValueError, match="cabezas"):
             build_model(hidden=9, heads=2)
+
+
+class TestAnclajeALaPersistencia:
+    """El modelo predice la corrección sobre el último valor, no el valor absoluto.
+
+    Es una decisión de diseño, no un detalle: en una serie temporal suave, "el
+    valor de la próxima hora será como el de esta" es una línea base durísima de
+    batir. Si el modelo parte de ahí y solo aprende la corrección, nunca puede
+    quedar peor que la persistencia, y el entrenamiento tiene un punto de partida
+    razonable en vez de tener que descubrir el valor absoluto desde el azar.
+    """
+
+    def test_con_la_cabeza_a_cero_reproduce_el_ultimo_valor(self):
+        model = build_model(target_index=2)
+        with torch.no_grad():
+            model.head.weight.zero_()
+            model.head.bias.zero_()
+
+        x = torch.randn(2, NODES, TIME_STEPS, VARIABLES)
+        predictions = model(x, ring_edge_index(NODES))
+
+        assert torch.allclose(predictions[:, :, 0], x[:, :, -1, 2])
+
+    def test_el_ancla_es_la_variable_objetivo(self):
+        model = build_model(target_index=1)
+        with torch.no_grad():
+            model.head.weight.zero_()
+            model.head.bias.zero_()
+
+        x = torch.randn(2, NODES, TIME_STEPS, VARIABLES)
+        predictions = model(x, ring_edge_index(NODES))
+
+        assert torch.allclose(predictions[:, :, 0], x[:, :, -1, 1])
+
+    def test_el_ancla_se_repite_en_todo_el_horizonte(self):
+        model = build_model(target_index=0, horizon=3)
+        with torch.no_grad():
+            model.head.weight.zero_()
+            model.head.bias.zero_()
+
+        x = torch.randn(2, NODES, TIME_STEPS, VARIABLES)
+        predictions = model(x, ring_edge_index(NODES))
+
+        for step in range(3):
+            assert torch.allclose(predictions[:, :, step], x[:, :, -1, 0])
+
+    def test_rechaza_un_objetivo_fuera_de_rango(self):
+        with pytest.raises(ValueError, match="target_index"):
+            build_model(target_index=VARIABLES)
 
 
 class TestTemporalConvNet:

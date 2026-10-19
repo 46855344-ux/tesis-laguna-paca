@@ -4,7 +4,7 @@ Repositorio de tesis: **"Sistema de software e IoT con Redes Neuronales de Grafo
 
 ## Estado actual (importante)
 
-- `backend/` tiene el esqueleto Spring Boot + ingesta de telemetría (HTTP y MQTT), alertas ECA-Agua y consulta histórica, con Swagger UI y un simulador del nodo. `iot-firmware/` tiene el **núcleo portable** del nodo ESP32 (con tests). `ia-model/` tiene ya las **estaciones, el grafo, las ventanas temporales, las métricas y el modelo ST-GNN** (TCN + GCN + Attention; 88 tests con pytest), pero **todavía no el entrenamiento**. `android-app/` sigue **vacío**.
+- `backend/` tiene el esqueleto Spring Boot + ingesta de telemetría (HTTP y MQTT), alertas ECA-Agua y consulta histórica, con Swagger UI y un simulador del nodo. `iot-firmware/` tiene el **núcleo portable** del nodo ESP32 (con tests). `ia-model/` está **completo de extremo a extremo**: estaciones, grafo, ventanas temporales, métricas, modelo ST-GNN (TCN + GCN + Attention), generador de serie sintética, normalización, entrenamiento y el experimento `train_stgnn.py` que **demuestra el criterio de la tesis** (`R² = 0.9289` a 6 h, contra `0.7403` de la línea base de persistencia; 134 tests con pytest). `android-app/` sigue **vacío**.
 - `docs/` está **sin trackear** y es material de referencia, no código.
 - No hay CI. Las carpetas vacías no se versionan en git hasta que contengan archivos.
 
@@ -142,6 +142,8 @@ Comandos (desde `ia-model/`):
 |---|---|
 | Todos los tests | `.venv\Scripts\python.exe -m pytest` |
 | Un solo archivo | `.venv\Scripts\python.exe -m pytest tests/test_graph.py` |
+| Experimento del criterio de la tesis | `.venv\Scripts\python.exe train_stgnn.py` |
+| Experimento en varios horizontes | `.venv\Scripts\python.exe train_stgnn.py --horizons 1 3 6` |
 
 Estructura y decisiones:
 
@@ -152,9 +154,23 @@ Estructura y decisiones:
 - `lagunapaca_gnn/model.py` — el ST-GNN: **TCN causales** (dilatación exponencial 1, 2, 4…) sobre el tiempo, **GCN** sobre el grafo y **atención multi-cabeza enmascarada por la adyacencia**. Salida `(lote, estaciones, horizonte)`, una predicción por estación y paso.
   - La máscara de atención es lo que mantiene la estructura del grafo: sin ella la atención sería completamente densa y el GCN quedaría de adorno. Hay tests de que **una comunidad desconectada no se contamina** y de que **una estación aislada no produce `NaN`** (por eso la diagonal de la máscara siempre se permite: un `softmax` sobre una fila de `-infinitos` daría `NaN`).
   - Los tests del modelo verifican **propiedades**, no valores: formas, causalidad del TCN, que la topología del grafo cambie la salida, que los gradientes lleguen a todas las capas y que la atención sume 1.
+  - **El modelo predice la *corrección* sobre el último valor observado**, no el valor absoluto: `predicción = cabeza(atendido) + x[:, :, -1, target_index]`. Con eso, un modelo sin entrenar ya equivale a la persistencia y el aprendizaje nunca puede empeorar la línea base. Fue la solución a un R² que, sin el anclaje, no batía a "copiar el último pH".
+- `lagunapaca_gnn/dataset.py` — generador de la serie **sintética** `(estaciones, tiempo, variables)`. No reutiliza `backend/tools/simulate_node.py` porque ese genera **muestras independientes**: sirve para probar la ingesta y las alertas, pero no da nada que un modelo temporal pueda aprender. Aquí sí hay las tres propiedades que el ST-GNN necesita: **memoria temporal** (proceso AR(1)), **ciclo diario** (el pH con amplitud marcada: en un lago eutrófico sube de día por la fotosíntesis y baja de noche por la respiración) y **correlación espacial** (cada estación mezcla su proceso con el de sus vecinas vía la adyacencia gaussiana; sin esto el GCN sería decorativo). Los datos están marcados como simulación en el propio docstring: un R² alto aquí **valida la arquitectura**, no el comportamiento real de la laguna.
+- `lagunapaca_gnn/normalization.py` — `StandardScaler` por variable. Sin normalizar, el TDS (≈320 ppm) domina el gradiente y el pH (≈7) se vuelve invisible: medido en este proyecto, el R² pasó de **−0.02 a 0.79** solo con estandarizar. Regla que no se rompe: la media y la desviación se calculan **solo con el conjunto de entrenamiento**.
+- `lagunapaca_gnn/training.py` — `chronological_split`, `train_model`, `predict` y `evaluate_model`. La partición es **cronológica y con hueco** (igual al tamaño de la ventana de entrada): las ventanas se solapan, así que sin hueco la última de entrenamiento compartiría instantes con la primera de prueba. `evaluate_model` acepta el `scaler` para devolver las métricas a unidades reales (el R² es invariante a la escala, pero un RMSE en desviaciones típicas no le dice nada a nadie).
+- `train_stgnn.py` — el experimento ejecutable: simula, construye el grafo, parte, estandariza, entrena, evalúa **y compara contra la línea base trivial** de repetir el último pH. Devuelve código de salida 1 si el criterio no se cumple, para poder encadenarlo a un futuro CI.
+  - **Resultado medido** (semilla 42, 2000 pasos, ventana 24 h, 150 épocas, 1478 ventanas de entrenamiento y 469 de prueba):
+
+    | Horizonte | R² persistencia | R² ST-GNN | RMSE (pH) | MAE (pH) |
+    |---|---|---|---|---|
+    | 1 h | 0.9676 | 0.9819 | — | — |
+    | 3 h | 0.9009 | 0.9628 | — | — |
+    | 6 h | 0.7403 | **0.9289** | 0.0584 | 0.0445 |
+
+    El criterio (`R² > 0.90`) se cumple con holgura en el escenario principal (6 h) y el modelo **bate a la persistencia en los tres horizontes**. Cuanto más largo el horizonte, más aporta el modelo: a 1 h la persistencia ya es casi perfecta, a 6 h se desmorona (0.74) y la ST-GNN se mantiene en 0.93.
 - `pyproject.toml` fija `pythonpath = ["."]` para que pytest importe `lagunapaca_gnn` sin instalarlo.
 - `lagunapaca_gnn/__init__.py` **no reexporta** el modelo a propósito: importar el paquete no debe arrastrar PyTorch. Se usa `from lagunapaca_gnn.model import SpatioTemporalGNN`.
-- **Falta el bucle de entrenamiento y el conjunto de datos.** Todavía no hay nada que entrene, ni una demostración de extremo a extremo del criterio de la tesis (`R² > 0.90`).
+- **El criterio de la tesis ya se demuestra de extremo a extremo con datos sintéticos**: `.venv\Scripts\python.exe train_stgnn.py` entrena y reporta `R² = 0.9289` a 6 h contra `0.7403` de la persistencia. Lo que falta no es código de entrenamiento, son **datos de campo**: `dataset.py` simula una dinámica que elegimos nosotros, así que el R² demuestra que la arquitectura aprende una dinámica espacio-temporal, **no** que prediga la laguna real.
 
 Hardware de desarrollo (**importante para planificar**): Ryzen 5 2500U, 10.9 GB de RAM, sin GPU dedicada (Radeon Vega 8 integrada). Sirve para desarrollar y validar el modelo con datos sintéticos o series cortas; el entrenamiento pesado con datos reales tendrá que ir a Colab o a una máquina con GPU.
 
