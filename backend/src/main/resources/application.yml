@@ -1,0 +1,72 @@
+spring:
+  application:
+    name: laguna-paca-backend
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/laguna_paca}
+    username: ${DB_USER:laguna}
+    password: ${DB_PASSWORD:laguna}
+
+  jpa:
+    hibernate:
+      # El esquema lo gobierna Flyway; Hibernate solo valida.
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: America/Lima
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  data:
+    web:
+      pageable:
+        default-page-size: 20
+        # Evita que un cliente pida páginas gigantes.
+        max-page-size: 100
+
+# Documentación interactiva de la API
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+# --- Configuración propia de la aplicación ---
+app:
+  security:
+    jwt:
+      # Cambiar SIEMPRE en producción (mínimo 32 bytes para HS256).
+      secret: ${JWT_SECRET:dev-only-secret-change-me-0123456789abcdef}
+      issuer: laguna-paca
+      ttl: PT2H
+    user:
+      username: ${APP_USER:admin}
+      password: ${APP_PASSWORD:admin123}
+
+  # Ingesta MQTT (segunda vía, además del POST HTTP). Deshabilitada por defecto
+  # para poder arrancar sin un broker.
+  mqtt:
+    enabled: ${MQTT_ENABLED:false}
+    broker-url: ${MQTT_BROKER_URL:tcp://localhost:1883}
+    client-id: ${MQTT_CLIENT_ID:laguna-paca-backend}
+    username: ${MQTT_USERNAME:}
+    password: ${MQTT_PASSWORD:}
+    topic: ${MQTT_TOPIC:laguna-paca/telemetry}
+    qos: ${MQTT_QOS:1}
+    completion-timeout-ms: ${MQTT_TIMEOUT_MS:5000}

@@ -1,0 +1,38 @@
+# ---------------------------------------------------------------------------
+# Perfil de DEMOSTRACIÓN: base de datos en memoria, sin PostgreSQL.
+#
+# Permite mostrar la API y su documentación interactiva sin instalar nada:
+#
+#   mvn -Pdemo... (ver AGENTS.md) ->
+#   mvn spring-boot:run -Dspring-boot.run.profiles=demo \
+#       -Dspring-boot.run.useTestClasspath=true
+#
+# ATENCIÓN: no es el entorno real. El esquema lo genera Hibernate a partir de las
+# entidades, así que las migraciones Flyway NO se ejecutan y PostgreSQL sigue
+# siendo la fuente de verdad del esquema. Los datos viven en memoria y se
+# pierden al detener la aplicación.
+# ---------------------------------------------------------------------------
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:lagunapaca;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+
+  # Las migraciones son específicas de PostgreSQL: ver la nota de arriba.
+  flyway:
+    enabled: false
+
+app:
+  # El broker no está disponible en una demostración local.
+  mqtt:
+    enabled: false
+
+logging:
+  level:
+    pe.edu.continental.lagunapaca: INFO

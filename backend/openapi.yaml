@@ -1,0 +1,271 @@
+openapi: 3.0.3
+info:
+  title: Laguna de Paca - Backend API
+  version: 0.1.0
+  description: >
+    Sistema de monitoreo de la contaminación de la Laguna de Paca.
+    Módulo: ingesta de telemetría IoT (ESP32) y evaluación de alertas ECA-Agua.
+
+    Además del POST HTTP, existe una segunda vía de ingesta por MQTT (topic
+    `laguna-paca/telemetry`, QoS 1) que acepta el mismo payload JSON del ESP32.
+    Se habilita con `app.mqtt.enabled=true` (deshabilitada por defecto) y no usa
+    JWT: se autentica con las credenciales del broker.
+servers:
+  - url: http://localhost:8080
+    description: Desarrollo local
+tags:
+  - name: Autenticación
+  - name: Telemetría
+
+paths:
+  /api/v1/auth/token:
+    post:
+      tags: [Autenticación]
+      summary: Emite un JWT para consumir la API
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRequest'
+      responses:
+        '200':
+          description: Token emitido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          description: Credenciales inválidas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /api/v1/telemetry:
+    get:
+      tags: [Telemetría]
+      summary: Consulta el histórico de muestras (paginado y filtrable)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: node_id
+          in: query
+          required: false
+          schema: { type: string, maxLength: 32 }
+          description: Filtra por nodo sensor. Si se omite, devuelve todos los nodos.
+        - name: from
+          in: query
+          required: false
+          schema: { type: string, format: date-time }
+          description: Límite inferior inclusivo sobre recorded_at (ISO-8601 UTC).
+        - name: to
+          in: query
+          required: false
+          schema: { type: string, format: date-time }
+          description: Límite superior inclusivo sobre recorded_at (ISO-8601 UTC).
+        - name: alert
+          in: query
+          required: false
+          schema: { type: boolean }
+          description: Filtra por muestras con (true) o sin (false) alerta ECA-Agua.
+        - name: reason
+          in: query
+          required: false
+          schema: { type: string }
+          description: Coincidencia (case-insensitive) dentro del mensaje de los motivos.
+        - name: code
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [PH_HIGH, PH_LOW]
+          description: Código exacto del motivo de alerta.
+        - name: page
+          in: query
+          required: false
+          schema: { type: integer, default: 0, minimum: 0 }
+        - name: size
+          in: query
+          required: false
+          schema: { type: integer, default: 20, minimum: 1, maximum: 100 }
+        - name: sort
+          in: query
+          required: false
+          schema: { type: string, default: 'recordedAt,desc' }
+      responses:
+        '200':
+          description: Página de muestras
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TelemetryPage'
+        '400':
+          description: Parámetros inválidos (p. ej. from > to)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Falta el token JWT o es inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+    post:
+      tags: [Telemetría]
+      summary: Ingesta una muestra de telemetría del nodo ESP32
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TelemetryRequest'
+            example:
+              node_id: "N1"
+              ph: 7.2
+              turbidity_ntu: 15.4
+              temp_c: 18.5
+              tds_ppm: 320
+      responses:
+        '201':
+          description: Muestra registrada (con resultado de la evaluación ECA-Agua)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TelemetryResponse'
+        '400':
+          description: Payload inválido (falla de validación)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Falta el token JWT o es inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    TokenRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string, example: admin }
+        password: { type: string, format: password, example: admin123 }
+
+    TokenResponse:
+      type: object
+      properties:
+        access_token: { type: string }
+        token_type: { type: string, example: Bearer }
+        expires_in: { type: integer, description: Segundos de vigencia }
+
+    # Payload EXACTO que envía el firmware ESP32 (regla de negocio de la tesis).
+    TelemetryRequest:
+      type: object
+      additionalProperties: true
+      required: [node_id, ph, turbidity_ntu, temp_c, tds_ppm]
+      properties:
+        node_id:
+          type: string
+          maxLength: 32
+          description: Identificador del nodo sensor
+          example: "N1"
+        ph:
+          type: number
+          format: double
+          minimum: 0.0
+          maximum: 14.0
+          example: 7.2
+        turbidity_ntu:
+          type: number
+          format: double
+          minimum: 0.0
+          example: 15.4
+        temp_c:
+          type: number
+          format: double
+          minimum: -5.0
+          maximum: 60.0
+          example: 18.5
+        tds_ppm:
+          type: number
+          format: double
+          minimum: 0.0
+          example: 320
+
+    TelemetryResponse:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        node_id: { type: string }
+        ph: { type: number, format: double }
+        turbidity_ntu: { type: number, format: double }
+        temp_c: { type: number, format: double }
+        tds_ppm: { type: number, format: double }
+        alert:
+          type: boolean
+          description: true si la muestra excede los límites ECA-Agua
+        alert_reasons:
+          type: array
+          description: Motivos de la alerta (vacío si no hay alerta)
+          items:
+            $ref: '#/components/schemas/AlertReason'
+
+    AlertReason:
+      type: object
+      properties:
+        code:
+          type: string
+          enum: [PH_HIGH, PH_LOW]
+          description: Código estable del motivo
+        message:
+          type: string
+          description: Texto legible con el valor medido
+        recorded_at:
+          type: string
+          format: date-time
+          description: Marca temporal asignada por el servidor (UTC)
+
+    TelemetryPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/TelemetryResponse'
+        page: { type: integer }
+        size: { type: integer }
+        total_elements: { type: integer, format: int64 }
+        total_pages: { type: integer }
+
+    ApiError:
+      type: object
+      properties:
+        timestamp: { type: string, format: date-time }
+        status: { type: integer }
+        error: { type: string }
+        message: { type: string }
+        path: { type: string }
+        field_errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              message: { type: string }
+
+    # Regla de negocio (ECA-Agua, Categoría 4-E1):
+    #   alerta si pH > 9.0  ó  pH < 6.5  (límites estrictos).
