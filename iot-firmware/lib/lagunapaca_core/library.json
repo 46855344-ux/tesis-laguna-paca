@@ -1,0 +1,12 @@
+{
+  "name": "lagunapaca_core",
+  "version": "0.1.0",
+  "description": "Logica portable del nodo sensor ESP32 (sin dependencias de Arduino): filtro de media movil, calibracion de sondas, armado del payload JSON y politica de Deep Sleep.",
+  "keywords": "iot, esp32, agua, telemetria",
+  "frameworks": "*",
+  "platforms": "*",
+  "build": {
+    "srcDir": "src",
+    "includeDir": "include"
+  }
+}
