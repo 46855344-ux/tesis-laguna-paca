@@ -31,6 +31,9 @@ public record PanelDashboard(
 
         List<Estacion> estaciones,
 
+        /** Las mismas estaciones ubicadas sobre el contorno de la laguna. */
+        PanelMapa mapa,
+
         /** Puntos de las últimas 24 h, en orden cronológico. */
         List<Punto> serie
 ) {
@@ -53,6 +56,10 @@ public record PanelDashboard(
 
     public List<Estacion> getEstaciones() {
         return estaciones;
+    }
+
+    public PanelMapa getMapa() {
+        return mapa;
     }
 
     public List<Punto> getSerie() {

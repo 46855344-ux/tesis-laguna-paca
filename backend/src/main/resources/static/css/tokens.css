@@ -116,6 +116,12 @@
   --chart-4: #6D28D9;               /* violeta        */
   --chart-grid: var(--color-border);
   --chart-axis: var(--color-text-muted);
+
+  /* --- Mapa ------------------------------------------------------------- */
+  /* El agua es relleno, no texto ni trazo de datos: no compite con las series.
+     Se define aquí para que el modo oscuro no duplique reglas. */
+  --color-water: #D6EAF6;
+  --color-water-border: #8FBFD9;
 }
 
 /* ==========================================================================
@@ -166,4 +172,9 @@
   --chart-2: #6FD3C8;
   --chart-3: #D6A141;
   --chart-4: #A78BFA;
+
+  /* El agua se oscurece y el borde se aclara lo justo para separarse de la
+     superficie sin convertirse en un segundo color de marca. */
+  --color-water: #12314A;
+  --color-water-border: #35617F;
 }

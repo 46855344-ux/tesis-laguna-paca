@@ -1165,6 +1165,88 @@ body[data-menu="abierto"] .velo {
 .grafico__punto.serie-3 { fill: var(--chart-3); }
 .grafico__punto.serie-4 { fill: var(--chart-4); }
 
+/* --- Mapa de la laguna --------------------------------------------------- */
+.mapa-laguna {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-4);
+}
+
+/* El ancho máximo evita estirar un contorno de 720 unidades hasta que parezca
+   un póster: así las etiquetas conservan un tamaño legible. */
+.mapa-laguna__lienzo {
+  width: 100%;
+  max-width: 760px;
+  height: auto;
+}
+
+.mapa-laguna__agua {
+  fill: var(--color-water);
+  stroke: var(--color-water-border);
+  stroke-width: 1.5;
+}
+
+.estacion-mapa__enlace {
+  cursor: pointer;
+}
+
+.estacion-mapa circle {
+  stroke: var(--color-surface);
+  stroke-width: 3;
+  transition: r var(--transition-fast);
+}
+
+.estacion-mapa:hover circle {
+  r: 11;
+}
+
+/* El aro de foco va en el círculo: un outline sobre un <a> dentro de SVG no se
+   pinta igual en todos los navegadores. */
+.estacion-mapa__enlace:focus-visible {
+  outline: none;
+}
+
+.estacion-mapa__enlace:focus-visible circle {
+  stroke: var(--color-primary-text);
+  stroke-width: 4;
+}
+
+/* El halo del texto es del color de la superficie: la etiqueta se lee tanto
+   sobre el agua como sobre el borde del lago. */
+.estacion-mapa__id,
+.estacion-mapa__ph {
+  paint-order: stroke;
+  stroke: var(--color-surface);
+  stroke-linejoin: round;
+}
+
+.estacion-mapa__id {
+  font-size: 13px;
+  font-weight: 600;
+  fill: var(--color-text);
+  stroke-width: 4;
+}
+
+.estacion-mapa__ph {
+  font-size: 11px;
+  fill: var(--color-text-muted);
+  stroke-width: 3;
+}
+
+.estacion-mapa--exito circle { fill: var(--color-success); }
+.estacion-mapa--peligro circle { fill: var(--color-danger); }
+.estacion-mapa--neutra circle { fill: var(--color-text-muted); }
+
+.leyenda__punto {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full);
+}
+
+.leyenda__punto--exito { background: var(--color-success); }
+.leyenda__punto--peligro { background: var(--color-danger); }
+.leyenda__punto--neutra { background: var(--color-text-muted); }
+
 @media (max-width: 1023px) {
   .rejilla-kpi {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1582,6 +1664,16 @@ a.paginacion__numero:hover {
 
   .tarjeta {
     padding: var(--space-4);
+  }
+
+  /* El lienzo del mapa se reduce con el ancho; las etiquetas se compensan para
+     que sigan siendo legibles en un móvil. */
+  .estacion-mapa__id {
+    font-size: 19px;
+  }
+
+  .estacion-mapa__ph {
+    font-size: 16px;
   }
 
   .tarjeta-login {

@@ -55,16 +55,20 @@ public class PanelDashboardService {
             DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm").withZone(ZONA);
 
     private final WaterQualitySampleRepository repository;
+    private final MapaLagunaService mapaService;
     private final Clock clock;
 
     @Autowired
-    public PanelDashboardService(WaterQualitySampleRepository repository) {
-        this(repository, Clock.systemUTC());
+    public PanelDashboardService(WaterQualitySampleRepository repository,
+                                 MapaLagunaService mapaService) {
+        this(repository, mapaService, Clock.systemUTC());
     }
 
     /** Constructor con reloj explícito: permite fijar el "ahora" en los tests. */
-    public PanelDashboardService(WaterQualitySampleRepository repository, Clock clock) {
+    public PanelDashboardService(WaterQualitySampleRepository repository,
+                                 MapaLagunaService mapaService, Clock clock) {
         this.repository = repository;
+        this.mapaService = mapaService;
         this.clock = clock;
     }
 
@@ -89,7 +93,7 @@ public class PanelDashboardService {
                 .count();
 
         return new PanelDashboard(ahora, HORA_CON_SEGUNDOS.format(ahora),
-                recientes.size(), alertas, estaciones, serie);
+                recientes.size(), alertas, estaciones, mapaService.construir(estaciones), serie);
     }
 
     /**

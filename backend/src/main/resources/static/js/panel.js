@@ -378,6 +378,37 @@
     });
   }
 
+  /**
+   * Recolorea los puntos del mapa con el mismo veredicto que las tarjetas.
+   * La geometría no se recalcula: el SVG ya viene dibujado por el servidor.
+   */
+  function actualizarMapa(datos) {
+    if (!datos.mapa || !datos.mapa.puntos) {
+      return;
+    }
+
+    datos.mapa.puntos.forEach(function (punto) {
+      var grupo = document.querySelector('[data-punto="' + punto.id + '"]');
+      if (!grupo) {
+        return;
+      }
+      grupo.setAttribute("class", "estacion-mapa estacion-mapa--" + punto.clase);
+
+      var enlace = grupo.querySelector(".estacion-mapa__enlace");
+      if (enlace) {
+        enlace.setAttribute("aria-label", punto.titulo);
+      }
+      var titulo = grupo.querySelector("title");
+      if (titulo) {
+        titulo.textContent = punto.titulo;
+      }
+      var ph = grupo.querySelector(".estacion-mapa__ph");
+      if (ph) {
+        ph.textContent = punto.ph || "";
+      }
+    });
+  }
+
   function agruparSeries(datos) {
     var indicePorId = {};
     var series = datos.estaciones.map(function (estacion, indice) {
@@ -598,6 +629,7 @@
       tablero = datos;
       actualizarKpis(datos);
       actualizarEstaciones(datos);
+      actualizarMapa(datos);
       dibujarGrafico();
       if (manual) {
         mostrarToast("Datos actualizados.", "exito");

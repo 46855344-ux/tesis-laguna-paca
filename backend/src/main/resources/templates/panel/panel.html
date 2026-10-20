@@ -85,6 +85,73 @@
                 </article>
             </section>
 
+            <!--
+              Mapa de la laguna. El contorno viene de OpenStreetMap y se guarda
+              como GeoJSON en el repositorio: no hay teselas ni librerías, así
+              que la demo funciona sin internet. Cada punto lleva al historial
+              filtrado por esa estación.
+            -->
+            <section class="tarjeta seccion-separada" aria-labelledby="titulo-mapa">
+                <div class="tarjeta__cabecera tarjeta__cabecera--envolvente">
+                    <div>
+                        <h3 id="titulo-mapa" class="tarjeta__titulo">Mapa de la laguna</h3>
+                        <p class="tarjeta__nota">
+                            Contorno de la Laguna de Paca con la última lectura de cada
+                            estación. Selecciona un punto para ver su historial.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="mapa-laguna">
+                    <svg class="mapa-laguna__lienzo"
+                         th:attr="viewBox=${tablero.mapa.viewBox}"
+                         role="img"
+                         aria-label="Mapa de la Laguna de Paca con las estaciones N1 a N4">
+                        <path class="mapa-laguna__agua" th:attr="d=${tablero.mapa.camino}"></path>
+
+                        <g th:each="punto : ${tablero.mapa.puntos}"
+                           class="estacion-mapa"
+                           th:classappend="|estacion-mapa--${punto.clase}|"
+                           th:attr="data-punto=${punto.id}">
+                            <a class="estacion-mapa__enlace"
+                               th:href="@{/panel/historial(estacion=${punto.id})}"
+                               th:attr="aria-label=${punto.titulo}">
+                                <title th:text="${punto.titulo}">N2 · pH 6.12 · Alerta ECA-Agua</title>
+                                <circle th:attr="cx=${punto.x},cy=${punto.y}" r="9"></circle>
+                                <text class="estacion-mapa__id"
+                                      th:attr="x=${punto.x + 16},y=${punto.y - 2}"
+                                      th:text="${punto.id}">N2</text>
+                                <text class="estacion-mapa__ph"
+                                      th:attr="x=${punto.x + 16},y=${punto.y + 13}"
+                                      th:text="${punto.ph}">6.12</text>
+                            </a>
+                        </g>
+                    </svg>
+                </div>
+
+                <ul class="leyenda" aria-label="Estados posibles de una estación">
+                    <li class="leyenda__item">
+                        <span class="leyenda__punto leyenda__punto--exito"></span>
+                        <span>Dentro del rango</span>
+                    </li>
+                    <li class="leyenda__item">
+                        <span class="leyenda__punto leyenda__punto--peligro"></span>
+                        <span>Alerta ECA-Agua</span>
+                    </li>
+                    <li class="leyenda__item">
+                        <span class="leyenda__punto leyenda__punto--neutra"></span>
+                        <span>Sin datos</span>
+                    </li>
+                </ul>
+
+                <noscript>
+                    <p class="tarjeta__nota">
+                        El mapa se actualiza con el resto del tablero; sin JavaScript
+                        muestra la última lectura cargada al abrir la página.
+                    </p>
+                </noscript>
+            </section>
+
             <!-- Tarjetas por estación. Los identificadores coinciden con el
                  campo node_id del ESP32. -->
             <section class="seccion-separada" aria-labelledby="titulo-estaciones">

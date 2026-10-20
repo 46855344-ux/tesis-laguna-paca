@@ -174,6 +174,44 @@ Decisiones que conviene no deshacer:
 - **Sin JavaScript** las tarjetas, los indicadores y las reglas siguen completos; solo el gráfico
   muestra su estado vacío. El `<noscript>` lo dice explícitamente.
 
+### Mapa de la laguna
+
+El tablero dibuja el contorno **real** de la laguna (no un esquema) con las cuatro
+estaciones encima. El polígono sale de OpenStreetMap (`way 26947746`, 194 puntos,
+simplificado a 140 con Douglas-Peucker) y se guarda como GeoJSON en
+`backend/src/main/resources/geo/laguna-paca.json`: el panel no descarga teselas.
+
+| Objetivo | Comando (desde la raíz) |
+|---|---|
+| Regenerar el contorno y las coordenadas | `ia-model\.venv\Scripts\python.exe backend\tools\fetch_laguna.py` |
+
+Decisiones que conviene no deshacer:
+
+- **No se usa Leaflet ni Google Maps.** Cargan teselas por internet y la demo tiene
+  que funcionar sin conexión (la misma razón por la que el gráfico es SVG a mano).
+  El contorno viaja en el JAR y se dibuja en el servidor.
+- **Las coordenadas de las estaciones no se copian.** `fetch_laguna.py` las importa
+  de `ia-model/lagunapaca_gnn/stations.py`, que sigue siendo la fuente de verdad del
+  grafo. Si se reemplazan las provisionales por las de campo, se edita `stations.py`
+  y se vuelve a ejecutar el script; el mapa y el modelo no pueden discrepar.
+- **La proyección es equirectangular corregida por `cos(latitud)`.** Sin esa
+  corrección, a 11° sur el lago se vería estirado horizontalmente.
+- **La caja de la proyección incluye las estaciones**, no solo el lago: un punto en
+  la orilla quedaría pegado al borde o fuera del lienzo.
+- **El color es el veredicto persistido**, igual que en las tarjetas: verde
+  `DENTRO`, rojo `ALERTA`, gris `SIN_DATOS`. El mapa no evalúa el pH.
+- **Cada punto enlaza al historial filtrado** (`/panel/historial?estacion=N2`). El
+  mapa sirve para navegar, no solo para mirar.
+- **Sin JavaScript el mapa ya está dibujado**: el servidor renderiza el SVG y el
+  refresco de 20 s solo recolorea los puntos y actualiza su etiqueta.
+- **El texto accesible de cada punto** («N2 · pH 6.27 · Alerta ECA-Agua · hace
+  1 minuto») se construye en el servidor y viaja también en el JSON.
+- **En móvil se agrandan las etiquetas** dentro del SVG (`font-size` 19/16 px): el
+  lienzo se reduce con el ancho y, sin ese ajuste, el texto quedaría a 6 px.
+- Los contrastes de los puntos sobre el agua van de **3.84:1 a 5.24:1** en ambos
+  temas (mínimo 3:1 para elementos gráficos). El texto lleva halo del color de la
+  superficie, así que se lee tanto sobre el agua como sobre el borde.
+
 ### Historial con filtros y paginación
 
 `GET /panel/historial` lista las muestras de la más reciente a la más antigua, 20 por página.
@@ -285,7 +323,13 @@ estación, cuenta pendientes/atendidas/alertas, exige CSRF para atender, registr
 tocar el veredicto, responde 404 en una muestra sin alerta o inexistente, reabrir borra la
 auditoría y el tablero informa la atención en su JSON.
 
-**Total del backend: 76 tests.**
+`PanelMapaIntegrationTest` (contexto completo, H2, base propia) fija el mapa: el
+tablero dibuja el contorno y una marca por estación, cada punto enlaza a su
+historial, las cuatro estaciones caen dentro del lienzo, el norte queda arriba del
+sur (la proyección respeta la latitud), el color es el veredicto persistido y el
+mapa no depende de teselas ni de scripts externos.
+
+**Total del backend: 83 tests.**
 
 ## Firmware IoT (`iot-firmware/`) — comandos
 
