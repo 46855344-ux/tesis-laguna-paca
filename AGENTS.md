@@ -466,6 +466,9 @@ Hardware de desarrollo (**importante para planificar**): Ryzen 5 2500U, 10.9 GB 
 ## Notas para agentes
 
 - El proyecto y su documentación están en **español (es-PE)**.
+- `README.md` es la puerta de entrada para humanos (arranque de la demo, estado de los
+  módulos, resultados y pendientes). Si cambia el arranque, un total de pruebas o el
+  estado de un módulo, actualiza el README junto con este archivo.
 - `docs/` es material binario de referencia (tesis y libros), **no código**. `docs/LIBROS/` contiene libros de consulta (Spring Boot, Neo4j, ESP32, GNN). Las herramientas de lectura no extraen PDF/DOCX directamente: DOCX/PPTX son ZIP y hay que descomprimirlos para leer su XML de texto.
 - Los comandos de build/test de cada módulo están documentados arriba (backend y firmware). Si agregas scripts o tareas nuevas, documéntalas aquí.
 - Git remoto: `origin` → `https://github.com/46855344-ux/tesis-laguna-paca.git`, rama única `main`.
