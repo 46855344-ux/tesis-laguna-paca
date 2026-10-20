@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<!--
+  Estado vacío reutilizable.
+
+  Uso:  <div th:replace="~{fragments/empty-state :: vacio('Título', 'Explicación')}"></div>
+
+  Un estado vacío bien escrito dice qué falta y qué hacer; nunca deja una
+  pantalla en blanco sin explicación.
+-->
+<div th:fragment="vacio(titulo, descripcion)" class="estado-vacio">
+    <span class="estado-vacio__icono">
+        <span th:replace="~{fragments/icons :: bandeja}"></span>
+    </span>
+    <h3 th:text="${titulo}">Sin datos todavía</h3>
+    <p th:text="${descripcion}">Cuando llegue la primera muestra, aquí aparecerá el resumen.</p>
+</div>
+</html>

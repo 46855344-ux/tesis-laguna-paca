@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<!--
+  Contenedor de notificaciones emergentes.
+
+  Uso:  <div th:replace="~{fragments/toast :: contenedor}"></div>
+
+  aria-live="polite" hace que un lector de pantalla anuncie el mensaje sin
+  interrumpir lo que la persona esté escuchando. Los toasts los crea
+  panel.js con window.LagunaPanel.toast(mensaje, tipo).
+-->
+<div th:fragment="contenedor"
+     id="contenedor-toasts"
+     class="contenedor-toasts"
+     role="region"
+     aria-label="Notificaciones"
+     aria-live="polite"></div>
+</html>

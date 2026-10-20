@@ -1,0 +1,151 @@
+/* ==========================================================================
+   tokens.css — Sistema de diseño "Laguna Paca"
+   --------------------------------------------------------------------------
+   Única fuente de verdad de los valores visuales del proyecto. Los mismos
+   tokens se replican en el tema Material 3 de la app Android, de modo que las
+   dos superficies se sientan como un solo producto.
+
+   Reglas que este archivo hace cumplir:
+   - Paleta con contraste WCAG AA verificado (se anota el ratio de cada color
+     semántico sobre la superficie clara).
+   - Modo claro por defecto; modo oscuro con [data-tema="oscuro"].
+   - Radios entre 8 y 16 px, sombras suaves, transiciones de 150 y 250 ms.
+   ========================================================================== */
+
+:root {
+  color-scheme: light;
+
+  /* --- Marca ------------------------------------------------------------ */
+  /* Azul profundo: agua, confianza, institucional. 7.17:1 sobre blanco. */
+  --color-primary: #0F5C8C;
+  --color-primary-hover: #0A4468;
+  --color-primary-soft: #E8F1F8;
+  /* Color de TEXTO/ICONO sobre superficies tenues. En modo claro coincide con
+     el primario; en modo oscuro tiene que aclararse, porque el azul profundo
+     sobre un fondo oscuro cae a 2.79:1 e incumple AA. */
+  --color-primary-text: #0F5C8C;
+  /* Teal: calidad y sostenibilidad. Solo como acento o superficie; el teal
+     puro (4.12:1) no alcanza AA para texto normal, por eso existe
+     --color-secondary-text. */
+  --color-secondary: #178C7F;
+  --color-secondary-text: #0F6B60;   /* 6.38:1 */
+
+  /* --- Semánticos (vinculados a la lógica ECA-Agua) ---------------------- */
+  --color-success: #157347;          /* 5.87:1 — dentro del rango */
+  --color-success-soft: #E7F4EC;
+  --color-warning: #8A5A0B;          /* 5.92:1 — cerca del límite */
+  --color-warning-soft: #FDF3E1;
+  --color-danger: #C0392B;           /* 5.44:1 — alerta ECA-Agua */
+  --color-danger-soft: #FBEAE8;
+  --color-info: #2B6CB0;             /* 5.42:1 — información neutra */
+  --color-info-soft: #E8F0FA;
+
+  /* --- Neutros ---------------------------------------------------------- */
+  --color-bg: #F8FAFC;
+  --color-surface: #FFFFFF;
+  --color-surface-muted: #F1F5F9;
+  --color-border: #E2E8F0;
+  --color-border-strong: #CBD5E1;
+  --color-text: #0F172A;
+  --color-text-muted: #64748B;
+  --color-text-inverse: #FFFFFF;
+  --color-overlay: rgb(15 23 42 / 45%);
+  --color-ring: rgb(43 108 176 / 35%);
+
+  /* --- Tipografía ------------------------------------------------------- */
+  /* Segoe UI primero por Windows; Inter si está instalada. Se evita depender
+     de Google Fonts para que la demostración funcione sin internet. */
+  --font-sans: "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui,
+    -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --text-xs: 0.75rem;     /* 12 px */
+  --text-sm: 0.875rem;    /* 14 px */
+  --text-base: 1rem;      /* 16 px */
+  --text-lg: 1.125rem;    /* 18 px */
+  --text-xl: 1.25rem;     /* 20 px */
+  --text-2xl: 1.5rem;     /* 24 px */
+  --text-3xl: 1.875rem;   /* 30 px */
+  --leading-tight: 1.25;
+  --leading-normal: 1.6;
+
+  /* --- Espaciado (escala de 4) ------------------------------------------ */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  /* --- Formas ----------------------------------------------------------- */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-full: 999px;
+
+  /* --- Profundidad ------------------------------------------------------ */
+  --shadow-sm: 0 1px 2px rgb(15 23 42 / 6%);
+  --shadow-md: 0 8px 24px rgb(15 23 42 / 10%);
+  --shadow-lg: 0 18px 48px rgb(15 23 42 / 16%);
+
+  /* --- Movimiento ------------------------------------------------------- */
+  --transition-fast: 150ms cubic-bezier(0.2, 0, 0.2, 1);
+  --transition-base: 250ms cubic-bezier(0.2, 0, 0.2, 1);
+
+  /* --- Estructura ------------------------------------------------------- */
+  --sidebar-width: 264px;
+  --sidebar-collapsed: 76px;
+  --navbar-height: 68px;
+  --content-max: 1200px;
+
+  /* --- Capas ------------------------------------------------------------ */
+  --z-bar: 20;
+  --z-overlay: 30;
+  --z-sidebar: 40;
+  --z-dropdown: 50;
+  --z-toast: 60;
+}
+
+/* ==========================================================================
+   Modo oscuro
+   Los semánticos se aclaran porque sobre fondo oscuro el color debe emitir
+   luz, no absorberla: el rojo #C0392B sería ilegible como texto.
+   ========================================================================== */
+[data-tema="oscuro"] {
+  color-scheme: dark;
+
+  --color-primary: #1C6FA8;
+  --color-primary-hover: #2480BF;
+  --color-primary-soft: #14283A;
+  /* Azul aclarado: 6.93:1 sobre --color-primary-soft y 7.87:1 sobre la
+     superficie. El primario sólido se reserva para fondos de botón. */
+  --color-primary-text: #6CB8E8;
+  --color-secondary: #2FA79A;
+  --color-secondary-text: #6FD3C8;
+
+  --color-success: #4FB383;
+  --color-success-soft: #12291D;
+  --color-warning: #D6A141;
+  --color-warning-soft: #2A2113;
+  --color-danger: #E0705F;
+  --color-danger-soft: #2E1714;
+  --color-info: #6CA9DE;
+  --color-info-soft: #14243A;
+
+  --color-bg: #0B1220;
+  --color-surface: #111C2E;
+  --color-surface-muted: #16233A;
+  --color-border: #1E2A3F;
+  --color-border-strong: #2A3A55;
+  --color-text: #E2E8F0;
+  --color-text-muted: #94A3B8;
+  /* Blanco también en oscuro: el texto va sobre --color-primary sólido, y el
+     oscuro sobre ese azul solo llegaría a 3.47:1. */
+  --color-text-inverse: #FFFFFF;
+  --color-overlay: rgb(2 6 14 / 65%);
+  --color-ring: rgb(108 169 222 / 45%);
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 40%);
+  --shadow-md: 0 8px 24px rgb(0 0 0 / 45%);
+  --shadow-lg: 0 18px 48px rgb(0 0 0 / 55%);
+}

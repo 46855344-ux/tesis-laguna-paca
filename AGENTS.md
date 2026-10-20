@@ -4,7 +4,7 @@ Repositorio de tesis: **"Sistema de software e IoT con Redes Neuronales de Grafo
 
 ## Estado actual (importante)
 
-- `backend/` tiene el esqueleto Spring Boot + ingesta de telemetría (HTTP y MQTT), alertas ECA-Agua y consulta histórica, con Swagger UI y un simulador del nodo. `iot-firmware/` tiene el **núcleo portable** del nodo ESP32 (con tests). `ia-model/` está **completo de extremo a extremo**: estaciones, grafo, ventanas temporales, métricas, modelo ST-GNN (TCN + GCN + Attention), generador de serie sintética, normalización, entrenamiento y el experimento `train_stgnn.py` que **demuestra el criterio de la tesis** (`R² = 0.9289` a 6 h, contra `0.7403` de la línea base de persistencia; 134 tests con pytest). `android-app/` sigue **vacío**.
+- `backend/` tiene el esqueleto Spring Boot + ingesta de telemetría (HTTP y MQTT), alertas ECA-Agua y consulta histórica, con Swagger UI, un **panel web Thymeleaf** con sistema de diseño propio y un simulador del nodo. `iot-firmware/` tiene el **núcleo portable** del nodo ESP32 (con tests). `ia-model/` está **completo de extremo a extremo**: estaciones, grafo, ventanas temporales, métricas, modelo ST-GNN (TCN + GCN + Attention), generador de serie sintética, normalización, entrenamiento y el experimento `train_stgnn.py` que **demuestra el criterio de la tesis** (`R² = 0.9289` a 6 h, contra `0.7403` de la línea base de persistencia; 134 tests con pytest). `android-app/` sigue **vacío**.
 - `docs/` está **sin trackear** y es material de referencia, no código.
 - No hay CI. Las carpetas vacías no se versionan en git hasta que contengan archivos.
 
@@ -13,7 +13,7 @@ Repositorio de tesis: **"Sistema de software e IoT con Redes Neuronales de Grafo
 La fuente de verdad es `docs/Plantilla Plan Tesis Continental Sistemas_RONY.docx`.
 
 - `iot-firmware/` — firmware ESP32 (C++/Arduino): PH-4502C, TSW-20M, DS18B20 y Gravity TDS. Publica el payload JSON al **backend propio** (HTTP POST y/o MQTT) y entra en Deep Sleep. Estructura: `lib/lagunapaca_core/` (lógica portable y testeable) y `src/main.cpp` (glue de Arduino).
-- `backend/` — microservicios Java 21 / Spring Boot 3.2; APIs REST + WebSockets, JWT, PostgreSQL 16 + Neo4j AuraDB.
+- `backend/` — microservicios Java 21 / Spring Boot 3.2; APIs REST + WebSockets, JWT, PostgreSQL 16 + Neo4j AuraDB. Sirve también el **panel web** (Thymeleaf) desde el mismo JAR.
 - `ia-model/` — Python 3.12 / PyTorch Geometric; modelo ST-GNN sobre el grafo de estaciones de la laguna (adyacencia gaussiana + MST/KNN); se evalúa con R², RMSE y MAE.
 - `android-app/` — Kotlin / Jetpack Compose (MVVM + unidirectional data flow); alertas vía Firebase Cloud Messaging.
 
@@ -77,6 +77,88 @@ desde las anotaciones y `OpenApiConfig`. Botón **Authorize** → usuario `admin
 
 Los tests por slice (`@WebMvcTest` con `addFilters = false`, servicios instanciados a mano) no cubren
 ni el arranque ni la seguridad. Antes de agregar funcionalidad, mantener este test de integración.
+
+
+## Panel web (`backend/`) — sistema de diseño "Laguna Paca"
+
+El backend sirve además un **panel de monitoreo renderizado en el servidor con Thymeleaf**.
+Se descartó JSP: habría exigido empaquetar en WAR y perder el arranque con `spring-boot:run`
+para obtener menos reutilización. El panel corre en el **mismo JAR** que la API, así que la
+demostración sigue siendo un solo comando.
+
+| Objetivo | Comando / URL |
+|---|---|
+| Abrir el panel (perfil `demo`) | `http://localhost:8080/panel` |
+| Formulario de acceso | `http://localhost:8080/login` → `admin` / `admin123` |
+| Tokens de diseño | `backend/src/main/resources/static/css/tokens.css` |
+| Componentes | `backend/src/main/resources/static/css/panel.css` |
+| Interactividad | `backend/src/main/resources/static/js/panel.js` |
+| Plantillas | `backend/src/main/resources/templates/` |
+
+### Dos superficies, dos mecanismos de autenticación (decisión)
+
+`SecurityConfig` tiene **dos cadenas de filtros**:
+
+1. `@Order(1)` — panel (`/panel/**`, `/login`, `/css/**`, `/js/**`): **sesión con formulario**
+   (`JSESSIONID`) y **CSRF activo**. Es la única forma razonable de proteger formularios en un
+   navegador: con el JWT en `localStorage` el token quedaría expuesto a XSS, y sin CSRF el
+   formulario de acceso sería falsificable.
+2. `@Order(2)` — API (`/api/**`): **stateless con JWT**, sin cookies y sin CSRF, porque su
+   cliente es el ESP32 y no un navegador.
+
+Consecuencia deliberada: **un JWT válido no abre el panel**. Hay un test que lo fija
+(`PanelIntegrationTest.elPanelNoAceptaJwt`). El orden importa: si la cadena de la API fuera
+primero, su `anyRequest().authenticated()` respondería el panel con un 401 en JSON.
+
+### Tokens (fuente única de verdad)
+
+`tokens.css` define la paleta y la escala; `panel.css` **no escribe ningún color a mano**, así el
+modo oscuro funciona sin duplicar reglas. Los mismos valores se replicarán en el tema Material 3
+de `android-app/`.
+
+| Token | Claro | Oscuro |
+|---|---|---|
+| `--color-primary` (fondo sólido) | `#0F5C8C` | `#1C6FA8` |
+| `--color-primary-text` (texto sobre tenue) | `#0F5C8C` | `#6CB8E8` |
+| `--color-secondary` | `#178C7F` | `#2FA79A` |
+| `--color-success` | `#157347` | `#4FB383` |
+| `--color-warning` | `#8A5A0B` | `#D6A141` |
+| `--color-danger` | `#C0392B` | `#E0705F` |
+| `--color-info` | `#2B6CB0` | `#6CA9DE` |
+
+**Por qué existe `--color-primary-text`:** el primario profundo sobre fondo oscuro daba
+**2.79:1** en el enlace activo del menú (AA exige 4.5:1). Con el token aclarado sube a **6.93:1**.
+El primario sólido se reserva para fondos de botón, donde el texto blanco queda en **5.40:1**.
+El mismo problema tenía el botón primario en oscuro (3.47:1 por usar texto oscuro) y se corrigió
+dejando `--color-text-inverse: #FFFFFF` en ambos temas.
+
+Contrastes medidos en el navegador: enlace activo 6.27 / 6.93, botón primario 7.17 / 5.40, texto
+de cuerpo 17.06 / 15.19, texto secundario 4.76 / 6.66, etiquetas semánticas entre 4.67 y 6.23
+(primero claro, luego oscuro). Todos cumplen AA.
+
+### Reglas de interfaz que el código hace cumplir
+
+- **Todo el texto visible en español**; los identificadores técnicos (CSS, JS, Java) en inglés.
+- **Modo claro por defecto** y oscuro opcional, persistido en `localStorage` (`laguna-tema`).
+  El tema se aplica con un script en el `<head>` **antes del CSS** para evitar el destello blanco.
+- **Iconos siempre acompañados de texto** (Lucide incrustado como SVG con `aria-hidden="true"`);
+  nunca sustituyen a una etiqueta.
+- **Áreas táctiles de 44 px**, anillo de foco visible (`:focus-visible`), enlace "Saltar al
+  contenido", `aria-current="page"`, `aria-expanded`, `aria-pressed` y `aria-live` en los toasts.
+- **Responsive**: barra lateral fija de 264 px en ≥1024 px, colapsable a 76 px; en móvil es un
+  cajón con velo que se cierra con `Escape` devolviendo el foco al botón que lo abrió.
+- **Estados vacíos honestos**: lo que todavía no existe se muestra como "Pronto" deshabilitado,
+  en vez de un enlace que lleva a un 404.
+- `prefers-reduced-motion` desactiva las animaciones.
+- El panel **no reutiliza los controladores de la API**: el contrato de `openapi.yaml` no debe
+  arrastrar responsabilidades de presentación.
+
+### Tests
+
+`PanelIntegrationTest` (contexto completo, H2) fija el contrato: `/panel` sin sesión redirige a
+`/login`, el formulario es público y está en español, los estáticos son públicos, el login válido
+entra, el inválido vuelve con `?error`, el POST exige CSRF, un JWT no abre el panel y la API
+conserva su 401 sin token. **Total del backend: 45 tests.**
 
 
 ## Firmware IoT (`iot-firmware/`) — comandos

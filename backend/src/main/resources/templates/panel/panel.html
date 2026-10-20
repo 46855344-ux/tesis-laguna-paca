@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head('Panel de monitoreo')}"></head>
+<body>
+
+    <a class="saltar-contenido" href="#contenido">Saltar al contenido</a>
+
+    <aside th:replace="~{fragments/sidebar :: sidebar('panel')}"></aside>
+    <div class="velo" id="velo" aria-hidden="true"></div>
+
+    <div class="app">
+        <header th:replace="~{fragments/navbar :: navbar('Panel de monitoreo')}"></header>
+
+        <main id="contenido" class="contenido">
+
+            <div class="encabezado-pagina">
+                <div>
+                    <h2>Estado de la laguna</h2>
+                    <p>
+                        Resumen de las cuatro estaciones de muestreo. Los datos llegan
+                        desde los nodos ESP32 y las alertas las decide el backend con la
+                        regla ECA-Agua.
+                    </p>
+                </div>
+                <div class="encabezado-pagina__acciones">
+                    <a class="boton boton--secundario"
+                       th:href="@{/swagger-ui.html}"
+                       target="_blank"
+                       rel="noopener noreferrer">
+                        <span th:replace="~{fragments/icons :: escudo}"></span>
+                        <span>Documentación de la API</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Estado vacío: todavía no hay telemetría en este entorno. -->
+            <section class="tarjeta" aria-labelledby="titulo-vacio">
+                <div th:replace="~{fragments/empty-state :: vacio(
+                        'Aún no hay datos de telemetría',
+                        'Cuando el primer nodo envíe una muestra, aquí aparecerán el pH, la turbidez, la temperatura y los sólidos disueltos de cada estación.')}">
+                </div>
+                <div class="estado-vacio__acciones">
+                    <a class="boton boton--primario" href="#como-enviar">
+                        <span th:replace="~{fragments/icons :: gota}"></span>
+                        <span>Cómo enviar una muestra</span>
+                    </a>
+                    <a class="boton boton--secundario"
+                       th:href="@{/swagger-ui.html}"
+                       target="_blank"
+                       rel="noopener noreferrer">
+                        <span th:replace="~{fragments/icons :: historial}"></span>
+                        <span>Probar la API</span>
+                    </a>
+                </div>
+            </section>
+
+            <!-- Estaciones configuradas. Los identificadores coinciden con el
+                 campo node_id del ESP32. -->
+            <section class="seccion-separada" aria-labelledby="titulo-estaciones">
+                <h3 id="titulo-estaciones" class="titulo-seccion">
+                    Estaciones de muestreo
+                </h3>
+                <div class="rejilla">
+                    <article class="tarjeta tarjeta--interactiva"
+                             th:each="estacion : ${estaciones}">
+                        <div class="tarjeta__cabecera">
+                            <span class="tarjeta__titulo" th:text="${estacion}">N1</span>
+                            <span class="etiqueta etiqueta--neutra">
+                                <span class="etiqueta__punto"></span>
+                                Sin datos
+                            </span>
+                        </div>
+                        <p class="tarjeta__nota">Esperando la primera muestra del nodo.</p>
+                        <dl class="mini-datos">
+                            <div>
+                                <dt>pH</dt>
+                                <dd>—</dd>
+                            </div>
+                            <div>
+                                <dt>Turbidez</dt>
+                                <dd>—</dd>
+                            </div>
+                            <div>
+                                <dt>Temperatura</dt>
+                                <dd>—</dd>
+                            </div>
+                            <div>
+                                <dt>Sólidos disueltos</dt>
+                                <dd>—</dd>
+                            </div>
+                        </dl>
+                    </article>
+                </div>
+            </section>
+
+            <div class="rejilla rejilla--ancha seccion-separada">
+
+                <section class="tarjeta" id="como-enviar" aria-labelledby="titulo-comando">
+                    <div class="tarjeta__cabecera">
+                        <h3 id="titulo-comando" class="tarjeta__titulo">Enviar una muestra</h3>
+                        <button type="button"
+                                class="boton boton--secundario"
+                                data-accion="copiar"
+                                data-objetivo="#comando-ejemplo">
+                            <span th:replace="~{fragments/icons :: copiar}"></span>
+                            <span>Copiar</span>
+                        </button>
+                    </div>
+                    <p class="tarjeta__nota">
+                        La ingesta exige el JWT que entrega <code>/api/v1/auth/token</code>.
+                        El nodo ESP32 lo hace solo; aquí se muestra el mismo camino.
+                    </p>
+                    <pre class="bloque-codigo" id="comando-ejemplo" th:inline="none">curl -X POST http://localhost:8080/api/v1/telemetry \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"node_id":"N1","ph":7.2,"turbidity_ntu":15.4,"temp_c":18.5,"tds_ppm":320}'</pre>
+                </section>
+
+                <section class="tarjeta" aria-labelledby="titulo-reglas">
+                    <div class="tarjeta__cabecera">
+                        <h3 id="titulo-reglas" class="tarjeta__titulo">Reglas de alerta</h3>
+                        <span th:replace="~{fragments/icons :: escudo}"></span>
+                    </div>
+                    <p class="tarjeta__nota">
+                        Las decide el backend, nunca el nodo: el firmware solo mide y envía.
+                    </p>
+                    <dl class="mini-datos">
+                        <div>
+                            <dt>Acidez</dt>
+                            <dd><span class="etiqueta etiqueta--peligro">pH &lt; 6.5</span></dd>
+                        </div>
+                        <div>
+                            <dt>Alcalinidad</dt>
+                            <dd><span class="etiqueta etiqueta--peligro">pH &gt; 9.0</span></dd>
+                        </div>
+                        <div>
+                            <dt>Dentro del rango</dt>
+                            <dd><span class="etiqueta etiqueta--exito">6.5 – 9.0</span></dd>
+                        </div>
+                        <div>
+                            <dt>Límites exactos</dt>
+                            <dd><span class="etiqueta etiqueta--info">Sin alerta</span></dd>
+                        </div>
+                    </dl>
+                </section>
+            </div>
+
+        </main>
+    </div>
+
+    <div th:replace="~{fragments/toast :: contenedor}"></div>
+</body>
+</html>

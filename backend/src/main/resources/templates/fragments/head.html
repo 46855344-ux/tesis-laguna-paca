@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<!--
+  Fragmento de <head> compartido por todas las páginas del panel.
+
+  El tema se aplica con un script en línea ANTES del CSS: si se esperara al
+  archivo externo, quien tenga el modo oscuro guardado vería un destello blanco
+  en cada navegación.
+-->
+<head th:fragment="head(titulo)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <meta name="description" content="Panel de monitoreo de la contaminación de la Laguna de Paca">
+    <title th:text="|${titulo} · Laguna Paca|">Laguna Paca</title>
+
+    <script>
+        (function () {
+            try {
+                var guardado = localStorage.getItem("laguna-tema");
+                var prefiereOscuro = window.matchMedia("(prefers-color-scheme: dark)").matches;
+                document.documentElement.dataset.tema = guardado || (prefiereOscuro ? "oscuro" : "claro");
+            } catch (error) {
+                document.documentElement.dataset.tema = "claro";
+            }
+        })();
+    </script>
+
+    <link rel="stylesheet" th:href="@{/css/tokens.css}">
+    <link rel="stylesheet" th:href="@{/css/panel.css}">
+    <script th:src="@{/js/panel.js}" defer></script>
+</head>
+</html>
