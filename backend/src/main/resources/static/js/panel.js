@@ -48,6 +48,15 @@
       boton.setAttribute("aria-label", oscuro ? "Cambiar a modo claro" : "Cambiar a modo oscuro");
       boton.setAttribute("title", oscuro ? "Cambiar a modo claro" : "Cambiar a modo oscuro");
     });
+
+    // El mapa de Google no hereda las variables CSS: hay que recolorear sus
+    // marcas a mano cuando cambia el tema.
+    if (mapaGoogle) {
+      mapaGoogle.mapa.setOptions({ colorScheme: oscuro ? "DARK" : "LIGHT" });
+      if (tablero) {
+        actualizarMapaGoogle(tablero.mapa.puntos);
+      }
+    }
   }
 
   function alternarTema() {
@@ -407,6 +416,164 @@
         ph.textContent = punto.ph || "";
       }
     });
+
+    actualizarMapaGoogle(datos.mapa.puntos);
+  }
+
+  /* ------------------------------------------------------- Mapa de Google */
+
+  /*
+   * El mapa interactivo es opcional. La clave llega del backend (variable de
+   * entorno) y solo se pinta en el HTML del panel; si no hay clave, o si el
+   * navegador no puede cargar la API, el SVG de OpenStreetMap se queda tal cual.
+   */
+  var mapaGoogle = null;
+  var googleListo = false;
+
+  var TOKEN_POR_CLASE = {
+    exito: "--color-success",
+    peligro: "--color-danger",
+    neutra: "--color-text-muted"
+  };
+
+  function token(nombre) {
+    return getComputedStyle(raiz).getPropertyValue(nombre).trim();
+  }
+
+  function iconoDePunto(clase) {
+    return {
+      path: window.google.maps.SymbolPath.CIRCLE,
+      scale: 9,
+      fillColor: token(TOKEN_POR_CLASE[clase] || TOKEN_POR_CLASE.neutra),
+      fillOpacity: 1,
+      strokeColor: token("--color-surface"),
+      strokeWeight: 3
+    };
+  }
+
+  function prepararMapaGoogle() {
+    var contenedor = document.getElementById("mapa-google");
+    var clave = contenedor ? contenedor.getAttribute("data-clave") : "";
+    if (!clave) {
+      return;
+    }
+
+    if (window.google && window.google.maps) {
+      googleListo = true;
+      intentarCrearMapaGoogle();
+      return;
+    }
+
+    var script = document.createElement("script");
+    script.src = "https://maps.googleapis.com/maps/api/js?key="
+      + encodeURIComponent(clave) + "&v=weekly&loading=async";
+    script.async = true;
+
+    // 'load' se cumple cuando la API ya está disponible, sin depender del
+    // parametro callback (que no siempre se invoca al insertar el script).
+    script.addEventListener("load", function () {
+      googleListo = true;
+      intentarCrearMapaGoogle();
+    });
+    // Sin internet no se rompe nada: el contorno propio sigue en su sitio.
+    script.addEventListener("error", function () {
+      window.console.warn("No se pudo cargar Google Maps; queda el contorno de OpenStreetMap.");
+    });
+    document.head.appendChild(script);
+  }
+
+  /**
+   * Crea el mapa cuando ya están las dos cosas: la API cargada y los puntos.
+   * No se sabe cuál llega primero (la API puede responder antes que el refresco,
+   * o al revés), así que ambos caminos llaman aquí y solo el primero construye.
+   */
+  function intentarCrearMapaGoogle() {
+    if (mapaGoogle || !googleListo || !tablero || !tablero.mapa) {
+      return;
+    }
+    crearMapaGoogle(tablero.mapa.puntos);
+  }
+
+  function crearMapaGoogle(puntos) {
+    var contenedor = document.getElementById("mapa-google");
+    var svg = document.getElementById("mapa-laguna-svg");
+    if (!contenedor) {
+      return;
+    }
+
+    try {
+      var limites = new window.google.maps.LatLngBounds();
+      puntos.forEach(function (punto) {
+        limites.extend({ lat: punto.lat, lng: punto.lon });
+      });
+
+      // Google mide el contenedor al construir el mapa: si sigue oculto recibe
+      // 0x0 y no dibuja teselas. Por eso se muestra antes de crearlo y se
+      // fuerza el cálculo de layout para que la medida ya esté disponible.
+      contenedor.hidden = false;
+      void contenedor.offsetWidth;
+
+      mapaGoogle = {
+        mapa: new window.google.maps.Map(contenedor, {
+          mapTypeControl: false,
+          streetViewControl: false,
+          fullscreenControl: false,
+          colorScheme: temaActual() === "oscuro" ? "DARK" : "LIGHT"
+        }),
+        marcadores: {}
+      };
+      // El lago entero: las estaciones están en sus extremos.
+      mapaGoogle.mapa.fitBounds(limites, 48);
+      window.google.maps.event.trigger(mapaGoogle.mapa, "resize");
+
+      puntos.forEach(function (punto) {
+        var marcador = new window.google.maps.Marker({
+          map: mapaGoogle.mapa,
+          position: { lat: punto.lat, lng: punto.lon },
+          title: punto.titulo,
+          icon: iconoDePunto(punto.clase)
+        });
+        marcador.addListener("click", function () {
+          window.location.href = "/panel/historial?estacion=" + encodeURIComponent(punto.id);
+        });
+        mapaGoogle.marcadores[punto.id] = marcador;
+      });
+
+      // Recién ahora se retira el contorno propio. Se usa display y no
+      // `hidden`: el atributo global no está definido para SVG.
+      if (svg) {
+        svg.style.display = "none";
+      }
+    } catch (error) {
+      // Si Google falla (clave restringida, cuota, red), la tarjeta vuelve al
+      // contorno de OpenStreetMap en vez de quedarse en blanco.
+      window.console.error("No se pudo dibujar el mapa de Google:", error);
+      mapaGoogle = null;
+      contenedor.hidden = true;
+      contenedor.textContent = "";
+      if (svg) {
+        svg.style.display = "";
+      }
+    }
+  }
+
+  function actualizarMapaGoogle(puntos) {
+    if (!googleListo) {
+      return;
+    }
+    if (!mapaGoogle) {
+      intentarCrearMapaGoogle();
+      return;
+    }
+
+    puntos.forEach(function (punto) {
+      var marcador = mapaGoogle.marcadores[punto.id];
+      if (!marcador) {
+        return;
+      }
+      marcador.setIcon(iconoDePunto(punto.clase));
+      marcador.setTitle(punto.titulo);
+    });
   }
 
   function agruparSeries(datos) {
@@ -760,6 +927,13 @@
     prepararFormularios();
     prepararCopiar();
     iniciarTablero();
+    prepararMapaGoogle();
+
+    // El mapa de Google necesita los puntos en JSON; el resto del tablero ya
+    // viene renderizado por el servidor, así que se pide una sola vez al abrir.
+    if (document.getElementById("mapa-google")) {
+      cargarTablero(false);
+    }
   }
 
   if (document.readyState === "loading") {

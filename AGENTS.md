@@ -184,12 +184,40 @@ simplificado a 140 con Douglas-Peucker) y se guarda como GeoJSON en
 | Objetivo | Comando (desde la raíz) |
 |---|---|
 | Regenerar el contorno y las coordenadas | `ia-model\.venv\Scripts\python.exe backend\tools\fetch_laguna.py` |
+| Arrancar con el mapa de Google | definir `GOOGLE_MAPS_API_KEY` antes de `spring-boot:run` |
+
+**Mapa de Google (opcional).** Con `GOOGLE_MAPS_API_KEY` definida, el tablero carga
+Google Maps; si la API no carga (sin internet, clave restringida o cuota), el
+contorno propio se queda y la tarjeta no queda vacía. La clave **nunca** se
+versiona: `application.yml` la lee del entorno y `PanelMapa` la marca con
+`@JsonIgnore`, así que no viaja en `/panel/datos`.
 
 Decisiones que conviene no deshacer:
 
-- **No se usa Leaflet ni Google Maps.** Cargan teselas por internet y la demo tiene
-  que funcionar sin conexión (la misma razón por la que el gráfico es SVG a mano).
-  El contorno viaja en el JAR y se dibuja en el servidor.
+- **La clave es de navegador y debe restringirse por referente** en Google Cloud
+  (`http://127.0.0.1:8080/*`, `http://localhost:8080/*` y, en producción, el
+  dominio real), habilitando solo *Maps JavaScript API*. Una clave sin restricción
+  en un repositorio público se puede usar a costa de la cuenta de facturación.
+- **Sin clave no se pide nada a Google**: el SVG es el camino por defecto.
+- **El contenedor se muestra antes de construir el mapa.** Google mide el div al
+  crear el `Map`; si está oculto recibe 0×0 y no dibuja teselas.
+- **No se usa el parámetro `callback` de la API** para inicializar: no se dispara
+  de forma fiable cuando el `<script>` se inserta dinámicamente. Se usa el evento
+  `load` del propio script, y el mapa se crea cuando están la API y los puntos
+  (pueden llegar en cualquier orden).
+- **En SVG no existe el atributo global `hidden`**: el contorno se oculta con
+  `display: none`; con `svg.hidden = true` el SVG seguiría viéndose.
+- **Las marcas usan los tokens CSS** (`--color-success`, `--color-danger`,
+  `--color-text-muted`) leídos con `getComputedStyle`, no una paleta duplicada.
+- **El mapa de Google no es accesible por teclado**; las tarjetas y el historial
+  siguen siendo la vía completa. El contorno SVG sí era navegable con Tab.
+
+Decisiones del contorno propio:
+
+- **Sin clave, no se usa Leaflet ni Google Maps.** Cargan teselas por internet y la
+  demo tiene que funcionar sin conexión (la misma razón por la que el gráfico es
+  SVG a mano). El contorno viaja en el JAR y se dibuja en el servidor. Con clave,
+  Google es una mejora opcional y el SVG queda como respaldo.
 - **Las coordenadas de las estaciones no se copian.** `fetch_laguna.py` las importa
   de `ia-model/lagunapaca_gnn/stations.py`, que sigue siendo la fuente de verdad del
   grafo. Si se reemplazan las provisionales por las de campo, se edita `stations.py`
@@ -326,10 +354,17 @@ auditoría y el tablero informa la atención en su JSON.
 `PanelMapaIntegrationTest` (contexto completo, H2, base propia) fija el mapa: el
 tablero dibuja el contorno y una marca por estación, cada punto enlaza a su
 historial, las cuatro estaciones caen dentro del lienzo, el norte queda arriba del
-sur (la proyección respeta la latitud), el color es el veredicto persistido y el
-mapa no depende de teselas ni de scripts externos.
+sur (la proyección respeta la latitud), las coordenadas reales acompañan a cada
+punto, el color es el veredicto persistido y el mapa no depende de teselas ni de
+scripts externos.
 
-**Total del backend: 83 tests.**
+`PanelMapaGoogleIntegrationTest` (contexto completo, H2, base propia, con
+`app.maps.google-key`) fija el mapa interactivo: con clave la tarjeta ofrece el
+contenedor de Google, el contorno propio sigue en el HTML como respaldo y la clave
+**no** viaja en el JSON de `/panel/datos`. `PanelMapaTest` (sin Spring) comprueba
+lo mismo sobre la serialización, que es donde se escaparía.
+
+**Total del backend: 88 tests.**
 
 ## Firmware IoT (`iot-firmware/`) — comandos
 

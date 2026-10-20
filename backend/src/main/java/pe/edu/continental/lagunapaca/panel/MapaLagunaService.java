@@ -3,6 +3,7 @@ package pe.edu.continental.lagunapaca.panel;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
@@ -45,12 +46,15 @@ public class MapaLagunaService {
 
     private final String viewBox;
     private final String camino;
+    private final String googleKey;
     private final Map<String, PuntoGeo> estaciones;
     private final Proyeccion proyeccion;
 
-    public MapaLagunaService(ObjectMapper objectMapper) {
+    public MapaLagunaService(ObjectMapper objectMapper,
+                             @Value("${app.maps.google-key:}") String googleKey) {
         Archivo archivo = leer(objectMapper);
         this.viewBox = "0 0 " + ANCHO + " " + ALTO;
+        this.googleKey = googleKey == null ? "" : googleKey.trim();
         this.estaciones = indexar(archivo.estaciones());
         this.proyeccion = Proyeccion.entre(archivo.laguna(), archivo.estaciones());
         this.camino = trazar(archivo.laguna(), proyeccion);
@@ -68,7 +72,7 @@ public class MapaLagunaService {
         List<PanelMapa.Punto> puntos = estacionesTablero.stream()
                 .map(this::punto)
                 .toList();
-        return new PanelMapa(viewBox, camino, puntos);
+        return new PanelMapa(viewBox, camino, puntos, googleKey);
     }
 
     private PanelMapa.Punto punto(PanelDashboard.Estacion estacion) {
@@ -96,6 +100,8 @@ public class MapaLagunaService {
                 estacion.getId(),
                 redondear(proyeccion.x(geo.lon())),
                 redondear(proyeccion.y(geo.lat())),
+                geo.lat(),
+                geo.lon(),
                 estacion.getClase(),
                 ph,
                 titulo.toString());

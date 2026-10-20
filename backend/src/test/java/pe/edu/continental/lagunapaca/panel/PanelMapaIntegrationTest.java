@@ -130,7 +130,13 @@ class PanelMapaIntegrationTest {
                 .andExpect(jsonPath("$.mapa.puntos[*].x").value(
                         everyItem(allOf(greaterThan(0), lessThan(ANCHO)))))
                 .andExpect(jsonPath("$.mapa.puntos[*].y").value(
-                        everyItem(allOf(greaterThan(0), lessThan(ALTO)))));
+                        everyItem(allOf(greaterThan(0), lessThan(ALTO)))))
+                // Las coordenadas reales acompañan al punto para que el mapa de
+                // Google pueda ubicarlo sin volver a consultar el GeoJSON.
+                .andExpect(jsonPath("$.mapa.puntos[*].lat").value(
+                        everyItem(allOf(greaterThan(-11.80), lessThan(-11.68)))))
+                .andExpect(jsonPath("$.mapa.puntos[*].lon").value(
+                        everyItem(allOf(greaterThan(-75.55), lessThan(-75.45)))));
     }
 
     @Test
@@ -184,7 +190,7 @@ class PanelMapaIntegrationTest {
         assertThat(html).doesNotContain("tile.openstreetmap.org");
         assertThat(html).doesNotContain("leaflet");
         assertThat(html).doesNotContain("maps.googleapis");
-        assertThat(html).contains("<svg class=\"mapa-laguna__lienzo\"");
+        assertThat(html).contains("class=\"mapa-laguna__lienzo\"");
         assertThat(html).contains("viewBox=\"0 0 " + ANCHO + " " + ALTO + "\"");
     }
 

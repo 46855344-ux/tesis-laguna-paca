@@ -103,7 +103,8 @@
                 </div>
 
                 <div class="mapa-laguna">
-                    <svg class="mapa-laguna__lienzo"
+                    <svg id="mapa-laguna-svg"
+                         class="mapa-laguna__lienzo"
                          th:attr="viewBox=${tablero.mapa.viewBox}"
                          role="img"
                          aria-label="Mapa de la Laguna de Paca con las estaciones N1 a N4">
@@ -127,6 +128,17 @@
                             </a>
                         </g>
                     </svg>
+
+                    <!--
+                      Mapa de Google, solo si hay clave configurada. Nace oculto:
+                      se muestra cuando la API termina de cargar. Si no hay
+                      internet, el SVG de arriba se queda y la tarjeta no cambia.
+                    -->
+                    <div id="mapa-google"
+                         class="mapa-laguna__google"
+                         hidden
+                         th:if="${!#strings.isEmpty(tablero.mapa.googleKey)}"
+                         th:attr="data-clave=${tablero.mapa.googleKey}"></div>
                 </div>
 
                 <ul class="leyenda" aria-label="Estados posibles de una estación">
@@ -143,6 +155,12 @@
                         <span>Sin datos</span>
                     </li>
                 </ul>
+
+                <p class="tarjeta__nota"
+                   th:if="${!#strings.isEmpty(tablero.mapa.googleKey)}">
+                    Con conexión se muestra el mapa de Google; sin ella queda el
+                    contorno de OpenStreetMap que dibuja el servidor.
+                </p>
 
                 <noscript>
                     <p class="tarjeta__nota">

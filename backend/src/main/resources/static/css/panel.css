@@ -1180,6 +1180,17 @@ body[data-menu="abierto"] .velo {
   height: auto;
 }
 
+/* Google Maps necesita una altura explicita: un div vacio no tiene contenido
+   del que deducirla. */
+.mapa-laguna__google {
+  width: 100%;
+  max-width: 760px;
+  height: 420px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+}
+
 .mapa-laguna__agua {
   fill: var(--color-water);
   stroke: var(--color-water-border);

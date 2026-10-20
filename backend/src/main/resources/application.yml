@@ -59,6 +59,12 @@ app:
       username: ${APP_USER:admin}
       password: ${APP_PASSWORD:admin123}
 
+  # Mapa interactivo (opcional). Sin clave, el tablero dibuja su propio
+  # contorno de OpenStreetMap y no pide nada a Google: la demo funciona sin
+  # internet. La clave se lee del entorno para no versionarla nunca.
+  maps:
+    google-key: ${GOOGLE_MAPS_API_KEY:}
+
   # Ingesta MQTT (segunda vía, además del POST HTTP). Deshabilitada por defecto
   # para poder arrancar sin un broker.
   mqtt:
