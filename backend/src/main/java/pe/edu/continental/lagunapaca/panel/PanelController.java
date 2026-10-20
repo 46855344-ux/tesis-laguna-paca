@@ -3,8 +3,13 @@ package pe.edu.continental.lagunapaca.panel;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import java.security.Principal;
 
 /**
  * Páginas del panel web.
@@ -19,11 +24,14 @@ public class PanelController {
 
     private final PanelDashboardService dashboardService;
     private final PanelHistorialService historialService;
+    private final PanelAlertasService alertasService;
 
     public PanelController(PanelDashboardService dashboardService,
-                           PanelHistorialService historialService) {
+                           PanelHistorialService historialService,
+                           PanelAlertasService alertasService) {
         this.dashboardService = dashboardService;
         this.historialService = historialService;
+        this.alertasService = alertasService;
     }
 
     /**
@@ -84,5 +92,75 @@ public class PanelController {
                 historialService.construir(new Filtros(estacion, desde, hasta, soloAlertas, motivo, pagina)));
         model.addAttribute("estaciones", PanelDashboardService.ESTACIONES);
         return "panel/historial";
+    }
+
+    /** Gestión de alertas: pendientes y atendidas, con sus contadores. */
+    @GetMapping("/panel/alertas")
+    public String alertas(
+            @RequestParam(name = "estacion", defaultValue = "") String estacion,
+            @RequestParam(name = "estado", defaultValue = FiltrosAlertas.PENDIENTES) String estado,
+            @RequestParam(name = "desde", defaultValue = "") String desde,
+            @RequestParam(name = "hasta", defaultValue = "") String hasta,
+            @RequestParam(name = "page", defaultValue = "0") int pagina,
+            Model model) {
+
+        model.addAttribute("alertas", alertasService.construir(
+                new FiltrosAlertas(estacion, FiltrosAlertas.estadoValido(estado), desde, hasta, pagina)));
+        model.addAttribute("estaciones", PanelDashboardService.ESTACIONES);
+        return "panel/alertas";
+    }
+
+    /**
+     * Marca una alerta como atendida.
+     *
+     * <p>Es un POST con CSRF: cambia estado persistido y el usuario queda
+     * registrado, así que no puede ser un enlace GET que cualquiera dispare.</p>
+     */
+    @PostMapping("/panel/alertas/{id}/atender")
+    public String atender(@PathVariable("id") long id,
+                          @RequestParam(name = "nota", defaultValue = "") String nota,
+                          @RequestParam(name = "estacion", defaultValue = "") String estacion,
+                          @RequestParam(name = "estado", defaultValue = FiltrosAlertas.PENDIENTES) String estado,
+                          @RequestParam(name = "desde", defaultValue = "") String desde,
+                          @RequestParam(name = "hasta", defaultValue = "") String hasta,
+                          @RequestParam(name = "page", defaultValue = "0") int pagina,
+                          Principal principal,
+                          RedirectAttributes redirect) {
+
+        alertasService.atender(id, nota, principal.getName());
+        redirect.addFlashAttribute("mensaje",
+                "Alerta atendida. Queda registrada con tu usuario y la hora.");
+        return volverAFiltros(estacion, estado, desde, hasta, pagina, redirect);
+    }
+
+    /** Devuelve una alerta atendida a la lista de pendientes. */
+    @PostMapping("/panel/alertas/{id}/reabrir")
+    public String reabrir(@PathVariable("id") long id,
+                          @RequestParam(name = "estacion", defaultValue = "") String estacion,
+                          @RequestParam(name = "estado", defaultValue = FiltrosAlertas.PENDIENTES) String estado,
+                          @RequestParam(name = "desde", defaultValue = "") String desde,
+                          @RequestParam(name = "hasta", defaultValue = "") String hasta,
+                          @RequestParam(name = "page", defaultValue = "0") int pagina,
+                          RedirectAttributes redirect) {
+
+        alertasService.reabrir(id);
+        redirect.addFlashAttribute("mensaje", "La alerta vuelve a la lista de pendientes.");
+        return volverAFiltros(estacion, estado, desde, hasta, pagina, redirect);
+    }
+
+    /**
+     * Vuelve a la lista conservando los filtros con los que se estaba trabajando.
+     * Se reenvían como atributos de redirección (Spring los codifica) en vez de
+     * recibir una URL de retorno: una URL arbitraria del cliente sería un
+     * redirect abierto.
+     */
+    private static String volverAFiltros(String estacion, String estado, String desde,
+                                         String hasta, int pagina, RedirectAttributes redirect) {
+        redirect.addAttribute("estacion", estacion);
+        redirect.addAttribute("estado", estado);
+        redirect.addAttribute("desde", desde);
+        redirect.addAttribute("hasta", hasta);
+        redirect.addAttribute("page", pagina);
+        return "redirect:/panel/alertas";
     }
 }

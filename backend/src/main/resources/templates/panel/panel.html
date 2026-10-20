@@ -114,6 +114,15 @@
                             Esperando la primera muestra del nodo.
                         </p>
 
+                        <!-- La atención de la alerta la registra el panel de alertas;
+                             aquí solo se refleja para no dar por pendiente algo resuelto. -->
+                        <p class="tarjeta__nota tarjeta__nota--atencion js-atendida"
+                           th:hidden="${!estacion.atendida}"
+                           th:text="${estacion.atendida}
+                                   ? |Atendida por ${estacion.atendidaPor} · ${estacion.atendidaHace}|
+                                   : ''">
+                        </p>
+
                         <dl class="mini-datos">
                             <div>
                                 <dt>pH</dt>

@@ -43,6 +43,31 @@ public final class WaterQualitySampleSpecifications {
     }
 
     /**
+     * Filtra por el estado de atención de la alerta. {@code null} = sin filtro.
+     *
+     * <p>Una muestra sin alerta nunca está "atendida": su {@code acknowledgedAt}
+     * también es {@code null}, así que este filtro solo tiene sentido junto con
+     * {@link #hasAlert(Boolean)}.</p>
+     */
+    public static Specification<WaterQualitySample> isAcknowledged(Boolean acknowledged) {
+        return (root, query, cb) -> {
+            if (acknowledged == null) {
+                return cb.conjunction();
+            }
+            return acknowledged
+                    ? cb.isNotNull(root.get("acknowledgedAt"))
+                    : cb.isNull(root.get("acknowledgedAt"));
+        };
+    }
+
+    /** Filtra por la fecha de atención (no por la de la muestra). */
+    public static Specification<WaterQualitySample> acknowledgedAtFrom(Instant from) {
+        return (root, query, cb) -> (from == null)
+                ? cb.conjunction()
+                : cb.greaterThanOrEqualTo(root.get("acknowledgedAt"), from);
+    }
+
+    /**
      * Filtra por coincidencia (case-insensitive) dentro del mensaje del motivo.
      * {@code null}/vacío = sin filtro. Usa {@code EXISTS} para no duplicar filas.
      */

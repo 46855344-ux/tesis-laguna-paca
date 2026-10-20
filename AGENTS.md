@@ -205,6 +205,43 @@ Decisiones que conviene no deshacer:
 - La tabla se desplaza en horizontal dentro de su tarjeta (`min-width: 760px`) en vez de aplastar
   siete columnas en un móvil.
 
+### Gestión de alertas
+
+`GET /panel/alertas` lista las muestras **con alerta** ECA-Agua. Por defecto muestra las
+**pendientes**, porque es la pantalla de lo que exige acción.
+
+| Filtro | Comportamiento |
+|---|---|
+| Estación | `N1`…`N4` o todas |
+| Estado | pendientes / atendidas / todas |
+| Desde / Hasta | días de calendario en hora de Lima |
+
+Decisiones que conviene no deshacer:
+
+- **Atender no cambia el veredicto.** `alert` y sus motivos siguen siendo lo que decidió
+  `EcaWaterQualityRule` al ingerir. La atención es otra dimensión y se guarda aparte:
+  `acknowledged_at`, `acknowledged_by` y `acknowledge_note` (migración V4). Mezclarlas borraría
+  evidencia: una muestra fuera de rango sigue estándolo aunque alguien ya la haya revisado.
+- **Solo las muestras con alerta se pueden atender.** Una muestra dentro del rango responde 404:
+  no es un recurso de esta pantalla. Un id inexistente también.
+- **Es un POST con CSRF**, no un enlace: cambia estado persistido y registra al usuario. El nombre
+  sale de la sesión (`Principal`), nunca del formulario.
+- **Doble envío no pisa la auditoría.** Si la alerta ya estaba atendida, el segundo POST no
+  reescribe quién la atendió primero.
+- **Los filtros se conservan al atender y al reabrir** reenviándolos como atributos de
+  redirección. No se acepta una URL de retorno del cliente: sería un redirect abierto.
+- **Tres contadores, cada uno con su ventana escrita en la etiqueta.** Pendientes no caduca (una
+  alerta vieja sigue pendiente); "atendidas (24 h)" corta por la hora de atención; "alertas (24 h)"
+  corta por la hora de medición, así que coincide con el número del tablero.
+- **El tablero refleja la atención** con una línea "Atendida por …" en la tarjeta de la estación,
+  sin añadir un cuarto estado: el veredicto sigue siendo `ALERTA`. El refresco en vivo la
+  actualiza igual que el resto.
+- **La API REST no expone la atención.** `TelemetryQuery` acepta el filtro y el panel lo usa, pero
+  `openapi.yaml` no cambia y `TelemetryResponse` sigue igual. Publicarlo es una decisión aparte
+  porque afecta al cliente Android; el panel es hoy el único lugar donde se atiende una alerta.
+- El **historial** tampoco muestra la atención: ahí se ve el veredicto ECA-Agua de cada muestra, que
+  es otra pregunta.
+
 ### Reglas de interfaz que el código hace cumplir
 
 - **Todo el texto visible en español**; los identificadores técnicos (CSS, JS, Java) en inglés.
@@ -242,8 +279,13 @@ rango a la última, filtra por estación, por día **de Lima**, por "solo alerta
 motivo, avisa (sin romper) cuando el rango está invertido o la fecha no es válida, conserva los
 filtros en los enlaces de paginación y muestra un estado vacío con salida.
 
-**Total del backend: 64 tests.**
+`PanelAlertasIntegrationTest` (contexto completo, H2, base propia) fija la gestión de alertas: exige
+sesión, lista solo muestras con alerta, muestra pendientes por defecto, filtra por estado y
+estación, cuenta pendientes/atendidas/alertas, exige CSRF para atender, registra usuario y nota sin
+tocar el veredicto, responde 404 en una muestra sin alerta o inexistente, reabrir borra la
+auditoría y el tablero informa la atención en su JSON.
 
+**Total del backend: 76 tests.**
 
 ## Firmware IoT (`iot-firmware/`) — comandos
 

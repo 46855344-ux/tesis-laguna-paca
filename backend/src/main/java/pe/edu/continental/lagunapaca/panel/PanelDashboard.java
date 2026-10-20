@@ -73,12 +73,16 @@ public record PanelDashboard(
      * Estado de una estación según la regla ECA-Agua que ya decidió el backend al
      * ingerir la muestra. El panel no reevalúa el pH: solo pinta el veredicto.
      *
-     * @param id      identificador del nodo ({@code N1}…{@code N4})
-     * @param estado  veredicto
-     * @param ultima  última muestra conocida, o {@code null} si nunca reportó
-     * @param motivos mensajes de los motivos de alerta, tal como se guardaron
+     * @param id           identificador del nodo ({@code N1}…{@code N4})
+     * @param estado       veredicto
+     * @param ultima       última muestra conocida, o {@code null} si nunca reportó
+     * @param motivos      mensajes de los motivos de alerta, tal como se guardaron
+     * @param atendida     si la última alerta ya fue atendida desde el panel
+     * @param atendidaPor  usuario que la atendió, o {@code null}
+     * @param atendidaHace antigüedad de la atención en palabras, o {@code null}
      */
-    public record Estacion(String id, EstadoMuestra estado, Muestra ultima, List<String> motivos) {
+    public record Estacion(String id, EstadoMuestra estado, Muestra ultima, List<String> motivos,
+                           boolean atendida, String atendidaPor, String atendidaHace) {
 
         public String getId() {
             return id;
@@ -94,6 +98,18 @@ public record PanelDashboard(
 
         public List<String> getMotivos() {
             return motivos;
+        }
+
+        public boolean isAtendida() {
+            return atendida;
+        }
+
+        public String getAtendidaPor() {
+            return atendidaPor;
+        }
+
+        public String getAtendidaHace() {
+            return atendidaHace;
         }
 
         public boolean isConDatos() {

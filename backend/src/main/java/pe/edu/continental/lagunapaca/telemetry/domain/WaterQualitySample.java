@@ -60,6 +60,26 @@ public class WaterQualitySample {
     @Column(name = "recorded_at", nullable = false)
     private Instant recordedAt;
 
+    /**
+     * Momento en que una persona del panel marcó la alerta como atendida.
+     * {@code null} = pendiente.
+     *
+     * <p>La atención es <em>ortogonal</em> al veredicto: {@link #alert} sigue
+     * diciendo si el agua estaba fuera del rango ECA-Agua, aunque alguien ya se
+     * haya ocupado de esa muestra. Son dos preguntas distintas y mezclarlas
+     * borraría evidencia.</p>
+     */
+    @Column(name = "acknowledged_at")
+    private Instant acknowledgedAt;
+
+    /** Usuario del panel que atendió la alerta (auditoría mínima). */
+    @Column(name = "acknowledged_by", length = 120)
+    private String acknowledgedBy;
+
+    /** Nota libre que dejó quien atendió la alerta. Opcional. */
+    @Column(name = "acknowledge_note", length = 500)
+    private String acknowledgeNote;
+
     protected WaterQualitySample() {
         // Requerido por JPA
     }
@@ -124,5 +144,40 @@ public class WaterQualitySample {
 
     public void setRecordedAt(Instant recordedAt) {
         this.recordedAt = recordedAt;
+    }
+
+    public boolean isAcknowledged() {
+        return acknowledgedAt != null;
+    }
+
+    public Instant getAcknowledgedAt() {
+        return acknowledgedAt;
+    }
+
+    public String getAcknowledgedBy() {
+        return acknowledgedBy;
+    }
+
+    public String getAcknowledgeNote() {
+        return acknowledgeNote;
+    }
+
+    /**
+     * Registra que alguien se ocupó de esta alerta.
+     *
+     * <p>Que solo se puedan atender muestras con alerta lo valida el servicio:
+     * aquí no se lanza una excepción de negocio desde una entidad JPA.</p>
+     */
+    public void acknowledge(Instant cuando, String usuario, String nota) {
+        this.acknowledgedAt = cuando;
+        this.acknowledgedBy = usuario;
+        this.acknowledgeNote = (nota == null || nota.isBlank()) ? null : nota.trim();
+    }
+
+    /** Vuelve a dejar la alerta pendiente y borra la auditoría de la atención. */
+    public void reopen() {
+        this.acknowledgedAt = null;
+        this.acknowledgedBy = null;
+        this.acknowledgeNote = null;
     }
 }

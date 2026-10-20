@@ -105,9 +105,14 @@ public class PanelDashboardService {
                                 ? EstadoMuestra.ALERTA
                                 : EstadoMuestra.DENTRO,
                         muestra(ultima, ahora),
-                        ultima.getAlertReasons().stream().map(AlertReason::getMessage).toList()))
+                        ultima.getAlertReasons().stream().map(AlertReason::getMessage).toList(),
+                        ultima.isAcknowledged(),
+                        ultima.getAcknowledgedBy(),
+                        ultima.isAcknowledged()
+                                ? FormatosPanel.hace(ultima.getAcknowledgedAt(), ahora)
+                                : null))
                 .orElseGet(() -> new PanelDashboard.Estacion(
-                        id, EstadoMuestra.SIN_DATOS, null, List.of()));
+                        id, EstadoMuestra.SIN_DATOS, null, List.of(), false, null, null));
     }
 
     private static PanelDashboard.Muestra muestra(WaterQualitySample muestra, Instant ahora) {

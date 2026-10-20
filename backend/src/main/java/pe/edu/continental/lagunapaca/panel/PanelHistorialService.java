@@ -10,12 +10,9 @@ import pe.edu.continental.lagunapaca.telemetry.service.TelemetryQuery;
 import pe.edu.continental.lagunapaca.telemetry.service.TelemetryService;
 
 import java.time.Instant;
-import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.TreeSet;
 
 /**
  * Arma el historial paginado del panel.
@@ -45,8 +42,8 @@ public class PanelHistorialService {
     public HistorialVista construir(Filtros filtros) {
         List<String> avisos = new ArrayList<>(1);
 
-        Instant desde = limiteInferior(filtros.getDesde(), avisos);
-        Instant hasta = limiteSuperior(filtros.getHasta(), avisos);
+        Instant desde = FechasPanel.desde(filtros.getDesde(), "desde", avisos);
+        Instant hasta = FechasPanel.hasta(filtros.getHasta(), "hasta", avisos);
 
         if (desde != null && hasta != null && desde.isAfter(hasta)) {
             avisos.add("El rango de fechas no se aplicó: «desde» es posterior a «hasta».");
@@ -87,7 +84,7 @@ public class PanelHistorialService {
                 resultado.totalElements(),
                 desdeFila,
                 hastaFila,
-                paginasVisibles(pagina + 1, resultado.totalPages()),
+                Paginas.visibles(pagina + 1, resultado.totalPages()),
                 avisos.isEmpty() ? null : String.join(" ", avisos));
     }
 
@@ -111,57 +108,7 @@ public class PanelHistorialService {
                 muestra.alertReasons().stream().map(AlertReasonDto::message).toList());
     }
 
-    /**
-     * La fecha que escribe la persona es un día del calendario de la laguna, no
-     * un instante UTC. Interpretarla en UTC desplazaría cinco horas el corte y
-     * una muestra de las 23:30 aparecería en el día siguiente.
-     */
-    private static Instant limiteInferior(String texto, List<String> avisos) {
-        LocalDate fecha = fecha(texto, "desde", avisos);
-        return fecha == null ? null : fecha.atStartOfDay(PanelDashboardService.ZONA).toInstant();
-    }
-
-    private static Instant limiteSuperior(String texto, List<String> avisos) {
-        LocalDate fecha = fecha(texto, "hasta", avisos);
-        return fecha == null
-                ? null
-                : fecha.plusDays(1).atStartOfDay(PanelDashboardService.ZONA).toInstant().minusNanos(1);
-    }
-
-    private static LocalDate fecha(String texto, String campo, List<String> avisos) {
-        if (texto == null || texto.isBlank()) {
-            return null;
-        }
-        try {
-            return LocalDate.parse(texto.trim());
-        } catch (DateTimeParseException excepcion) {
-            // Se avisa y se ignora ese límite: un error de tecleo no debe
-            // convertir el historial en una pantalla de error.
-            avisos.add("La fecha «" + campo + "» no es válida; usa el formato AAAA-MM-DD.");
-            return null;
-        }
-    }
-
     private static String textoONulo(String texto) {
         return texto == null || texto.isBlank() ? null : texto.trim();
-    }
-
-    /**
-     * Números de página a dibujar: siempre la primera, la última y las vecinas
-     * de la actual. La plantilla convierte los saltos en "…".
-     */
-    static List<Integer> paginasVisibles(int pagina, int totalPaginas) {
-        if (totalPaginas <= 1) {
-            return List.of();
-        }
-        TreeSet<Integer> paginas = new TreeSet<>();
-        paginas.add(1);
-        paginas.add(totalPaginas);
-        for (int candidata = pagina - 1; candidata <= pagina + 1; candidata++) {
-            if (candidata >= 1 && candidata <= totalPaginas) {
-                paginas.add(candidata);
-            }
-        }
-        return List.copyOf(paginas);
     }
 }

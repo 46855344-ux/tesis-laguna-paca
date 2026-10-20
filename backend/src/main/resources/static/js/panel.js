@@ -355,6 +355,16 @@
         texto(tarjeta, ".js-tds", "—");
       }
 
+      // La atención de la alerta la registra el panel de alertas; aquí solo se
+      // refleja, para que el tablero no muestre como pendiente algo ya resuelto.
+      var atencion = tarjeta.querySelector(".js-atendida");
+      if (atencion) {
+        atencion.hidden = !estacion.atendida;
+        atencion.textContent = estacion.atendida
+          ? "Atendida por " + estacion.atendidaPor + " · " + estacion.atendidaHace
+          : "";
+      }
+
       var motivos = tarjeta.querySelector(".js-motivos");
       if (motivos) {
         motivos.textContent = "";

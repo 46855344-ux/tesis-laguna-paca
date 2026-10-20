@@ -47,11 +47,14 @@
                 </a>
             </li>
             <li>
-                <span class="nav-item nav-item--pronto" aria-label="Alertas ECA-Agua, disponible próximamente">
+                <a th:href="@{/panel/alertas}"
+                   class="nav-item"
+                   th:classappend="${activo == 'alertas'} ? ' nav-item--activo' : ''"
+                   th:attr="aria-current=${activo == 'alertas' ? 'page' : null}"
+                   aria-label="Gestión de alertas">
                     <span th:replace="~{fragments/icons :: alertas}"></span>
                     <span class="nav-item__texto">Alertas</span>
-                    <span class="etiqueta etiqueta--neutra">Pronto</span>
-                </span>
+                </a>
             </li>
         </ul>
 

@@ -551,8 +551,6 @@ body[data-barra="colapsada"] .nav-item .etiqueta {
 
 .mini-datos dt {
   font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
   color: var(--color-text-muted);
 }
 
@@ -969,6 +967,11 @@ body[data-menu="abierto"] .velo {
   margin-bottom: var(--space-6);
 }
 
+/* Tres indicadores (alertas). Las media queries de abajo ya lo llevan a 2 y 1. */
+.rejilla-kpi--tres {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .kpi {
   display: grid;
   align-content: start;
@@ -1181,6 +1184,11 @@ body[data-menu="abierto"] .velo {
   color: var(--color-warning);
 }
 
+.aviso--exito {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+
 /* --- Filtros ------------------------------------------------------------ */
 .filtros {
   padding: var(--space-5);
@@ -1371,7 +1379,135 @@ a.paginacion__numero:hover {
   color: var(--color-text-muted);
 }
 
-/* 13. Responsive (mobile-first aplicado de forma inversa) ================= */
+/* 13. Alertas: contadores, tarjetas y acciones ============================ */
+
+.kpi__nota {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
+.lista-alertas {
+  display: grid;
+  gap: var(--space-3);
+}
+
+/* El borde izquierdo distingue pendiente de atendida de un vistazo en una lista
+   larga. No va solo: la insignia dice lo mismo con texto. */
+.alerta {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border-left: 3px solid var(--color-danger);
+}
+
+.alerta--atendida {
+  border-left-color: var(--color-success);
+}
+
+.alerta__cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.alerta__identidad {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.alerta__titulo {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.alerta__hace {
+  font-size: var(--text-sm);
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+.alerta__fecha {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Los cuatro valores en fila: en una tarjeta ancha no hace falta la rejilla de
+   dos columnas que usa el tablero. */
+.datos-alerta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-6);
+  margin: 0;
+}
+
+.datos-alerta dt {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.datos-alerta dd {
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.alerta__pie {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.formulario-atender {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+  width: 100%;
+}
+
+.formulario-atender .campo {
+  flex: 1 1 240px;
+  margin-bottom: 0;
+}
+
+.alerta__atencion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.alerta__atencion p {
+  margin: 0;
+}
+
+.alerta__atencion strong {
+  color: var(--color-text);
+}
+
+.alerta__nota {
+  flex-basis: 100%;
+  font-style: italic;
+}
+
+/* 14. Responsive (mobile-first aplicado de forma inversa) ================= */
 @media (min-width: 1024px) {
   .solo-movil {
     display: none !important;
@@ -1462,7 +1598,7 @@ a.paginacion__numero:hover {
   }
 }
 
-/* 14. Movimiento reducido ================================================= */
+/* 15. Movimiento reducido ================================================= */
 /* Quien pide menos animación por accesibilidad la recibe: se apagan las
    transiciones sin romper ningún estado. */
 @media (prefers-reduced-motion: reduce) {

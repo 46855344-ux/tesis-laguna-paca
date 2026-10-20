@@ -86,7 +86,8 @@ public class TelemetryService {
                 .and(WaterQualitySampleSpecifications.recordedAtTo(query.to()))
                 .and(WaterQualitySampleSpecifications.hasAlert(query.alert()))
                 .and(WaterQualitySampleSpecifications.hasReasonContaining(query.reason()))
-                .and(WaterQualitySampleSpecifications.hasCode(query.code()));
+                .and(WaterQualitySampleSpecifications.hasCode(query.code()))
+                .and(WaterQualitySampleSpecifications.isAcknowledged(query.acknowledged()));
 
         Page<TelemetryResponse> page = repository.findAll(specification, pageable)
                 .map(TelemetryService::toResponse);
