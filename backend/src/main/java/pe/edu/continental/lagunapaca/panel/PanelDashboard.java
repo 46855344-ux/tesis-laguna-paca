@@ -78,13 +78,13 @@ public record PanelDashboard(
      * @param ultima  última muestra conocida, o {@code null} si nunca reportó
      * @param motivos mensajes de los motivos de alerta, tal como se guardaron
      */
-    public record Estacion(String id, Estado estado, Muestra ultima, List<String> motivos) {
+    public record Estacion(String id, EstadoMuestra estado, Muestra ultima, List<String> motivos) {
 
         public String getId() {
             return id;
         }
 
-        public Estado getEstado() {
+        public EstadoMuestra getEstado() {
             return estado;
         }
 
@@ -172,31 +172,5 @@ public record PanelDashboard(
             double temperatura,
             double tds
     ) {
-    }
-
-    /** Veredicto visible de una estación. Solo existen estos tres. */
-    public enum Estado {
-
-        SIN_DATOS("Sin datos", "neutra"),
-        DENTRO("Dentro del rango", "exito"),
-        ALERTA("Alerta ECA-Agua", "peligro");
-
-        private final String etiqueta;
-        private final String clase;
-
-        Estado(String etiqueta, String clase) {
-            this.etiqueta = etiqueta;
-            this.clase = clase;
-        }
-
-        /** Texto en español que ve la persona. */
-        public String getEtiqueta() {
-            return etiqueta;
-        }
-
-        /** Sufijo de la clase CSS ({@code etiqueta--exito}, etc.). */
-        public String getClase() {
-            return clase;
-        }
     }
 }

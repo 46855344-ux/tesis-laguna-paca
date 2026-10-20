@@ -37,11 +37,14 @@
                 </a>
             </li>
             <li>
-                <span class="nav-item nav-item--pronto" aria-label="Historial de muestras, disponible próximamente">
+                <a th:href="@{/panel/historial}"
+                   class="nav-item"
+                   th:classappend="${activo == 'historial'} ? ' nav-item--activo' : ''"
+                   th:attr="aria-current=${activo == 'historial' ? 'page' : null}"
+                   aria-label="Historial de muestras">
                     <span th:replace="~{fragments/icons :: historial}"></span>
                     <span class="nav-item__texto">Historial</span>
-                    <span class="etiqueta etiqueta--neutra">Pronto</span>
-                </span>
+                </a>
             </li>
             <li>
                 <span class="nav-item nav-item--pronto" aria-label="Alertas ECA-Agua, disponible próximamente">

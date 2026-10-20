@@ -14,7 +14,6 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Locale;
 
 /**
  * Arma el modelo del tablero a partir de la telemetría ya persistida.
@@ -103,24 +102,24 @@ public class PanelDashboardService {
                 .map(ultima -> new PanelDashboard.Estacion(
                         id,
                         ultima.isAlert()
-                                ? PanelDashboard.Estado.ALERTA
-                                : PanelDashboard.Estado.DENTRO,
+                                ? EstadoMuestra.ALERTA
+                                : EstadoMuestra.DENTRO,
                         muestra(ultima, ahora),
                         ultima.getAlertReasons().stream().map(AlertReason::getMessage).toList()))
                 .orElseGet(() -> new PanelDashboard.Estacion(
-                        id, PanelDashboard.Estado.SIN_DATOS, null, List.of()));
+                        id, EstadoMuestra.SIN_DATOS, null, List.of()));
     }
 
     private static PanelDashboard.Muestra muestra(WaterQualitySample muestra, Instant ahora) {
         return new PanelDashboard.Muestra(
-                formatear(muestra.getPh(), 2),
-                formatear(muestra.getTurbidityNtu(), 1),
-                formatear(muestra.getTempC(), 1),
-                formatear(muestra.getTdsPpm(), 0),
+                FormatosPanel.formatear(muestra.getPh(), 2),
+                FormatosPanel.formatear(muestra.getTurbidityNtu(), 1),
+                FormatosPanel.formatear(muestra.getTempC(), 1),
+                FormatosPanel.formatear(muestra.getTdsPpm(), 0),
                 muestra.getRecordedAt(),
                 HORA.format(muestra.getRecordedAt()),
                 FECHA_HORA.format(muestra.getRecordedAt()),
-                hace(muestra.getRecordedAt(), ahora));
+                FormatosPanel.hace(muestra.getRecordedAt(), ahora));
     }
 
     private static PanelDashboard.Punto punto(WaterQualitySample muestra) {
@@ -131,28 +130,5 @@ public class PanelDashboardService {
                 muestra.getTurbidityNtu(),
                 muestra.getTempC(),
                 muestra.getTdsPpm());
-    }
-
-    /** Formato fijo con punto decimal: no depende del locale de la máquina. */
-    private static String formatear(double valor, int decimales) {
-        return String.format(Locale.ROOT, "%." + decimales + "f", valor);
-    }
-
-    /** Antigüedad en palabras. Evita que una tarjeta vieja parezca actual. */
-    static String hace(Instant cuando, Instant ahora) {
-        long segundos = Math.max(0, Duration.between(cuando, ahora).toSeconds());
-        if (segundos < 60) {
-            return "hace instantes";
-        }
-        long minutos = segundos / 60;
-        if (minutos < 60) {
-            return "hace " + minutos + (minutos == 1 ? " minuto" : " minutos");
-        }
-        long horas = minutos / 60;
-        if (horas < 24) {
-            return "hace " + horas + (horas == 1 ? " hora" : " horas");
-        }
-        long dias = horas / 24;
-        return "hace " + dias + (dias == 1 ? " día" : " días");
     }
 }

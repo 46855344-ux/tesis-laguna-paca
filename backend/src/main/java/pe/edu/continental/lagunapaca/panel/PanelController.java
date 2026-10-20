@@ -3,12 +3,13 @@ package pe.edu.continental.lagunapaca.panel;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 /**
  * Páginas del panel web.
  *
- * <p>Solo renderiza vistas. El panel lee la telemetría por el servicio de
+ * <p>Solo renderiza vistas. El panel lee la telemetría por los servicios de
  * dominio, no por los controladores de la API REST: así el contrato de
  * {@code openapi.yaml} no arrastra responsabilidades de presentación y el
  * navegador no necesita un JWT (usa la sesión del formulario).</p>
@@ -17,9 +18,12 @@ import org.springframework.web.bind.annotation.ResponseBody;
 public class PanelController {
 
     private final PanelDashboardService dashboardService;
+    private final PanelHistorialService historialService;
 
-    public PanelController(PanelDashboardService dashboardService) {
+    public PanelController(PanelDashboardService dashboardService,
+                           PanelHistorialService historialService) {
         this.dashboardService = dashboardService;
+        this.historialService = historialService;
     }
 
     /**
@@ -59,5 +63,26 @@ public class PanelController {
     @ResponseBody
     public PanelDashboard datos() {
         return dashboardService.construir();
+    }
+
+    /**
+     * Historial paginado. Los filtros llegan como texto y no como tipos ya
+     * convertidos: así una fecha mal escrita se puede volver a mostrar en el
+     * formulario junto a un aviso, en lugar de responder un 400.
+     */
+    @GetMapping("/panel/historial")
+    public String historial(
+            @RequestParam(name = "estacion", defaultValue = "") String estacion,
+            @RequestParam(name = "desde", defaultValue = "") String desde,
+            @RequestParam(name = "hasta", defaultValue = "") String hasta,
+            @RequestParam(name = "soloAlertas", defaultValue = "false") boolean soloAlertas,
+            @RequestParam(name = "motivo", defaultValue = "") String motivo,
+            @RequestParam(name = "page", defaultValue = "0") int pagina,
+            Model model) {
+
+        model.addAttribute("historial",
+                historialService.construir(new Filtros(estacion, desde, hasta, soloAlertas, motivo, pagina)));
+        model.addAttribute("estaciones", PanelDashboardService.ESTACIONES);
+        return "panel/historial";
     }
 }

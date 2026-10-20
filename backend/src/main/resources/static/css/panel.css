@@ -1174,7 +1174,204 @@ body[data-menu="abierto"] .velo {
   }
 }
 
-/* 12. Responsive (mobile-first aplicado de forma inversa) ================= */
+/* 12. Historial: filtros, tabla y paginación ============================== */
+
+.aviso--alerta {
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+}
+
+/* --- Filtros ------------------------------------------------------------ */
+.filtros {
+  padding: var(--space-5);
+}
+
+.filtros__rejilla {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-4);
+  align-items: end;
+}
+
+/* Dentro de la rejilla el margen inferior lo pone el gap, no cada campo. */
+.filtros .campo {
+  margin-bottom: 0;
+}
+
+.campo--casilla {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+}
+
+.campo--casilla input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--color-primary);
+  flex: none;
+}
+
+.campo--casilla .campo__etiqueta {
+  margin: 0;
+  cursor: pointer;
+}
+
+.filtros__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+}
+
+/* --- Tabla -------------------------------------------------------------- */
+.tabla__cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.tabla__cabecera .titulo-seccion {
+  margin-bottom: var(--space-3);
+}
+
+.tabla__resumen {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+/* La tarjeta no lleva relleno: la tabla ocupa todo el ancho y el scroll
+   horizontal vive aquí, no en la página. */
+.tarjeta--tabla {
+  padding: 0;
+  overflow: hidden;
+}
+
+.tabla__contenedor {
+  overflow-x: auto;
+}
+
+.tabla {
+  width: 100%;
+  min-width: 760px;              /* debajo de esto se desplaza en horizontal */
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.tabla th,
+.tabla td {
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* Sin text-transform: el encabezado dice «pH» y «ppm», no «PH» y «PPM».
+   La versalita queda para las etiquetas de sección, no para unidades. */
+.tabla thead th {
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tabla tbody tr:hover {
+  background: var(--color-surface-muted);
+}
+
+.tabla tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.tabla__numero {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.tabla__fecha,
+.tabla__hora {
+  display: inline-block;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.tabla__hora {
+  color: var(--color-text-muted);
+}
+
+.tabla__estacion {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* La columna de estado lleva el texto del motivo: si se queda con lo que sobra,
+   una alerta se parte en cinco líneas y la fila triplica su alto. */
+.tabla th:last-child,
+.tabla td:last-child {
+  min-width: 260px;
+}
+
+/* En la tarjeta del tablero la lista lleva aire propio; dentro de una celda ese
+   aire infla la fila. Aquí se neutraliza. */
+.motivos--tabla {
+  margin: 4px 0 0;
+  padding: 0;
+  max-width: 48ch;
+}
+
+/* --- Paginación --------------------------------------------------------- */
+.paginacion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.paginacion__numero {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  text-decoration: none;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+a.paginacion__numero:hover {
+  background: var(--color-surface-muted);
+  border-color: var(--color-border-strong);
+}
+
+.paginacion__numero.es-activo {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  font-weight: 600;
+}
+
+.paginacion__numero.es-inactivo {
+  opacity: 0.45;
+}
+
+.paginacion__puntos {
+  padding: 0 var(--space-1);
+  color: var(--color-text-muted);
+}
+
+/* 13. Responsive (mobile-first aplicado de forma inversa) ================= */
 @media (min-width: 1024px) {
   .solo-movil {
     display: none !important;
@@ -1265,7 +1462,7 @@ body[data-menu="abierto"] .velo {
   }
 }
 
-/* 13. Movimiento reducido ================================================= */
+/* 14. Movimiento reducido ================================================= */
 /* Quien pide menos animación por accesibilidad la recibe: se apagan las
    transiciones sin romper ningún estado. */
 @media (prefers-reduced-motion: reduce) {

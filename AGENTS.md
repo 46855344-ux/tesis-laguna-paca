@@ -174,6 +174,37 @@ Decisiones que conviene no deshacer:
 - **Sin JavaScript** las tarjetas, los indicadores y las reglas siguen completos; solo el gráfico
   muestra su estado vacío. El `<noscript>` lo dice explícitamente.
 
+### Historial con filtros y paginación
+
+`GET /panel/historial` lista las muestras de la más reciente a la más antigua, 20 por página.
+
+| Filtro | Comportamiento |
+|---|---|
+| Estación | `N1`…`N4` o todas |
+| Desde / Hasta | días de calendario **en hora de Lima** (00:00 y 23:59:59.999) |
+| Solo alertas | usa el campo `alert` persistido |
+| Buscar en el motivo | texto dentro del mensaje que redactó el backend |
+
+Decisiones que conviene no deshacer:
+
+- **No hay una segunda consulta.** El panel llama a `TelemetryService.search`, que ya aplica
+  `WaterQualitySampleSpecifications`. Duplicar los `LIKE`/rangos en el panel crearía dos formas de
+  filtrar que podrían divergir.
+- **Los filtros llegan como texto, no como `LocalDate`.** Con un `@RequestParam LocalDate`, una
+  fecha mal tecleada responde 400 y pierde el formulario. Aquí se parsea a mano: se avisa
+  («La fecha «desde» no es válida…») y el resto del historial se sigue mostrando.
+- **Un rango invertido no se aplica y se avisa** en vez de romper o devolver una tabla vacía que
+  parecería "no hay datos".
+- **Las fechas son de Lima, no UTC.** `recorded_at` es un instante; interpretar el día en UTC
+  desplazaría el corte cinco horas y una muestra de las 23:30 aparecería en el día siguiente. Hay
+  un test que fija justo ese caso (`2026-10-18T04:30Z` = 17/10 23:30 en Lima).
+- **Una página fuera de rango se ajusta a la última** (se vuelve a consultar). Si no, cambiar de
+  filtro estando en la página 5 mostraría una tabla vacía con "sin resultados", que es mentira.
+- **Formulario GET, sin JavaScript.** La búsqueda queda en la URL: se puede guardar, compartir y
+  el botón "atrás" del navegador funciona. Los enlaces de paginación arrastran todos los filtros.
+- La tabla se desplaza en horizontal dentro de su tarjeta (`min-width: 760px`) en vez de aplastar
+  siete columnas en un móvil.
+
 ### Reglas de interfaz que el código hace cumplir
 
 - **Todo el texto visible en español**; los identificadores técnicos (CSS, JS, Java) en inglés.
@@ -205,7 +236,13 @@ estado y la serie, el JSON **exige sesión**, y ni la serie ni los contadores in
 más de 24 h. Las muestras se insertan por el repositorio para fijar `recordedAt` sin depender del
 reloj.
 
-**Total del backend: 52 tests.**
+`PanelHistorialIntegrationTest` (contexto completo, H2, base propia) fija el historial: exige
+sesión, ordena de la más reciente a la más antigua, pagina de 20 en 20, ajusta una página fuera de
+rango a la última, filtra por estación, por día **de Lima**, por "solo alertas" y por el texto del
+motivo, avisa (sin romper) cuando el rango está invertido o la fecha no es válida, conserva los
+filtros en los enlaces de paginación y muestra un estado vacío con salida.
+
+**Total del backend: 64 tests.**
 
 
 ## Firmware IoT (`iot-firmware/`) — comandos
