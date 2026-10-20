@@ -1,30 +1,26 @@
 package pe.edu.continental.lagunapaca.panel;
 
-import java.util.List;
-
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
 
 /**
  * Páginas del panel web.
  *
- * <p>Solo renderiza vistas: los datos de telemetría los seguirá sirviendo la API
- * REST. El panel y la API no comparten controladores para que el contrato de la
- * API ({@code openapi.yaml}) no arrastre responsabilidades de presentación.</p>
+ * <p>Solo renderiza vistas. El panel lee la telemetría por el servicio de
+ * dominio, no por los controladores de la API REST: así el contrato de
+ * {@code openapi.yaml} no arrastra responsabilidades de presentación y el
+ * navegador no necesita un JWT (usa la sesión del formulario).</p>
  */
 @Controller
 public class PanelController {
 
-    /**
-     * Estaciones definidas para la laguna. Coinciden con el {@code node_id} que
-     * envía el ESP32 y con las coordenadas de {@code ia-model/lagunapaca_gnn/stations.py}.
-     *
-     * <p>Viven aquí como constante porque todavía no existe una entidad
-     * {@code Estacion}: cuando exista, esta lista saldrá de la base de datos y
-     * el panel no cambiará.</p>
-     */
-    private static final List<String> ESTACIONES = List.of("N1", "N2", "N3", "N4");
+    private final PanelDashboardService dashboardService;
+
+    public PanelController(PanelDashboardService dashboardService) {
+        this.dashboardService = dashboardService;
+    }
 
     /**
      * La raíz no pertenece a la API: quien escribe la dirección del servidor en
@@ -46,10 +42,22 @@ public class PanelController {
         return "auth/login";
     }
 
-    /** Pantalla principal del panel. */
+    /** Pantalla principal del panel, con el tablero ya renderizado en el servidor. */
     @GetMapping("/panel")
     public String panel(Model model) {
-        model.addAttribute("estaciones", ESTACIONES);
+        model.addAttribute("tablero", dashboardService.construir());
         return "panel/panel";
+    }
+
+    /**
+     * Los mismos datos en JSON, para el refresco en vivo y el gráfico.
+     *
+     * <p>Vive bajo {@code /panel/**}, así que lo protege la cadena de sesión con
+     * CSRF: no es un endpoint público ni acepta JWT.</p>
+     */
+    @GetMapping("/panel/datos")
+    @ResponseBody
+    public PanelDashboard datos() {
+        return dashboardService.construir();
     }
 }

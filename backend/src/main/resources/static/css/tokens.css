@@ -104,6 +104,18 @@
   --z-sidebar: 40;
   --z-dropdown: 50;
   --z-toast: 60;
+
+  /* --- Gráficos --------------------------------------------------------- */
+  /* Cuatro series (una por estación) que se distingan entre sí y del fondo.
+     Son color de TRAZO, no de texto: WCAG pide 3:1 para elementos gráficos y
+     los cuatro lo superan sobre --color-surface. Se mantiene el azul de marca
+     y el teal de acento para que el gráfico siga pareciendo el mismo producto. */
+  --chart-1: #0F5C8C;               /* azul de marca  */
+  --chart-2: #0F6B60;               /* teal profundo  */
+  --chart-3: #8A5A0B;               /* ámbar          */
+  --chart-4: #6D28D9;               /* violeta        */
+  --chart-grid: var(--color-border);
+  --chart-axis: var(--color-text-muted);
 }
 
 /* ==========================================================================
@@ -148,4 +160,10 @@
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 40%);
   --shadow-md: 0 8px 24px rgb(0 0 0 / 45%);
   --shadow-lg: 0 18px 48px rgb(0 0 0 / 55%);
+
+  /* Series aclaradas: el trazo oscuro se perdería sobre la superficie oscura. */
+  --chart-1: #6CB8E8;
+  --chart-2: #6FD3C8;
+  --chart-3: #D6A141;
+  --chart-4: #A78BFA;
 }

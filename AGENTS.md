@@ -136,6 +136,44 @@ Contrastes medidos en el navegador: enlace activo 6.27 / 6.93, botón primario 7
 de cuerpo 17.06 / 15.19, texto secundario 4.76 / 6.66, etiquetas semánticas entre 4.67 y 6.23
 (primero claro, luego oscuro). Todos cumplen AA.
 
+### Tablero con datos reales
+
+`/panel` deja de ser un estado vacío permanente y muestra telemetría de la base de datos:
+
+| Elemento | De dónde sale |
+|---|---|
+| Indicadores (muestras, alertas, estaciones, hora) | ventana de **24 h** |
+| Tarjetas N1–N4 | **última muestra de cada estación**, sin límite de antigüedad |
+| Badge de estado | campo `alert` **persistido** por la ingesta, no se reevalúa |
+| Gráfico | puntos de las últimas 24 h, una línea por estación |
+
+Decisiones que conviene no deshacer:
+
+- **El panel lee del repositorio, no de la API REST.** El navegador usa sesión; meter un JWT en
+  `localStorage` para consultar `/api/v1/telemetry` sería un riesgo XSS y duplicaría el cliente.
+- **El estado no se recalcula en el panel.** `PanelDashboardService` solo lee `sample.isAlert()` y
+  los motivos ya redactados por `EcaWaterQualityRule`. Si el panel reevaluara el pH habría dos
+  reglas ECA-Agua que podrían divergir.
+- **Solo tres estados**: `SIN_DATOS` (gris), `DENTRO` (verde), `ALERTA` (rojo). No existe un
+  "cerca del límite": sería una cuarta regla que el backend no conoce.
+- **La tarjeta no aplica la ventana de 24 h.** Si N2 lleva tres días callado se muestra su último
+  dato con "hace 3 días", que es más honesto que fingir que nunca midió o que el dato es de ahora.
+- **La antigüedad se escribe en palabras** ("hace 3 minutos") porque un `HH:mm` suelto invita a
+  creer que el dato es actual.
+- **Formato numérico en Java con `Locale.ROOT`** (`"%.2f"`), no con `#numbers` de Thymeleaf: el
+  separador decimal no puede depender del locale de la máquina. El JSON reutiliza esos textos y
+  el gráfico recibe números; así no hay dos redondeos distintos.
+- **Gráfico en SVG hecho a mano** (`panel.js`, ~200 líneas) en vez de Chart.js/CDN: la demo debe
+  funcionar **sin internet**. Cuatro series con `--chart-1..4` (azul, teal, ámbar, violeta),
+  contraste ≥3:1 sobre la superficie en ambos temas.
+- **Si la ventana de datos dura menos de 30 min, el eje se abre hasta 30 min.** Una ráfaga del
+  simulador aplastaría el eje y todas las horas se leerían iguales. Es legibilidad, no datos:
+  las muestras siguen siendo solo las de 24 h.
+- **Refresco cada 20 s** contra `GET /panel/datos` (protegido por la misma cadena de sesión), en
+  pausa si la pestaña está oculta. El botón "Actualizar" hace lo mismo y confirma con un toast.
+- **Sin JavaScript** las tarjetas, los indicadores y las reglas siguen completos; solo el gráfico
+  muestra su estado vacío. El `<noscript>` lo dice explícitamente.
+
 ### Reglas de interfaz que el código hace cumplir
 
 - **Todo el texto visible en español**; los identificadores técnicos (CSS, JS, Java) en inglés.
@@ -159,7 +197,15 @@ de cuerpo 17.06 / 15.19, texto secundario 4.76 / 6.66, etiquetas semánticas ent
 (en vez del 401 en JSON de la API), `/panel` sin sesión redirige a `/login`, el formulario es
 público y está en español, los estáticos son públicos, el login válido entra, el inválido vuelve
 con `?error`, el POST exige CSRF, un JWT no abre el panel y la API conserva su 401 sin token.
-**Total del backend: 46 tests.**
+
+`PanelDashboardIntegrationTest` (contexto completo, H2, base propia) fija el tablero: las cuatro
+estaciones existen sin datos, la tarjeta muestra la muestra **más reciente** y no la primera, una
+alerta se pinta con el motivo que redactó el backend, el JSON trae las cuatro estaciones con su
+estado y la serie, el JSON **exige sesión**, y ni la serie ni los contadores incluyen muestras de
+más de 24 h. Las muestras se insertan por el repositorio para fijar `recordedAt` sin depender del
+reloj.
+
+**Total del backend: 52 tests.**
 
 
 ## Firmware IoT (`iot-firmware/`) — comandos

@@ -23,6 +23,10 @@
                     </p>
                 </div>
                 <div class="encabezado-pagina__acciones">
+                    <button type="button" class="boton boton--secundario" id="boton-actualizar">
+                        <span th:replace="~{fragments/icons :: refrescar}"></span>
+                        <span>Actualizar</span>
+                    </button>
                     <a class="boton boton--secundario"
                        th:href="@{/swagger-ui.html}"
                        target="_blank"
@@ -33,8 +37,12 @@
                 </div>
             </div>
 
-            <!-- Estado vacío: todavía no hay telemetría en este entorno. -->
-            <section class="tarjeta" aria-labelledby="titulo-vacio">
+            <!--
+              Estado vacío: solo aparece cuando no hay ninguna muestra en las
+              últimas 24 h. Las tarjetas de abajo se muestran siempre, para que
+              las cuatro estaciones existan aunque todavía no reporten.
+            -->
+            <section class="tarjeta" th:if="${tablero.sinDatos}" aria-labelledby="titulo-vacio">
                 <div th:replace="~{fragments/empty-state :: vacio(
                         'Aún no hay datos de telemetría',
                         'Cuando el primer nodo envíe una muestra, aquí aparecerán el pH, la turbidez, la temperatura y los sólidos disueltos de cada estación.')}">
@@ -54,43 +62,139 @@
                 </div>
             </section>
 
-            <!-- Estaciones configuradas. Los identificadores coinciden con el
+            <!-- Indicadores de las últimas 24 horas. -->
+            <section class="rejilla-kpi" aria-label="Resumen de las últimas 24 horas">
+                <article class="tarjeta kpi">
+                    <span class="kpi__etiqueta">Muestras (24 h)</span>
+                    <strong class="kpi__valor" id="kpi-muestras" th:text="${tablero.muestras}">0</strong>
+                </article>
+                <article class="tarjeta kpi">
+                    <span class="kpi__etiqueta">Alertas (24 h)</span>
+                    <strong class="kpi__valor kpi__valor--alerta"
+                            id="kpi-alertas" th:text="${tablero.alertas}">0</strong>
+                </article>
+                <article class="tarjeta kpi">
+                    <span class="kpi__etiqueta">Estaciones con datos</span>
+                    <strong class="kpi__valor" id="kpi-estaciones"
+                            th:text="|${tablero.estacionesConDatos} / ${#lists.size(tablero.estaciones)}|">0 / 4</strong>
+                </article>
+                <article class="tarjeta kpi">
+                    <span class="kpi__etiqueta">Actualizado a las</span>
+                    <strong class="kpi__valor kpi__valor--hora" id="kpi-actualizado"
+                            th:text="${tablero.horaActualizacion}">--:--:--</strong>
+                </article>
+            </section>
+
+            <!-- Tarjetas por estación. Los identificadores coinciden con el
                  campo node_id del ESP32. -->
             <section class="seccion-separada" aria-labelledby="titulo-estaciones">
                 <h3 id="titulo-estaciones" class="titulo-seccion">
                     Estaciones de muestreo
                 </h3>
                 <div class="rejilla">
-                    <article class="tarjeta tarjeta--interactiva"
-                             th:each="estacion : ${estaciones}">
+                    <article class="tarjeta tarjeta--estacion"
+                             th:each="estacion : ${tablero.estaciones}"
+                             th:attr="data-estacion=${estacion.id}">
                         <div class="tarjeta__cabecera">
-                            <span class="tarjeta__titulo" th:text="${estacion}">N1</span>
-                            <span class="etiqueta etiqueta--neutra">
+                            <div class="estacion__identidad">
+                                <span th:replace="~{fragments/icons :: estaciones}"></span>
+                                <h4 class="tarjeta__titulo" th:text="${estacion.id}">N1</h4>
+                            </div>
+                            <span class="etiqueta js-estado"
+                                  th:classappend="| etiqueta--${estacion.clase}|">
                                 <span class="etiqueta__punto"></span>
-                                Sin datos
+                                <span class="js-estado-texto" th:text="${estacion.etiqueta}">Sin datos</span>
                             </span>
                         </div>
-                        <p class="tarjeta__nota">Esperando la primera muestra del nodo.</p>
+
+                        <p class="tarjeta__nota js-nota"
+                           th:text="${estacion.conDatos}
+                                   ? |Última muestra ${estacion.ultima.hace} · ${estacion.ultima.fecha}|
+                                   : 'Esperando la primera muestra del nodo.'">
+                            Esperando la primera muestra del nodo.
+                        </p>
+
                         <dl class="mini-datos">
                             <div>
                                 <dt>pH</dt>
-                                <dd>—</dd>
+                                <dd class="js-ph"
+                                    th:text="${estacion.conDatos} ? ${estacion.ultima.ph} : '—'">—</dd>
                             </div>
                             <div>
                                 <dt>Turbidez</dt>
-                                <dd>—</dd>
+                                <dd>
+                                    <span class="js-turbidez"
+                                          th:text="${estacion.conDatos} ? ${estacion.ultima.turbidez} : '—'">—</span>
+                                    <span class="mini-datos__unidad">NTU</span>
+                                </dd>
                             </div>
                             <div>
                                 <dt>Temperatura</dt>
-                                <dd>—</dd>
+                                <dd>
+                                    <span class="js-temperatura"
+                                          th:text="${estacion.conDatos} ? ${estacion.ultima.temperatura} : '—'">—</span>
+                                    <span class="mini-datos__unidad">°C</span>
+                                </dd>
                             </div>
                             <div>
                                 <dt>Sólidos disueltos</dt>
-                                <dd>—</dd>
+                                <dd>
+                                    <span class="js-tds"
+                                          th:text="${estacion.conDatos} ? ${estacion.ultima.tds} : '—'">—</span>
+                                    <span class="mini-datos__unidad">ppm</span>
+                                </dd>
                             </div>
                         </dl>
+
+                        <ul class="motivos js-motivos"
+                            th:hidden="${#lists.isEmpty(estacion.motivos)}">
+                            <li th:each="motivo : ${estacion.motivos}" th:text="${motivo}">
+                                pH 9.60 supera el límite superior ECA-Agua (9.0)
+                            </li>
+                        </ul>
                     </article>
                 </div>
+            </section>
+
+            <!-- Gráfico: SVG dibujado por panel.js, sin librerías externas. -->
+            <section class="tarjeta seccion-separada" aria-labelledby="titulo-serie">
+                <div class="tarjeta__cabecera tarjeta__cabecera--envolvente">
+                    <div>
+                        <h3 id="titulo-serie" class="tarjeta__titulo">Serie de las últimas 24 horas</h3>
+                        <p class="tarjeta__nota">
+                            Una línea por estación. La regla ECA-Agua se evalúa sobre el pH.
+                        </p>
+                    </div>
+                    <div class="selector-variable" role="group" aria-label="Variable a graficar">
+                        <button type="button" class="chip es-activo" data-variable="ph"
+                                aria-pressed="true">pH</button>
+                        <button type="button" class="chip" data-variable="turbidez"
+                                aria-pressed="false">Turbidez</button>
+                        <button type="button" class="chip" data-variable="temperatura"
+                                aria-pressed="false">Temperatura</button>
+                        <button type="button" class="chip" data-variable="tds"
+                                aria-pressed="false">Sólidos disueltos</button>
+                    </div>
+                </div>
+
+                <div class="grafico">
+                    <p class="grafico__vacio" id="grafico-vacio"
+                       th:text="${tablero.sinDatos}
+                               ? 'Todavía no hay muestras en las últimas 24 horas.'
+                               : 'Preparando el gráfico…'">
+                        Todavía no hay muestras en las últimas 24 horas.
+                    </p>
+                    <svg id="grafico-serie" class="grafico__lienzo" role="img"
+                         aria-label="Serie temporal de las últimas 24 horas" hidden></svg>
+                </div>
+                <ul class="leyenda" id="leyenda-serie" aria-label="Estaciones representadas"></ul>
+
+                <noscript>
+                    <p class="tarjeta__nota">
+                        El gráfico necesita JavaScript. Los valores de cada estación siguen
+                        disponibles en las tarjetas de arriba.
+                    </p>
+                </noscript>
             </section>
 
             <div class="rejilla rejilla--ancha seccion-separada">
