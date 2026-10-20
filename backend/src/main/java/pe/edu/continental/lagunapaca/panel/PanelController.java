@@ -27,6 +27,16 @@ public class PanelController {
     private static final List<String> ESTACIONES = List.of("N1", "N2", "N3", "N4");
 
     /**
+     * La raíz no pertenece a la API: quien escribe la dirección del servidor en
+     * un navegador espera ver el panel, no un 401 en JSON. Si no hay sesión,
+     * {@code /panel} se encarga de llevar al formulario de acceso.
+     */
+    @GetMapping("/")
+    public String raiz() {
+        return "redirect:/panel";
+    }
+
+    /**
      * Formulario de acceso. Spring Security lo referencia con
      * {@code formLogin().loginPage("/login")}, pero es este controlador el que
      * decide cómo se ve: así el login comparte el sistema de diseño del panel.

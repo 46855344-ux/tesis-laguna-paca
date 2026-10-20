@@ -48,6 +48,14 @@ class PanelIntegrationTest {
     private MockMvc mockMvc;
 
     @Test
+    @DisplayName("la raíz del sitio lleva al panel, no al 401 en JSON de la API")
+    void laRaizRedirigeAlPanel() throws Exception {
+        mockMvc.perform(get("/"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/panel"));
+    }
+
+    @Test
     @DisplayName("el panel exige iniciar sesión: sin sesión redirige al formulario")
     void panelSinSesionRedirigeAlLogin() throws Exception {
         mockMvc.perform(get("/panel"))

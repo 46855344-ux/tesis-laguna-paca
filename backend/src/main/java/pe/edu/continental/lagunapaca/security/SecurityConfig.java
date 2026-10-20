@@ -61,10 +61,13 @@ public class SecurityConfig {
     @Order(1)
     SecurityFilterChain panelSecurityFilterChain(HttpSecurity http) throws Exception {
         http
-                .securityMatcher("/panel/**", "/login", "/css/**", "/js/**")
+                // La raíz entra aquí porque redirige al panel: si la manejara la
+                // cadena de la API, el navegador recibiría un 401 en JSON al
+                // escribir la dirección del servidor.
+                .securityMatcher("/", "/panel/**", "/login", "/css/**", "/js/**")
                 .authorizeHttpRequests(auth -> auth
                         // Sin esto no se podría ni ver el formulario de acceso.
-                        .requestMatchers("/css/**", "/js/**", "/login").permitAll()
+                        .requestMatchers("/", "/css/**", "/js/**", "/login").permitAll()
                         .anyRequest().hasRole("ADMIN"))
                 .formLogin(form -> form
                         .loginPage("/login")

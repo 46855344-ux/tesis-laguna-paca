@@ -155,10 +155,11 @@ de cuerpo 17.06 / 15.19, texto secundario 4.76 / 6.66, etiquetas semánticas ent
 
 ### Tests
 
-`PanelIntegrationTest` (contexto completo, H2) fija el contrato: `/panel` sin sesión redirige a
-`/login`, el formulario es público y está en español, los estáticos son públicos, el login válido
-entra, el inválido vuelve con `?error`, el POST exige CSRF, un JWT no abre el panel y la API
-conserva su 401 sin token. **Total del backend: 45 tests.**
+`PanelIntegrationTest` (contexto completo, H2) fija el contrato: la raíz `/` redirige al panel
+(en vez del 401 en JSON de la API), `/panel` sin sesión redirige a `/login`, el formulario es
+público y está en español, los estáticos son públicos, el login válido entra, el inválido vuelve
+con `?error`, el POST exige CSRF, un JWT no abre el panel y la API conserva su 401 sin token.
+**Total del backend: 46 tests.**
 
 
 ## Firmware IoT (`iot-firmware/`) — comandos
