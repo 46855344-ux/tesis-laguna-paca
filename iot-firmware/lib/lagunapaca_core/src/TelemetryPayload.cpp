@@ -13,11 +13,21 @@ constexpr int kTemperatureDecimals = 1;
 constexpr int kTdsDecimals = 1;
 }  // namespace
 
-std::string buildTelemetryPayload(const char* nodeId, const TelemetrySample& sample) {
+std::string buildTelemetryPayload(const char* nodeId, const TelemetrySample& sample,
+                                  const char* sampleId) {
     std::string payload;
-    payload.reserve(96);
+    payload.reserve(sampleId == nullptr ? 96 : 160);
 
-    payload += "{\"node_id\": \"";
+    payload += "{";
+    if (sampleId != nullptr && sampleId[0] != '\0') {
+        // Campo aditivo: el backend lo acepta opcionalmente y lo usa para que
+        // un reintento no cree una segunda muestra.
+        payload += "\"sample_id\": \"";
+        payload += sampleId;
+        payload += "\", ";
+    }
+
+    payload += "\"node_id\": \"";
     payload += (nodeId == nullptr ? "" : nodeId);
     payload += "\", \"ph\": ";
     payload += formatDecimal(sample.ph, kPhDecimals);

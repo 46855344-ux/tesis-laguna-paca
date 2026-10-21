@@ -12,6 +12,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import pe.edu.continental.lagunapaca.telemetry.api.TelemetryRequest;
 import pe.edu.continental.lagunapaca.telemetry.api.TelemetryResponse;
+import pe.edu.continental.lagunapaca.telemetry.service.IngestOutcome;
 import pe.edu.continental.lagunapaca.telemetry.service.TelemetryService;
 
 import java.time.Instant;
@@ -49,9 +50,9 @@ class TelemetryMqttHandlerTest {
     @Test
     @DisplayName("payload válido se delega al servicio de ingesta")
     void payloadValido_seIngesta() {
-        when(telemetryService.ingest(any())).thenReturn(new TelemetryResponse(
+        when(telemetryService.ingest(any())).thenReturn(IngestOutcome.created(new TelemetryResponse(
                 1L, "N1", 7.2, 15.4, 18.5, 320.0, false, List.of(),
-                Instant.parse("2026-10-18T10:00:00Z")));
+                Instant.parse("2026-10-18T10:00:00Z"))));
 
         handler.handle(VALID_PAYLOAD);
 

@@ -13,6 +13,11 @@
 
         <main id="contenido" class="contenido">
 
+            <div class="aviso aviso--exito" role="status"
+                 th:if="${mensaje}" th:text="${mensaje}"></div>
+            <div class="aviso aviso--error" role="alert"
+                 th:if="${error}" th:text="${error}"></div>
+
             <div class="encabezado-pagina">
                 <div>
                     <h2>Estado de la laguna</h2>
@@ -289,6 +294,74 @@
                         disponibles en las tarjetas de arriba.
                     </p>
                 </noscript>
+            </section>
+
+            <!--
+              Predicciones del ST-GNN. Se muestran aparte de las mediciones a
+              propósito: un valor previsto no es un sensor. La tarjeta declara el
+              origen de los datos del modelo (sintético o campo) y, si ya existe
+              una medición real en el objetivo, muestra el error cometido.
+            -->
+            <section class="tarjeta seccion-separada" aria-labelledby="titulo-predicciones">
+                <div class="tarjeta__cabecera tarjeta__cabecera--envolvente">
+                    <div>
+                        <h3 id="titulo-predicciones" class="tarjeta__titulo">Predicciones del ST-GNN</h3>
+                        <p class="tarjeta__nota">
+                            pH previsto a 1, 3 y 6 horas para las cuatro estaciones. Son
+                            predicciones, no mediciones: no cambian el veredicto ECA-Agua.
+                        </p>
+                    </div>
+                    <form class="formulario-prediccion" method="post"
+                          th:action="@{/panel/predicciones}">
+                        <label class="campo__etiqueta" for="horizonte">Horizonte</label>
+                        <select class="campo__control" id="horizonte" name="horizonte">
+                            <option value="1">1 hora</option>
+                            <option value="3">3 horas</option>
+                            <option value="6" selected>6 horas</option>
+                        </select>
+                        <button type="submit" class="boton boton--primario">
+                            <span th:replace="~{fragments/icons :: refrescar}"></span>
+                            <span>Generar predicción</span>
+                        </button>
+                    </form>
+                </div>
+
+                <p class="tarjeta__nota">
+                    El modelo se entrenó con datos <strong>sintéticos</strong>: sirve para
+                    validar la arquitectura, no para afirmar precisión en la laguna real.
+                    Si el servicio de IA no está disponible, el tablero y las alertas
+                    siguen funcionando.
+                </p>
+
+                <div class="estado-vacio" th:if="${#lists.isEmpty(tablero.predicciones)}">
+                    <p>
+                        Todavía no hay predicciones. Con 24 muestras por estación puedes
+                        generar la primera.
+                    </p>
+                </div>
+
+                <div class="rejilla-predicciones" th:unless="${#lists.isEmpty(tablero.predicciones)}">
+                    <article class="prediccion"
+                             th:each="p : ${tablero.predicciones}"
+                             th:classappend="${p.evaluada} ? 'prediccion--evaluada' : 'prediccion--pendiente'">
+                        <header class="prediccion__cabecera">
+                            <h4 class="prediccion__titulo" th:text="|${p.estacion} · ${p.horizonte} h|">N1 · 6 h</h4>
+                            <span class="etiqueta" th:text="${p.estado}">Pendiente</span>
+                        </header>
+                        <p class="prediccion__valor">
+                            <strong th:text="${p.phPrevisto}">7.20</strong>
+                            <span>pH previsto</span>
+                        </p>
+                        <p class="tarjeta__nota"
+                           th:text="|Objetivo: ${p.objetivo} · generada ${p.generadoHace}|">
+                        </p>
+                        <p class="tarjeta__nota" th:if="${p.evaluada}"
+                           th:text="|Observado: ${p.phObservado} · error ${p.error}|">
+                        </p>
+                        <p class="prediccion__origen"
+                           th:text="|${p.modelo} · ${p.origen}|"></p>
+                    </article>
+                </div>
             </section>
 
             <div class="rejilla rejilla--ancha seccion-separada">

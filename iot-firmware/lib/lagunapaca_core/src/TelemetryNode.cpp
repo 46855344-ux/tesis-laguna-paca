@@ -38,7 +38,7 @@ double TelemetryNode::sampleChannel(AnalogChannel& channel) {
     return average;
 }
 
-TelemetryNode::Outcome TelemetryNode::runOnce() {
+TelemetryNode::Outcome TelemetryNode::runOnce(const char* sampleId) {
     const double ph = phCalibration_.toPh(sampleChannel(phChannel_));
     const double turbidity = turbidityCalibration_.toNtu(sampleChannel(turbidityChannel_));
     const double temperature = temperatureSensor_.readCelsius();
@@ -52,7 +52,7 @@ TelemetryNode::Outcome TelemetryNode::runOnce() {
         return Outcome::InvalidSample;
     }
 
-    lastPayload_ = buildTelemetryPayload(config_.nodeId, lastSample_);
+    lastPayload_ = buildTelemetryPayload(config_.nodeId, lastSample_, sampleId);
     return transport_.send(lastPayload_) ? Outcome::Sent : Outcome::TransportFailed;
 }
 

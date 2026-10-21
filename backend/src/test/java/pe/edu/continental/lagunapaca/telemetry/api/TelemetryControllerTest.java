@@ -10,6 +10,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import pe.edu.continental.lagunapaca.telemetry.domain.AlertCode;
+import pe.edu.continental.lagunapaca.telemetry.service.IngestOutcome;
 import pe.edu.continental.lagunapaca.telemetry.service.TelemetryQuery;
 import pe.edu.continental.lagunapaca.telemetry.service.TelemetryService;
 
@@ -50,9 +51,9 @@ class TelemetryControllerTest {
     @Test
     @DisplayName("POST payload válido responde 201 con la muestra")
     void payloadValido_responde201() throws Exception {
-        given(telemetryService.ingest(any())).willReturn(new TelemetryResponse(
+        given(telemetryService.ingest(any())).willReturn(IngestOutcome.created(new TelemetryResponse(
                 1L, "N1", 7.2, 15.4, 18.5, 320.0, false, List.of(),
-                Instant.parse("2026-10-18T10:00:00Z")));
+                Instant.parse("2026-10-18T10:00:00Z"))));
 
         mockMvc.perform(post("/api/v1/telemetry")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -66,10 +67,10 @@ class TelemetryControllerTest {
     @Test
     @DisplayName("POST con alerta devuelve alert_reasons como {code, message}")
     void post_conAlerta_devuelveCodigoYmensaje() throws Exception {
-        given(telemetryService.ingest(any())).willReturn(new TelemetryResponse(
+        given(telemetryService.ingest(any())).willReturn(IngestOutcome.created(new TelemetryResponse(
                 2L, "N1", 9.7, 15.4, 18.5, 320.0, true,
                 List.of(new AlertReasonDto(AlertCode.PH_HIGH, "pH 9.70 supera el límite superior ECA-Agua (9.0)")),
-                Instant.parse("2026-10-18T10:00:00Z")));
+                Instant.parse("2026-10-18T10:00:00Z"))));
 
         String payload = """
                 {"node_id":"N1","ph":9.7,"turbidity_ntu":15.4,"temp_c":18.5,"tds_ppm":320}
@@ -82,6 +83,24 @@ class TelemetryControllerTest {
                 .andExpect(jsonPath("$.alert").value(true))
                 .andExpect(jsonPath("$.alert_reasons[0].code").value("PH_HIGH"))
                 .andExpect(jsonPath("$.alert_reasons[0].message").exists());
+    }
+
+    @Test
+    @DisplayName("POST con sample_id repetido responde 200 (idempotente), no 201")
+    void sampleIdRepetido_responde200() throws Exception {
+        given(telemetryService.ingest(any())).willReturn(IngestOutcome.duplicate(new TelemetryResponse(
+                7L, "N1", 7.2, 15.4, 18.5, 320.0, false, List.of(),
+                Instant.parse("2026-10-18T10:00:00Z"))));
+
+        String payload = """
+                {"sample_id":"N1-7","node_id":"N1","ph":7.2,"turbidity_ntu":15.4,"temp_c":18.5,"tds_ppm":320}
+                """;
+
+        mockMvc.perform(post("/api/v1/telemetry")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(7));
     }
 
     @Test

@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import pe.edu.continental.lagunapaca.telemetry.api.TelemetryRequest;
 import pe.edu.continental.lagunapaca.telemetry.api.TelemetryResponse;
+import pe.edu.continental.lagunapaca.telemetry.service.IngestOutcome;
 import pe.edu.continental.lagunapaca.telemetry.service.TelemetryService;
 
 import java.util.Set;
@@ -63,9 +64,10 @@ public class TelemetryMqttHandler {
             return;
         }
 
-        TelemetryResponse response = telemetryService.ingest(request);
-        log.info("Telemetría MQTT ingerida: id={}, node={}, alert={}",
-                response.id(), response.nodeId(), response.alert());
+        IngestOutcome outcome = telemetryService.ingest(request);
+        TelemetryResponse response = outcome.response();
+        log.info("Telemetría MQTT ingerida: id={}, node={}, alert={}, idempotente={}",
+                response.id(), response.nodeId(), response.alert(), !outcome.created());
     }
 
     private static String describe(Set<ConstraintViolation<TelemetryRequest>> violations) {

@@ -76,3 +76,12 @@ app:
     topic: ${MQTT_TOPIC:laguna-paca/telemetry}
     qos: ${MQTT_QOS:1}
     completion-timeout-ms: ${MQTT_TIMEOUT_MS:5000}
+
+  # Servicio de inferencia (FastAPI). Nunca se publica a internet: en Docker
+  # Compose vive en la red interna. Sin servicio, el monitoreo y las alertas
+  # siguen funcionando; solo se degrada la predicción.
+  ai:
+    base-url: ${IA_BASE_URL:http://localhost:8000}
+    token: ${IA_INTERNAL_TOKEN:}
+    connect-timeout-ms: ${IA_CONNECT_TIMEOUT_MS:2000}
+    read-timeout-ms: ${IA_READ_TIMEOUT_MS:15000}

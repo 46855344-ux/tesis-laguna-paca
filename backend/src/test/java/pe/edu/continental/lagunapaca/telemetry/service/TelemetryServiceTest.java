@@ -22,10 +22,12 @@ import pe.edu.continental.lagunapaca.telemetry.domain.WaterQualitySampleReposito
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -62,7 +64,7 @@ class TelemetryServiceTest {
             return sample;
         });
 
-        TelemetryResponse response = service.ingest(sample(7.2));
+        TelemetryResponse response = service.ingest(sample(7.2)).response();
 
         assertThat(response.id()).isEqualTo(1L);
         assertThat(response.nodeId()).isEqualTo("N1");
@@ -79,11 +81,40 @@ class TelemetryServiceTest {
         when(repository.save(any(WaterQualitySample.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        TelemetryResponse response = service.ingest(sample(9.7));
+        TelemetryResponse response = service.ingest(sample(9.7)).response();
 
         assertThat(response.alert()).isTrue();
         assertThat(response.alertReasons()).extracting(AlertReasonDto::code).containsExactly(AlertCode.PH_HIGH);
         assertThat(response.alertReasons()).extracting(AlertReasonDto::message).allMatch(m -> !m.isBlank());
+    }
+
+    @Test
+    @DisplayName("ingesta: un sample_id repetido devuelve la muestra original sin guardar otra")
+    void ingesta_conSampleIdRepetido_esIdempotente() {
+        WaterQualitySample existente = new WaterQualitySample(
+                "N1", 7.2, 15.4, 18.5, 320.0, Instant.parse("2026-10-18T09:00:00Z"));
+        existente.setId(99L);
+        existente.setSampleId("N1-17");
+        when(repository.findBySampleId("N1-17")).thenReturn(Optional.of(existente));
+
+        IngestOutcome outcome = service.ingest(
+                new TelemetryRequest("N1", 7.2, 15.4, 18.5, 320.0, "N1-17"));
+
+        assertThat(outcome.created()).isFalse();
+        assertThat(outcome.response().id()).isEqualTo(99L);
+        verify(repository, never()).save(any(WaterQualitySample.class));
+    }
+
+    @Test
+    @DisplayName("ingesta: sin sample_id no consulta duplicados")
+    void ingesta_sinSampleId_noConsultaDuplicados() {
+        when(repository.save(any(WaterQualitySample.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        IngestOutcome outcome = service.ingest(sample(7.2));
+
+        assertThat(outcome.created()).isTrue();
+        verify(repository, never()).findBySampleId(any());
     }
 
     // --------------------------------------------------------------- consulta

@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import pe.edu.continental.lagunapaca.prediction.service.PredictionEvaluator;
 import pe.edu.continental.lagunapaca.telemetry.api.AlertReasonDto;
 import pe.edu.continental.lagunapaca.telemetry.api.PageResponse;
 import pe.edu.continental.lagunapaca.telemetry.api.TelemetryRequest;
@@ -16,6 +17,7 @@ import pe.edu.continental.lagunapaca.telemetry.domain.WaterQualitySampleReposito
 import pe.edu.continental.lagunapaca.telemetry.domain.WaterQualitySampleSpecifications;
 
 import java.time.Clock;
+import java.util.Optional;
 
 /**
  * Casos de uso del dominio de telemetría: ingesta y consulta histórica.
@@ -27,32 +29,57 @@ public class TelemetryService {
     private final WaterQualitySampleRepository repository;
     private final EcaWaterQualityRule rule;
     private final Clock clock;
+    private final PredictionEvaluator predictionEvaluator;
 
     /**
      * Constructor que usa Spring.
      *
-     * <p>La anotación es imprescindible: la clase tiene dos constructores (el otro
-     * recibe un {@link Clock} para los tests) y, sin ella, Spring no sabe cuál
-     * elegir y el contexto de la aplicación no arranca.</p>
+     * <p>La anotación es imprescindible: la clase tiene varios constructores (los
+     * demás permiten inyectar un reloj fijo en los tests) y, sin ella, Spring no
+     * sabe cuál elegir y el contexto de la aplicación no arranca.</p>
      */
     @Autowired
-    public TelemetryService(WaterQualitySampleRepository repository, EcaWaterQualityRule rule) {
-        this(repository, rule, Clock.systemUTC());
+    public TelemetryService(WaterQualitySampleRepository repository, EcaWaterQualityRule rule,
+                            PredictionEvaluator predictionEvaluator) {
+        this(repository, rule, Clock.systemUTC(), predictionEvaluator);
     }
 
-    /** Constructor para tests: permite inyectar un reloj fijo. */
+    /** Constructor para tests que no ejercitan la evaluación de predicciones. */
     public TelemetryService(WaterQualitySampleRepository repository, EcaWaterQualityRule rule, Clock clock) {
+        this(repository, rule, clock, null);
+    }
+
+    /** Constructor mínimo para slices que solo prueban la ingesta. */
+    public TelemetryService(WaterQualitySampleRepository repository, EcaWaterQualityRule rule) {
+        this(repository, rule, Clock.systemUTC(), null);
+    }
+
+    public TelemetryService(WaterQualitySampleRepository repository, EcaWaterQualityRule rule,
+                            Clock clock, PredictionEvaluator predictionEvaluator) {
         this.repository = repository;
         this.rule = rule;
         this.clock = clock;
+        this.predictionEvaluator = predictionEvaluator;
     }
 
     /**
      * Ingesta una muestra: evalúa los límites ECA-Agua, la persiste con su marca
      * temporal y devuelve la respuesta.
+     *
+     * <p>Si llega {@code sample_id} y ya existe, no se crea otra fila: se devuelve
+     * la muestra original con {@code created=false}. El índice único de la V5 es
+     * la garantía de último recurso ante dos peticiones simultáneas.</p>
      */
     @Transactional
-    public TelemetryResponse ingest(TelemetryRequest request) {
+    public IngestOutcome ingest(TelemetryRequest request) {
+        String sampleId = normalize(request.sampleId());
+        if (sampleId != null) {
+            Optional<WaterQualitySample> existente = repository.findBySampleId(sampleId);
+            if (existente.isPresent()) {
+                return IngestOutcome.duplicate(toResponse(existente.get()));
+            }
+        }
+
         AlertEvaluation evaluation = rule.evaluate(request);
 
         WaterQualitySample sample = new WaterQualitySample(
@@ -62,10 +89,27 @@ public class TelemetryService {
                 request.tempC(),
                 request.tdsPpm(),
                 clock.instant());
+        sample.setSampleId(sampleId);
         sample.setAlert(evaluation.alert());
         sample.setAlertReasons(evaluation.reasons());
 
-        return toResponse(repository.save(sample));
+        WaterQualitySample guardada = repository.save(sample);
+
+        // La evaluación es un efecto secundario: nunca puede impedir que la
+        // medición quede registrada (requisito explícito).
+        if (predictionEvaluator != null) {
+            predictionEvaluator.evaluarSinRomperIngesta(
+                    guardada.getNodeId(), guardada.getRecordedAt(), guardada.getPh());
+        }
+
+        return IngestOutcome.created(toResponse(guardada));
+    }
+
+    private static String normalize(String sampleId) {
+        if (sampleId == null || sampleId.isBlank()) {
+            return null;
+        }
+        return sampleId.trim();
     }
 
     /**

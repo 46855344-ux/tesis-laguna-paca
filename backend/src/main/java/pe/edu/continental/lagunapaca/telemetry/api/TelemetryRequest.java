@@ -8,10 +8,16 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 /**
- * Payload exacto emitido por el firmware ESP32:
+ * Payload emitido por el firmware ESP32:
  * <pre>
- * {"node_id": "N1", "ph": 7.2, "turbidity_ntu": 15.4, "temp_c": 18.5, "tds_ppm": 320}
+ * {"sample_id": "N1-3FA4C21B-17", "node_id": "N1", "ph": 7.2,
+ *  "turbidity_ntu": 15.4, "temp_c": 18.5, "tds_ppm": 320}
  * </pre>
+ *
+ * <p>{@code sample_id} es <strong>opcional</strong> y aditivo: los clientes que
+ * no lo envían siguen funcionando. Cuando está presente, la ingesta es
+ * idempotente (RN-09): un reintento HTTP o un duplicado de MQTT QoS 1 devuelve
+ * la muestra ya guardada en lugar de crear otra.</p>
  */
 public record TelemetryRequest(
 
@@ -40,6 +46,18 @@ public record TelemetryRequest(
         @JsonProperty("tds_ppm")
         @NotNull(message = "tds_ppm es obligatorio")
         @DecimalMin(value = "0.0", message = "tds_ppm debe ser >= 0.0")
-        Double tdsPpm
+        Double tdsPpm,
+
+        @JsonProperty("sample_id")
+        @Size(max = 64, message = "sample_id no debe exceder 64 caracteres")
+        String sampleId
 ) {
+
+    /**
+     * Constructor compatible con el payload histórico (sin {@code sample_id}).
+     * Lo usan los tests y cualquier llamada interna que no necesite idempotencia.
+     */
+    public TelemetryRequest(String nodeId, Double ph, Double turbidityNtu, Double tempC, Double tdsPpm) {
+        this(nodeId, ph, turbidityNtu, tempC, tdsPpm, null);
+    }
 }

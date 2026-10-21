@@ -16,6 +16,8 @@ servers:
 tags:
   - name: Autenticación
   - name: Telemetría
+  - name: Predicciones
+  - name: IA
 
 paths:
   /api/v1/auth/token:
@@ -116,6 +118,11 @@ paths:
     post:
       tags: [Telemetría]
       summary: Ingesta una muestra de telemetría del nodo ESP32
+      description: >
+        Si se envía `sample_id` y ya existe una muestra con ese identificador,
+        responde 200 con la muestra original en lugar de 201: el reintento es
+        idempotente (RN-09) y no crea una fila nueva. Sin `sample_id` el
+        comportamiento es el histórico (siempre 201).
       security:
         - bearerAuth: []
       requestBody:
@@ -125,6 +132,7 @@ paths:
             schema:
               $ref: '#/components/schemas/TelemetryRequest'
             example:
+              sample_id: "N1-3FA4C21B-17"
               node_id: "N1"
               ph: 7.2
               turbidity_ntu: 15.4
@@ -137,12 +145,166 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TelemetryResponse'
+        '200':
+          description: Muestra ya registrada con ese sample_id (reintento idempotente)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TelemetryResponse'
         '400':
           description: Payload inválido (falla de validación)
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Falta el token JWT o es inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: >
+            El sample_id chocó con otra petición simultánea (el índice único es
+            la garantía de último recurso).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /api/v1/predictions:
+    post:
+      tags: [Predicciones]
+      summary: Genera una predicción de pH para las cuatro estaciones
+      description: >
+        Llama al servicio interno de IA y persiste una fila por estación. La
+        generación es explícita: no se dispara en cada ingesta, para que la
+        telemetría no dependa de la disponibilidad de la IA.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PredictionRequest'
+            example:
+              horizon_hours: 6
+      responses:
+        '201':
+          description: Cuatro predicciones persistidas (una por estación)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PredictionResponse'
+        '400':
+          description: Horizonte inválido o no entrenado (solo 1, 3 y 6 h)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Falta el token JWT o es inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: No hay historia suficiente para armar la ventana
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '502':
+          description: El servicio de IA respondió algo que no cumple el contrato
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: El servicio de IA no está disponible o no tiene modelo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+    get:
+      tags: [Predicciones]
+      summary: Consulta el histórico de predicciones (paginado)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: node_id
+          in: query
+          required: false
+          schema: { type: string, maxLength: 32 }
+        - name: horizon_hours
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: page
+          in: query
+          required: false
+          schema: { type: integer, default: 0, minimum: 0 }
+        - name: size
+          in: query
+          required: false
+          schema: { type: integer, default: 20, minimum: 1, maximum: 100 }
+      responses:
+        '200':
+          description: Página de predicciones, de la más reciente a la más antigua
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PredictionPage'
+        '401':
+          description: Falta el token JWT o es inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /api/v1/predictions/latest:
+    get:
+      tags: [Predicciones]
+      summary: Últimas predicciones, sin paginar
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Hasta 12 predicciones recientes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PredictionResponse'
+        '401':
+          description: Falta el token JWT o es inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /api/v1/ai/health:
+    get:
+      tags: [IA]
+      summary: Estado del servicio de inferencia
+      description: >
+        Responde 200 aunque la IA esté caída: el cuerpo indica
+        `available: false`. Así se distingue «el backend no responde» de «el
+        backend responde y la IA no está disponible».
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Estado del servicio
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiStatus'
         '401':
           description: Falta el token JWT o es inválido
           content:
@@ -178,6 +340,13 @@ components:
       additionalProperties: true
       required: [node_id, ph, turbidity_ntu, temp_c, tds_ppm]
       properties:
+        sample_id:
+          type: string
+          maxLength: 64
+          description: >
+            Identificador único de la muestra asignado por el nodo. Opcional y
+            aditivo: si se repite, la ingesta es idempotente.
+          example: "N1-3FA4C21B-17"
         node_id:
           type: string
           maxLength: 32
@@ -250,6 +419,97 @@ components:
         size: { type: integer }
         total_elements: { type: integer, format: int64 }
         total_pages: { type: integer }
+
+    PredictionRequest:
+      type: object
+      required: [horizon_hours]
+      properties:
+        horizon_hours:
+          type: integer
+          minimum: 1
+          maximum: 24
+          description: >
+            Horizonte en horas. El artefacto actual tiene entrenados 1, 3 y 6;
+            cualquier otro valor responde 400.
+          example: 6
+
+    PredictionResponse:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        model_run_id:
+          type: string
+          format: uuid
+          description: Agrupa las cuatro estaciones de una misma inferencia
+        node_id: { type: string }
+        variable: { type: string, example: ph }
+        horizon_hours: { type: integer, example: 6 }
+        generated_at: { type: string, format: date-time }
+        target_at:
+          type: string
+          format: date-time
+          description: Instante que se está prediciendo
+        predicted_value:
+          type: number
+          format: double
+          description: pH previsto (nunca se reescribe)
+        model_version: { type: string, example: stgnn-synthetic-s42-i24-e150 }
+        data_source:
+          type: string
+          enum: [synthetic, field]
+          description: Origen de los datos con los que se entrenó el modelo
+        status:
+          type: string
+          enum: [PENDING, EVALUATED]
+        observed_value:
+          type: number
+          format: double
+          nullable: true
+          description: pH real cuando la predicción ya fue evaluada
+        error:
+          type: number
+          format: double
+          nullable: true
+          description: predicted_value - observed_value (unidades de pH)
+        evaluated_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    PredictionPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/PredictionResponse'
+        page: { type: integer }
+        size: { type: integer }
+        total_elements: { type: integer, format: int64 }
+        total_pages: { type: integer }
+
+    AiStatus:
+      type: object
+      properties:
+        available:
+          type: boolean
+          description: false si no hay contacto, timeout o falta el artefacto
+        model_version: { type: string, nullable: true }
+        horizons:
+          type: array
+          items: { type: integer }
+        input_len:
+          type: integer
+          nullable: true
+          description: Muestras por estación que espera el modelo
+        data_source:
+          type: string
+          nullable: true
+          enum: [synthetic, field]
+        detail:
+          type: string
+          nullable: true
+        checked_at: { type: string, format: date-time }
 
     ApiError:
       type: object

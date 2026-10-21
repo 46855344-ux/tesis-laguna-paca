@@ -19,6 +19,7 @@
 #include "lagunapaca/DeepSleepPolicy.h"
 #include "lagunapaca/MovingAverageFilter.h"
 #include "lagunapaca/MqttIdentity.h"
+#include "lagunapaca/SampleIdentity.h"
 #include "lagunapaca/SensorCalibration.h"
 #include "lagunapaca/TelemetryNode.h"
 #include "lagunapaca/TelemetryPayload.h"
@@ -322,6 +323,42 @@ void test_payload_usaElNodeIdRecibido() {
 }
 
 // ---------------------------------------------------------------------------
+// Identificador de muestra (idempotencia de la ingesta)
+// ---------------------------------------------------------------------------
+
+void test_sampleId_formatoEstable() {
+    TEST_ASSERT_EQUAL_STRING("N1-3FA4C21B-17",
+                             formatSampleId("N1", 0x3FA4C21Bu, 17).c_str());
+    TEST_ASSERT_EQUAL_STRING("N4-00000000-0", formatSampleId("N4", 0, 0).c_str());
+}
+
+void test_sampleId_cambiaConElArranqueYConLaSecuencia() {
+    // Dos arranques en frio no pueden reutilizar identificadores...
+    TEST_ASSERT_TRUE(formatSampleId("N1", 1, 0) != formatSampleId("N1", 2, 0));
+    // ...y dos muestras del mismo arranque tampoco.
+    TEST_ASSERT_TRUE(formatSampleId("N1", 1, 0) != formatSampleId("N1", 1, 1));
+}
+
+void test_payload_incluyeSampleIdComoPrimerCampo() {
+    TelemetrySample sample{7.2, 15.4, 18.5, 320.0};
+    std::string payload = buildTelemetryPayload("N1", sample, "N1-3FA4C21B-17");
+
+    TEST_ASSERT_EQUAL_STRING(
+            R"({"sample_id": "N1-3FA4C21B-17", "node_id": "N1", "ph": 7.2, "turbidity_ntu": 15.4, "temp_c": 18.5, "tds_ppm": 320})",
+            payload.c_str());
+}
+
+void test_payload_sinSampleId_conservaElContratoHistorico() {
+    TelemetrySample sample{7.2, 15.4, 18.5, 320.0};
+
+    // Puntero nulo o cadena vacia: el campo se omite (compatibilidad).
+    TEST_ASSERT_EQUAL_STRING(kReferencePayload,
+                             buildTelemetryPayload("N1", sample, nullptr).c_str());
+    TEST_ASSERT_EQUAL_STRING(kReferencePayload,
+                             buildTelemetryPayload("N1", sample, "").c_str());
+}
+
+// ---------------------------------------------------------------------------
 // TelemetryNode: orquesta un ciclo de medicion completo
 // ---------------------------------------------------------------------------
 
@@ -339,6 +376,37 @@ void test_node_enviaElPayloadDeReferencia() {
     TEST_ASSERT_EQUAL_UINT32(1u, static_cast<unsigned>(transport.payloads.size()));
     TEST_ASSERT_EQUAL_STRING(kReferencePayload, transport.payloads.at(0).c_str());
     TEST_ASSERT_EQUAL_STRING(kReferencePayload, node.lastPayload().c_str());
+}
+
+void test_node_enviaElSampleIdRecibido() {
+    FakeAnalogChannel ph(7.2);
+    FakeAnalogChannel turbidity(15.4);
+    FakeAnalogChannel tds(0.32);
+    FakeTemperatureSensor temperature(18.5);
+    FakeTransport transport;
+
+    TelemetryNode node = makeNode(ph, turbidity, tds, temperature, transport);
+
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(TelemetryNode::Outcome::Sent),
+                          static_cast<int>(node.runOnce("N1-3FA4C21B-17")));
+    TEST_ASSERT_EQUAL_STRING(
+            R"({"sample_id": "N1-3FA4C21B-17", "node_id": "N1", "ph": 7.2, "turbidity_ntu": 15.4, "temp_c": 18.5, "tds_ppm": 320})",
+            transport.payloads.at(0).c_str());
+}
+
+void test_node_noEnviaSampleIdSiLaMuestraEsInvalida() {
+    FakeAnalogChannel ph(15.0);  // fuera del rango 0-14
+    FakeAnalogChannel turbidity(15.4);
+    FakeAnalogChannel tds(0.32);
+    FakeTemperatureSensor temperature(18.5);
+    FakeTransport transport;
+
+    TelemetryNode node = makeNode(ph, turbidity, tds, temperature, transport);
+
+    TEST_ASSERT_EQUAL_INT(static_cast<int>(TelemetryNode::Outcome::InvalidSample),
+                          static_cast<int>(node.runOnce("N1-3FA4C21B-0")));
+    TEST_ASSERT_TRUE(transport.payloads.empty());
+    TEST_ASSERT_TRUE(node.lastPayload().empty());
 }
 
 void test_node_leeCadaCanalAnalogicoWVeces() {
@@ -519,8 +587,14 @@ int main(int, char**) {
 
     RUN_TEST(test_payload_esElContratoExacto);
     RUN_TEST(test_payload_usaElNodeIdRecibido);
+    RUN_TEST(test_sampleId_formatoEstable);
+    RUN_TEST(test_sampleId_cambiaConElArranqueYConLaSecuencia);
+    RUN_TEST(test_payload_incluyeSampleIdComoPrimerCampo);
+    RUN_TEST(test_payload_sinSampleId_conservaElContratoHistorico);
 
     RUN_TEST(test_node_enviaElPayloadDeReferencia);
+    RUN_TEST(test_node_enviaElSampleIdRecibido);
+    RUN_TEST(test_node_noEnviaSampleIdSiLaMuestraEsInvalida);
     RUN_TEST(test_node_leeCadaCanalAnalogicoWVeces);
     RUN_TEST(test_node_aplicaLaMediaMovilCausal);
     RUN_TEST(test_node_descartaUnaMuestraImplausible);

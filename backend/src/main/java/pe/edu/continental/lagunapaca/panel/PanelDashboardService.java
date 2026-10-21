@@ -4,6 +4,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import pe.edu.continental.lagunapaca.prediction.domain.Prediction;
+import pe.edu.continental.lagunapaca.prediction.domain.PredictionRepository;
+import pe.edu.continental.lagunapaca.prediction.domain.PredictionStatus;
+import pe.edu.continental.lagunapaca.station.StationCatalog;
 import pe.edu.continental.lagunapaca.telemetry.domain.AlertReason;
 import pe.edu.continental.lagunapaca.telemetry.domain.WaterQualitySample;
 import pe.edu.continental.lagunapaca.telemetry.domain.WaterQualitySampleRepository;
@@ -45,7 +49,7 @@ public class PanelDashboardService {
      * <p>Es una constante porque todavía no existe una entidad {@code Estacion};
      * cuando exista, esta lista saldrá de la base de datos sin tocar la vista.</p>
      */
-    static final List<String> ESTACIONES = List.of("N1", "N2", "N3", "N4");
+    static final List<String> ESTACIONES = StationCatalog.IDS;
 
     private static final DateTimeFormatter HORA =
             DateTimeFormatter.ofPattern("HH:mm").withZone(ZONA);
@@ -56,19 +60,24 @@ public class PanelDashboardService {
 
     private final WaterQualitySampleRepository repository;
     private final MapaLagunaService mapaService;
+    private final PredictionRepository predictionRepository;
     private final Clock clock;
 
     @Autowired
     public PanelDashboardService(WaterQualitySampleRepository repository,
-                                 MapaLagunaService mapaService) {
-        this(repository, mapaService, Clock.systemUTC());
+                                 MapaLagunaService mapaService,
+                                 PredictionRepository predictionRepository) {
+        this(repository, mapaService, predictionRepository, Clock.systemUTC());
     }
 
     /** Constructor con reloj explícito: permite fijar el "ahora" en los tests. */
     public PanelDashboardService(WaterQualitySampleRepository repository,
-                                 MapaLagunaService mapaService, Clock clock) {
+                                 MapaLagunaService mapaService,
+                                 PredictionRepository predictionRepository,
+                                 Clock clock) {
         this.repository = repository;
         this.mapaService = mapaService;
+        this.predictionRepository = predictionRepository;
         this.clock = clock;
     }
 
@@ -88,12 +97,18 @@ public class PanelDashboardService {
                 .map(PanelDashboardService::punto)
                 .toList();
 
+        List<PanelDashboard.Prediccion> predicciones = predictionRepository
+                .findTop12ByOrderByGeneratedAtDesc().stream()
+                .map(p -> prediccion(p, ahora))
+                .toList();
+
         int alertas = (int) recientes.stream()
                 .filter(WaterQualitySample::isAlert)
                 .count();
 
         return new PanelDashboard(ahora, HORA_CON_SEGUNDOS.format(ahora),
-                recientes.size(), alertas, estaciones, mapaService.construir(estaciones), serie);
+                recientes.size(), alertas, estaciones, mapaService.construir(estaciones), serie,
+                predicciones);
     }
 
     /**
@@ -139,5 +154,21 @@ public class PanelDashboardService {
                 muestra.getTurbidityNtu(),
                 muestra.getTempC(),
                 muestra.getTdsPpm());
+    }
+
+    private static PanelDashboard.Prediccion prediccion(Prediction prediccion, Instant ahora) {
+        boolean evaluada = prediccion.getStatus() == PredictionStatus.EVALUATED;
+        return new PanelDashboard.Prediccion(
+                prediccion.getNodeId(),
+                prediccion.getHorizonHours(),
+                FormatosPanel.formatear(prediccion.getPredictedValue(), 2),
+                FECHA_HORA.format(prediccion.getTargetAt()),
+                FormatosPanel.hace(prediccion.getGeneratedAt(), ahora),
+                prediccion.getModelVersion(),
+                "synthetic".equals(prediccion.getDataSource()) ? "Datos sintéticos" : "Datos de campo",
+                evaluada ? "Evaluada" : "Pendiente",
+                evaluada ? FormatosPanel.formatear(prediccion.getObservedValue(), 2) : null,
+                evaluada ? FormatosPanel.formatear(prediccion.getError(), 2) : null,
+                evaluada);
     }
 }

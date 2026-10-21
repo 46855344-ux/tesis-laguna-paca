@@ -17,6 +17,15 @@ public interface WaterQualitySampleRepository
     List<WaterQualitySample> findByNodeIdOrderByRecordedAtDesc(String nodeId);
 
     /**
+     * Últimas {@code N} muestras de un nodo, sin cargar todo su historial.
+     * La usa el constructor de ventanas del ST-GNN.
+     */
+    List<WaterQualitySample> findByNodeIdOrderByRecordedAtDesc(String nodeId, Pageable pageable);
+
+    /** Búsqueda por identificador de muestra del dispositivo (idempotencia, RN-09). */
+    Optional<WaterQualitySample> findBySampleId(String sampleId);
+
+    /**
      * Última muestra conocida de un nodo, sin importar su antigüedad. El tablero
      * la usa para la tarjeta de la estación: si el nodo lleva días callado, la
      * tarjeta lo deja ver con el texto "hace X".

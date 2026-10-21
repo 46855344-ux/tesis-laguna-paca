@@ -32,6 +32,7 @@ import argparse
 import sys
 import time
 import warnings
+from datetime import datetime, timezone
 
 import numpy as np
 
@@ -47,6 +48,7 @@ from lagunapaca_gnn.graph import adjacency_to_edge_index, gaussian_adjacency, sp
 from lagunapaca_gnn.metrics import mean_absolute_error, r2_score, root_mean_squared_error
 from lagunapaca_gnn.model import SpatioTemporalGNN
 from lagunapaca_gnn.normalization import StandardScaler
+from lagunapaca_gnn.registry import HorizonArtifact, ModelBundle, new_version, save_bundle
 from lagunapaca_gnn.stations import PROVISIONAL_STATIONS, distance_matrix_km
 from lagunapaca_gnn.training import chronological_split, evaluate_model, train_model
 from lagunapaca_gnn.windows import build_windows
@@ -91,6 +93,11 @@ def parse_args(argv=None) -> argparse.Namespace:
     parser.add_argument(
         "--quiet", action="store_true",
         help="no imprime la pérdida de cada época")
+    parser.add_argument(
+        "--save", type=str, default=None,
+        help=("guarda un artefacto de inferencia en esta ruta "
+              "(por ejemplo artifacts/stgnn.pt); con --horizons 1 3 6 "
+              "el artefacto sirve los tres horizontes"))
     return parser.parse_args(argv)
 
 
@@ -134,10 +141,18 @@ def run_experiment(horizon: int, args: argparse.Namespace) -> dict:
 
     # La inicialización de los pesos también es aleatoria: hay que fijarla.
     torch.manual_seed(args.seed)
-    model = SpatioTemporalGNN(
-        num_variables=len(VARIABLE_NAMES), horizon=horizon,
-        hidden=args.hidden, tcn_levels=2, gcn_layers=1, heads=4,
-        dropout=0.1, target_index=TARGET_INDEX)
+    config = {
+        "num_variables": len(VARIABLE_NAMES),
+        "horizon": horizon,
+        "hidden": args.hidden,
+        "tcn_levels": 2,
+        "kernel_size": 3,
+        "gcn_layers": 1,
+        "heads": 4,
+        "dropout": 0.1,
+        "target_index": TARGET_INDEX,
+    }
+    model = SpatioTemporalGNN(**config)
 
     edge_index, edge_weight = build_graph()
     history = train_model(
@@ -170,6 +185,13 @@ def run_experiment(horizon: int, args: argparse.Namespace) -> dict:
         "scaler_std": scaler.std[TARGET_INDEX],
         "train_seconds": trained_at - started,
         "total_seconds": time.perf_counter() - started,
+        # Contexto necesario para guardar un artefacto de inferencia. No se
+        # imprime: solo lo consume --save.
+        "model": model,
+        "scaler": scaler,
+        "edge_index": edge_index,
+        "edge_weight": edge_weight,
+        "config": config,
     }
 
 
@@ -244,10 +266,39 @@ def main(argv=None) -> int:
     if all_meet and all_beat:
         print(f"RESULTADO: el criterio R² > {CRITERION_R2:.2f} se cumple y el "
               f"modelo supera la persistencia.")
+    else:
+        print(f"RESULTADO: el criterio R² > {CRITERION_R2:.2f} NO se cumple "
+              f"en todos los horizontes evaluados.", file=sys.stderr)
+
+    if args.save:
+        bundle = ModelBundle(
+            version=new_version(args.seed, args.input_len, args.epochs),
+            created_at=datetime.now(timezone.utc).isoformat(),
+            data_source="synthetic",
+            stations=tuple(station.id for station in PROVISIONAL_STATIONS),
+            variables=tuple(VARIABLE_NAMES),
+            input_len=args.input_len,
+            target_index=TARGET_INDEX,
+            horizons={
+                result["horizon"]: HorizonArtifact(
+                    horizon=result["horizon"],
+                    model=result["model"],
+                    scaler=result["scaler"],
+                    edge_index=result["edge_index"],
+                    edge_weight=result["edge_weight"],
+                    config=result["config"],
+                    metrics=result["metrics"],
+                )
+                for result in results
+            },
+        )
+        destino = save_bundle(args.save, bundle)
+        print(f"Artefacto guardado en {destino} (versión {bundle.version}, "
+              f"horizontes {sorted(bundle.horizons)})")
+
+    if all_meet and all_beat:
         return 0
 
-    print(f"RESULTADO: el criterio R² > {CRITERION_R2:.2f} NO se cumple "
-          f"en todos los horizontes evaluados.", file=sys.stderr)
     return 1
 
 

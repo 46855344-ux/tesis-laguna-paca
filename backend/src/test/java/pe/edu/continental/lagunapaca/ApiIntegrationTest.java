@@ -132,4 +132,19 @@ class ApiIntegrationTest {
                 .andExpect(jsonPath("$.alert").value(false))
                 .andExpect(jsonPath("$.alert_reasons").isEmpty());
     }
+
+    @Test
+    @DisplayName("las predicciones y el estado de la IA exigen JWT como el resto de la API")
+    void prediccionesSinTokenResponden401() throws Exception {
+        mockMvc.perform(post("/api/v1/predictions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"horizon_hours\":6}"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(get("/api/v1/predictions"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(get("/api/v1/ai/health"))
+                .andExpect(status().isUnauthorized());
+    }
 }

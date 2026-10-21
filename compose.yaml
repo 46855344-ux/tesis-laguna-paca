@@ -1,0 +1,104 @@
+# Servicios de la tesis: PostgreSQL + backend Spring Boot, con el servicio de
+# inferencia y el broker MQTT como perfiles opcionales.
+#
+#   docker compose up -d                                  # núcleo (sin IA)
+#   docker compose --profile integrated up -d --build     # núcleo + ST-GNN
+#   docker compose --profile integrated --profile mqtt up -d
+#
+# Copiar .env.example a .env y cambiar los secretos antes de usar el stack.
+# La IA no se publica al host: solo es accesible desde la red interna.
+
+name: laguna-paca
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME:-laguna_paca}
+      POSTGRES_USER: ${DB_USER:-laguna}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-laguna}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      # Solo para inspección local; el backend usa la red interna.
+      - "${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-laguna} -d ${DB_NAME:-laguna_paca}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/${DB_NAME:-laguna_paca}
+      DB_USER: ${DB_USER:-laguna}
+      DB_PASSWORD: ${DB_PASSWORD:-laguna}
+      JWT_SECRET: ${JWT_SECRET:?define JWT_SECRET en .env}
+      APP_USER: ${APP_USER:-admin}
+      APP_PASSWORD: ${APP_PASSWORD:?define APP_PASSWORD en .env}
+      # Servicio de IA: aunque no esté levantado, la ingesta y las alertas
+      # siguen funcionando; solo /predict y el botón del panel fallan con 503.
+      IA_BASE_URL: http://ai:8000
+      IA_INTERNAL_TOKEN: ${IA_INTERNAL_TOKEN:-}
+      MQTT_ENABLED: ${MQTT_ENABLED:-false}
+      MQTT_BROKER_URL: tcp://mqtt:1883
+      MQTT_TOPIC: ${MQTT_TOPIC:-laguna-paca/telemetry}
+      GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY:-}
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+
+  ai:
+    profiles: ["integrated"]
+    build:
+      context: ./ia-model
+    environment:
+      LAGUNA_MODEL_PATH: /app/artifacts/stgnn.pt
+      IA_INTERNAL_TOKEN: ${IA_INTERNAL_TOKEN:-}
+      PORT: "8000"
+    # Sin ports: el servicio es interno. El backend lo alcanza por la red de
+    # Compose con el nombre "ai".
+    expose:
+      - "8000"
+    healthcheck:
+      test:
+        - "CMD"
+        - "python"
+        - "-c"
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+  mqtt:
+    profiles: ["mqtt"]
+    image: eclipse-mosquitto:2
+    ports:
+      - "${MQTT_PORT:-1883}:1883"
+    volumes:
+      - ./deploy/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto-data:/mosquitto/data
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_sub -h localhost -t '$$SYS/#' -C 1 -W 3 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  mosquitto-data:

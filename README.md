@@ -7,9 +7,12 @@ muestra contra los límites de la **ECA-Agua** (pH entre 6.5 y 9.0), guarda el h
 avisa en un **panel web** y predice el pH a futuro con un **ST-GNN** (red espacio-temporal
 sobre el grafo de estaciones).
 
-> **Estado:** backend, firmware e IA funcionando de extremo a extremo. La app Android
-> todavía no está implementada. Los datos de entrenamiento del modelo son **sintéticos**:
-> el resultado demuestra la arquitectura, no el comportamiento real de la laguna.
+> **Estado:** backend, firmware e IA funcionando de extremo a extremo, con predicciones
+> persistidas y evaluadas contra mediciones reales. **327 pruebas** verdes (138 backend,
+> 38 firmware, 151 IA). La app Android todavía no está implementada. Los datos de
+> entrenamiento del modelo son **sintéticos**: el resultado demuestra la arquitectura,
+> no el comportamiento real de la laguna. El despliegue con Docker está configurado,
+> pero **no se ejecutó** en esta máquina (no hay Docker).
 
 ---
 
@@ -35,17 +38,17 @@ sobre el grafo de estaciones).
 ```
 ┌────────────────────┐   HTTP POST / MQTT    ┌──────────────────────────────┐
 │  Nodos ESP32       │ ────────────────────► │  Backend (Spring Boot)       │
-│  N1 … N4           │   payload JSON        │  · ingesta y validación      │
-│  pH, turbidez,     │   (pH, turbidez,      │  · regla ECA-Agua (alerta)   │
-│  temperatura, TDS  │    temp, TDS)         │  · PostgreSQL + Flyway       │
+│  N1 … N4           │   payload JSON +      │  · ingesta idempotente       │
+│  pH, turbidez,     │   sample_id           │  · regla ECA-Agua (alerta)   │
+│  temperatura, TDS  │                       │  · PostgreSQL + Flyway       │
 └────────────────────┘                       │  · API REST con JWT          │
                                              │  · panel web (Thymeleaf)     │
-                                             └──────────────┬───────────────┘
-                                                            │ series históricas
-                                                            ▼
+                                             └───────┬──────────────┬───────┘
+                                                     │              │ /predict
+                                     series históricas│              │ (red interna)
+                                                     ▼              ▼
                                              ┌──────────────────────────────┐
-                                             │  IA (Python + PyTorch        │
-                                             │  Geometric)                  │
+                                             │  IA (Python + FastAPI)       │
                                              │  ST-GNN: TCN + GCN +         │
                                              │  atención sobre el grafo de  │
                                              │  las 4 estaciones            │
@@ -53,7 +56,8 @@ sobre el grafo de estaciones).
 ```
 
 El **backend es la única fuente de verdad** de las reglas de negocio: el firmware solo
-mide y publica, el panel solo muestra el veredicto ya persistido.
+mide y publica, el panel solo muestra el veredicto ya persistido y el servicio de IA
+solo pronostica. Si la IA está caída, la ingesta y las alertas siguen funcionando.
 
 ### Stack
 
@@ -61,7 +65,7 @@ mide y publica, el panel solo muestra el veredicto ya persistido.
 |---|---|
 | Firmware | ESP32 (C++/Arduino, PlatformIO), deep sleep, HTTP y MQTT QoS 1 |
 | Backend | Java 21, Spring Boot 3.2, PostgreSQL 16, Flyway, JWT, Thymeleaf |
-| IA | Python 3.12, PyTorch (CPU), PyTorch Geometric, NumPy |
+| IA | Python 3.12, PyTorch (CPU), PyTorch Geometric, NumPy, FastAPI |
 | Móvil (pendiente) | Kotlin, Jetpack Compose, Firebase Cloud Messaging |
 
 ---
@@ -70,10 +74,11 @@ mide y publica, el panel solo muestra el veredicto ya persistido.
 
 | Módulo | Estado | Qué incluye |
 |---|---|---|
-| `backend/` | ✅ Completo (88 tests) | Ingesta HTTP y MQTT, alertas ECA-Agua, historial paginado, JWT, Flyway V1–V4, panel web, Swagger UI |
-| `iot-firmware/` | ✅ Completo (32 tests) | Núcleo portable C++11, sensores, calibración, deep sleep, JWT cacheado, transporte HTTP y MQTT |
-| `ia-model/` | ✅ Completo (134 tests) | Grafo, ventanas, ST-GNN, normalización, entrenamiento y experimento con R² medido |
+| `backend/` | ✅ Completo (138 tests) | Ingesta HTTP y MQTT idempotente, alertas ECA-Agua, historial paginado, JWT, Flyway V1–V5, panel web, predicciones y su evaluación, Swagger UI |
+| `iot-firmware/` | ✅ Completo (38 tests) | Núcleo portable C++11, sensores, calibración, deep sleep, JWT cacheado, transporte HTTP y MQTT, `sample_id` |
+| `ia-model/` | ✅ Completo (151 tests) | Grafo, ventanas, ST-GNN, normalización, entrenamiento, artefacto versionado y servicio FastAPI |
 | `android-app/` | ⬜ Vacío | Pendiente: tema Material 3, login, tablero, alertas y FCM |
+| Docker/CI | ⚙️ Configurado, no ejecutado | `compose.yaml`, Dockerfiles, workflow de CI, JaCoCo y Sonar (sin Docker/Sonar en la máquina) |
 
 ---
 
@@ -87,7 +92,7 @@ Los datos viven en memoria y **se borran al reiniciar**.
 - **JDK 21** (el JBR que trae IntelliJ sirve: `D:\Intellij\IntelliJ IDEA 2025.2.1\jbr`).
   ⚠️ No uses JDK 26: Spring Boot 3.2 no arranca con él.
 - **Maven 3.9** (o el Maven integrado de IntelliJ).
-- **Python 3.12** solo para el simulador de nodos (opcional).
+- **Python 3.12** para el simulador de nodos y el servicio de IA (ambos opcionales).
 
 ### 1. Arrancar
 
@@ -129,7 +134,21 @@ python tools/simulate_node.py --node-id N2 --scenario alert  # una estación con
 Escenarios: `normal`, `alert`, `limit` (pH exactamente 6.5 y 9.0, que **no** son alerta)
 y `mixed`. El simulador solo genera datos: quien decide si hay alerta es el backend.
 
-### 3. Desde IntelliJ IDEA
+### 3. Predicciones (opcional)
+
+El backend arranca sin la IA: la ingesta y las alertas no dependen de ella. Para generar
+predicciones, en otra terminal:
+
+```powershell
+cd ia-model
+.venv\Scripts\python.exe -m uvicorn serve:app --host 127.0.0.1 --port 8000
+```
+
+Comprueba `http://127.0.0.1:8000/health` (`model_loaded: true`) y pulsa «Generar
+predicción» en el tablero. El artefacto versionado es `ia-model/artifacts/stgnn.pt`.
+Sin IA, el panel muestra un aviso y no inventa valores.
+
+### 4. Desde IntelliJ IDEA
 
 1. `File → Open` → `E:\tesis-laguna-paca` (la raíz) y acepta cargar el proyecto Maven.
 2. `Project Structure → Project` → SDK **21** (`D:\Intellij\...\jbr`).
@@ -152,6 +171,7 @@ Panel renderizado en el servidor con Thymeleaf, en español, con sistema de dise
 | Tablero | `/panel` | Indicadores de 24 h, mapa de la laguna, tarjetas N1–N4 y gráfico |
 | Historial | `/panel/historial` | Muestras paginadas con filtros por estación, fecha, alerta y motivo |
 | Alertas | `/panel/alertas` | Muestras con alerta, pendientes por defecto; atender y reabrir con auditoría |
+| Predicciones | `/panel` (sección) | Generación a 1, 3 o 6 h, con origen sintético/campo y evaluación contra la medición real |
 | Datos (JSON) | `/panel/datos` | El mismo tablero en JSON, para el refresco cada 20 s |
 
 ### Mapa
@@ -184,8 +204,12 @@ Contrato en `backend/openapi.yaml`. Autenticación con **JWT** (`Authorization: 
 | Método | Ruta | Descripción |
 |---|---|---|
 | `POST` | `/api/v1/auth/token` | Obtiene el JWT con usuario y contraseña |
-| `POST` | `/api/v1/telemetry` | Ingesta una muestra (201) |
+| `POST` | `/api/v1/telemetry` | Ingesta una muestra (201; 200 si `sample_id` ya existía) |
 | `GET` | `/api/v1/telemetry` | Consulta paginada con filtros |
+| `POST` | `/api/v1/predictions` | Genera una predicción de pH a 1, 3 o 6 h |
+| `GET` | `/api/v1/predictions` | Histórico paginado de predicciones |
+| `GET` | `/api/v1/predictions/latest` | Últimas predicciones para el tablero |
+| `GET` | `/api/v1/ai/health` | Estado del servicio de IA (200 aunque esté caída) |
 
 Filtros de `GET /api/v1/telemetry`: `node_id`, `from`, `to` (ISO-8601), `alert`, `reason`,
 `code` (`PH_HIGH` / `PH_LOW`), `page`, `size`, `sort`.
@@ -193,8 +217,31 @@ Filtros de `GET /api/v1/telemetry`: `node_id`, `from`, `to` (ISO-8601), `alert`,
 ### Ingesta
 
 ```json
-{"node_id": "N1", "ph": 7.2, "turbidity_ntu": 15.4, "temp_c": 18.5, "tds_ppm": 320}
+{
+  "sample_id": "N1-3FA4C21B-17",
+  "node_id": "N1",
+  "ph": 7.2,
+  "turbidity_ntu": 15.4,
+  "temp_c": 18.5,
+  "tds_ppm": 320
+}
 ```
+
+`sample_id` es opcional y aditivo. Si se repite, la respuesta es **200** con la muestra
+original en vez de **201**: el reintento del nodo no duplica la medición. El firmware lo
+envía con un `bootId` aleatorio por arranque en frío y una secuencia que solo avanza al
+confirmar la entrega.
+
+### Predicciones
+
+```json
+{"horizon_hours": 6}
+```
+
+Devuelve cuatro filas (una por estación) con `model_run_id`, `predicted_value`,
+`model_version`, `data_source` (`synthetic`/`field`) y estado `PENDING`. Cuando llega una
+medición real dentro de ±30 min del objetivo, la fila pasa a `EVALUATED` con el valor
+observado y el error; el valor previsto **nunca** se reescribe.
 
 Regla ECA-Agua: hay alerta si **pH < 6.5** o **pH > 9.0**. Los valores 6.5 y 9.0 están
 dentro del rango y **no** generan alerta. Los motivos se guardan como
@@ -215,6 +262,8 @@ con las credenciales del broker. El payload es el mismo del ESP32.
 | `JWT_SECRET` | Firma de los tokens |
 | `APP_USER`, `APP_PASSWORD` | Usuario del panel |
 | `MQTT_*` | Ingesta MQTT (opcional) |
+| `IA_BASE_URL`, `IA_INTERNAL_TOKEN` | Servicio FastAPI (interno) |
+| `IA_CONNECT_TIMEOUT_MS`, `IA_READ_TIMEOUT_MS` | Timeouts de la IA (2 s / 15 s) |
 | `GOOGLE_MAPS_API_KEY` | Mapa de Google en el panel (opcional) |
 
 ---
@@ -231,12 +280,15 @@ Nodos con **PH-4502C** (pH), **TSW-20M** (turbidez), **DS18B20** (temperatura) y
 - `include/secrets.h` — credenciales WiFi y backend (**no se versiona**; copiar de
   `secrets.example.h`).
 - El JWT se cachea en memoria RTC (`RTC_DATA_ATTR`) para no autenticar en cada despertar.
+- Cada payload lleva `sample_id` (`N1-<bootId>-<secuencia>`), lo que hace idempotente el
+  reintento. La secuencia vive en RTC y solo avanza cuando el transporte confirma la
+  entrega; el `bootId` se renueva en cada arranque en frío.
 
 ```powershell
 $env:PATH="C:\Users\USER\AppData\Local\Programs\mingw64\bin;$env:PATH"
-pio test -e native        # 32 tests de la lógica, sin hardware
-pio run -e esp32dev       # firmware con transporte HTTP
-pio run -e esp32dev-mqtt  # firmware con transporte MQTT
+pio test -e native        # 38 tests de la lógica, sin hardware
+pio run -e esp32dev       # firmware con transporte HTTP (72.3 % de flash)
+pio run -e esp32dev-mqtt  # firmware con transporte MQTT (59.8 % de flash)
 pio run -e esp32dev -t upload
 ```
 
@@ -260,8 +312,8 @@ iguala a la línea base de persistencia.
 
 | Horizonte | R² persistencia | R² ST-GNN | RMSE (pH) | MAE (pH) |
 |---|---|---|---|---|
-| 1 h | 0.9676 | 0.9819 | — | — |
-| 3 h | 0.9009 | 0.9628 | — | — |
+| 1 h | 0.9675 | 0.9817 | 0.0296 | 0.0235 |
+| 3 h | 0.8986 | 0.9681 | 0.0391 | 0.0308 |
 | 6 h | 0.7403 | **0.9289** | 0.0584 | 0.0445 |
 
 Criterio de la tesis: **R² > 0.90**. Se cumple a 6 h y el modelo bate a la persistencia en
@@ -270,8 +322,14 @@ los tres horizontes; cuanto más largo el horizonte, más aporta el modelo.
 ```powershell
 .venv\Scripts\python.exe -m pytest
 .venv\Scripts\python.exe train_stgnn.py
-.venv\Scripts\python.exe train_stgnn.py --horizons 1 3 6
+.venv\Scripts\python.exe train_stgnn.py --horizons 1 3 6 --save artifacts\stgnn.pt
+.venv\Scripts\python.exe -m uvicorn serve:app --host 127.0.0.1 --port 8000
 ```
+
+El artefacto `artifacts/stgnn.pt` (~100 KB) guarda pesos, configuración, escalador,
+adyacencia y métricas. El servicio FastAPI lo carga al arrancar y expone `/health`,
+`/model` y `/predict`; sin artefacto, `/predict` responde 503. El detalle del contrato
+está en `docs/SDD/10-contrato-ia.md`.
 
 > ⚠️ `dataset.py` **simula** la dinámica (memoria AR(1), ciclo diario, correlación
 > espacial). El R² demuestra que la arquitectura aprende una dinámica espacio-temporal,
@@ -283,15 +341,22 @@ los tres horizontes; cuanto más largo el horizonte, más aporta el modelo.
 
 | Módulo | Comando | Tests |
 |---|---|---|
-| Backend | `mvn test` (con `JAVA_HOME` en JDK 21) | **88** |
-| Firmware | `pio test -e native` | **32** |
-| IA | `.venv\Scripts\python.exe -m pytest` | **134** |
+| Backend | `mvn test` (con `JAVA_HOME` en JDK 21) | **138** |
+| Firmware | `pio test -e native` | **38** |
+| IA | `.venv\Scripts\python.exe -m pytest` | **151** |
+| **Total** | | **327** |
 
+- Cobertura del backend (JaCoCo): **91.5 %** de instrucciones y **70.0 %** de ramas.
 - No hay Docker ni Testcontainers: la persistencia se prueba con **H2**.
 - El backend incluye tests de integración con contexto completo (arranque, seguridad,
-  panel y mapa), no solo pruebas por capa.
+  panel, mapa y predicciones), no solo pruebas por capa.
 - `train_stgnn.py` devuelve código de salida 1 si no se cumple el criterio, para encadenarlo
-  a un futuro CI.
+  al CI.
+- **No se ejecutaron** `docker compose build/up`, SonarQube, la CI en un runner ni
+  pruebas en hardware. La V5 sí se validó en PostgreSQL 16.9 embebido y
+  `docker compose config`. Además, `PostgresMigrationIT` (1 test) ejecuta las
+  migraciones contra PostgreSQL real y corre en el job `backend-postgres` del CI.
+  Se declara en `docs/SDD/26-limitaciones.md`.
 
 ---
 
@@ -300,19 +365,28 @@ los tres horizontes; cuanto más largo el horizonte, más aporta el modelo.
 ```
 .
 ├── backend/                 Spring Boot + API REST + panel web
-│   ├── src/main/java/       dominio, ingesta, alertas, seguridad, panel
-│   ├── src/main/resources/  templates, css, js, geo/laguna-paca.json, migraciones Flyway
-│   ├── src/test/java/       88 tests (unitarios, slice e integración)
+│   ├── src/main/java/       dominio, ingesta, alertas, predicciones, seguridad, panel
+│   ├── src/main/resources/  templates, css, js, geo/, migraciones Flyway V1–V5
+│   ├── src/test/java/       138 tests (unitarios, slice e integración)
 │   ├── tools/               simulador de nodo y fetch_laguna.py
+│   ├── Dockerfile
 │   └── openapi.yaml         contrato de la API
 ├── iot-firmware/            ESP32 (PlatformIO)
-│   ├── lib/lagunapaca_core/ lógica portable + tests nativos
+│   ├── lib/lagunapaca_core/ lógica portable + 38 tests nativos
 │   └── src/                 glue de Arduino, hardware y red
 ├── ia-model/                ST-GNN (Python 3.12, entorno .venv propio)
-│   ├── lagunapaca_gnn/      estaciones, grafo, ventanas, modelo, entrenamiento
+│   ├── lagunapaca_gnn/      estaciones, grafo, ventanas, modelo, registro, API
+│   ├── artifacts/           artefacto versionado + cómo regenerarlo
+│   ├── tests/               151 tests
+│   ├── serve.py             uvicorn
+│   ├── Dockerfile
 │   └── train_stgnn.py       experimento del criterio de la tesis
 ├── android-app/             (pendiente)
-├── docs/                    material de referencia (no versionado)
+├── deploy/                  configuración de Mosquitto
+├── docs/SDD/                documentación de diseño (versionada)
+├── docs/                    tesis y libros de referencia (no versionado)
+├── compose.yaml             PostgreSQL + backend + IA/MQTT opcionales
+├── .github/workflows/ci.yml CI
 └── AGENTS.md                decisiones técnicas y comandos detallados
 ```
 
@@ -332,28 +406,48 @@ los tres horizontes; cuanto más largo el horizonte, más aporta el modelo.
 - **Las coordenadas de las estaciones son provisionales** (derivadas de OpenStreetMap).
   Se reemplazan en `ia-model/lagunapaca_gnn/stations.py` y se regenera el mapa con
   `backend/tools/fetch_laguna.py`; el grafo y el mapa no pueden discrepar.
+- **Una predicción no es una medición.** Vive en `prediction`, declara su `data_source` y
+  se evalúa después; nunca cambia el veredicto ECA-Agua ni se escribe en la tabla de muestras.
+- **La IA no es una dependencia de la ingesta.** Si FastAPI está caído, se registra la
+  muestra y se aplica la alerta igual; solo se degrada la predicción.
+- **El reintento es idempotente.** `sample_id` + índice único parcial; un duplicado responde
+  200, no crea otra fila.
+- **El modelo se sirve desde un artefacto**, no se entrena al arrancar. Sin artefacto,
+  `/predict` responde 503 y no se inventan valores.
 
-El detalle de cada decisión (con el porqué y los contrastes medidos) está en `AGENTS.md`.
+El detalle de cada decisión (con el porqué y los contrastes medidos) está en `AGENTS.md` y
+en los ADR de `docs/SDD/`.
 
 ---
 
 ## Pendientes
 
-1. **App Android**: tema Material 3 con la misma paleta, login, tablero con mapa, alertas
+1. **Datos de campo**: reemplazar las estaciones provisionales y reentrenar el ST-GNN con
+   mediciones reales. Es el pendiente científico más importante.
+2. **Calibración de sensores** en laboratorio con soluciones buffer.
+3. **Validar el despliegue**: `docker compose build/up` y el workflow de CI en un
+   runner. La V5 ya se validó en PostgreSQL 16.9 embebido y `compose config`;
+   falta el contenedor real y construir las imágenes.
+4. **TLS**: firmware con `WiFiClientSecure`, backend en HTTPS y MQTT en 8883.
+5. **SonarQube** ejecutado sobre un servidor real (configuración lista).
+6. **App Android**: tema Material 3 con la misma paleta, login, tablero con mapa, alertas
    y notificaciones push (FCM).
-2. **Datos de campo**: reemplazar las estaciones provisionales y reentrenar el ST-GNN con
-   mediciones reales.
-3. **Calibración de sensores** en laboratorio.
-4. **TLS**: firmware con `WiFiClientSecure` y backend en HTTPS.
-5. **Neo4j**: la arquitectura lo prevé para el grafo, pero hoy la adyacencia se calcula en
-   `ia-model` y no se persiste en Neo4j.
-6. **CI** que ejecute los tres conjuntos de pruebas.
-7. Capítulos de la tesis y despliegue en producción.
+7. **Notificaciones**: hoy la alerta solo se ve en el panel y en la API.
+8. **Rotar la clave de Google** compartida durante el desarrollo y restringirla por referente.
+9. Capítulos de la tesis y despliegue en producción.
+
+No se usa Neo4j: con cuatro estaciones, la adyacencia se calcula en `ia-model` y vive en el
+artefacto. Se justificaría con decenas de cuerpos de agua y relaciones heterogéneas.
 
 ---
 
 ## Documentación
 
+- `docs/SDD/` — documentación de diseño del sistema (empieza por
+  [`docs/SDD/README.md`](docs/SDD/README.md)): visión, requisitos, arquitectura,
+  modelo de datos, contratos, seguridad, despliegue, pruebas, trazabilidad, riesgos,
+  deuda técnica, manuales, limitaciones, evidencias y 9 ADR.
 - `AGENTS.md` — decisiones técnicas, comandos y totales de pruebas (mantenerlo al día).
 - `backend/openapi.yaml` — contrato de la API.
-- `docs/` — tesis y libros de referencia (**no versionado**, ~257 MB).
+- `docs/` — tesis y libros de referencia (**no versionado**, ~257 MB; `docs/SDD/` es la
+  excepción versionada).

@@ -32,6 +32,11 @@ local.properties
 .DS_Store
 Thumbs.db
 
+# --- Salidas locales de build / análisis ---
+ia-model/artifacts-train.log
+iot-firmware/build-firmware.log
+.scannerwork/
+
 # --- Secretos y datos locales ---
 .env
 *.local
@@ -42,4 +47,6 @@ iot-firmware/include/secrets.h
 # --- Material de referencia ---
 # Tesis y bibliografia (257 MB de PDFs y libros de terceros): se consultan en
 # local y no se versionan, porque inflarian el repositorio sin aportar codigo.
-docs/
+docs/*
+# La documentacion de diseno del sistema (SDD) si es codigo del proyecto.
+!docs/SDD/

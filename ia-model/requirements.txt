@@ -15,3 +15,11 @@ pytest==9.1.1
 # --- PyTorch (ver la nota de arriba) ---
 torch==2.14.1+cpu
 torch_geometric==2.8.1
+
+# --- Servicio de inferencia (FastAPI) ---
+fastapi==0.115.12
+starlette==0.46.2
+uvicorn==0.34.0
+pydantic==2.14.1
+# httpx lo usa el TestClient de FastAPI en las pruebas de la API.
+httpx==0.28.1

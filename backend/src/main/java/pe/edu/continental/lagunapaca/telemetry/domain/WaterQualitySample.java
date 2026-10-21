@@ -31,6 +31,14 @@ public class WaterQualitySample {
     @Column(name = "node_id", nullable = false, length = 32)
     private String nodeId;
 
+    /**
+     * Identificador de muestra del dispositivo (RN-09). Opcional: los clientes
+     * antiguos siguen funcionando. Cuando llega, el índice único de la V5 impide
+     * que un reintento HTTP o un duplicado de MQTT QoS 1 cree otra fila.
+     */
+    @Column(name = "sample_id", length = 64)
+    private String sampleId;
+
     @Column(name = "ph", nullable = false)
     private double ph;
 
@@ -104,6 +112,14 @@ public class WaterQualitySample {
 
     public String getNodeId() {
         return nodeId;
+    }
+
+    public String getSampleId() {
+        return sampleId;
+    }
+
+    public void setSampleId(String sampleId) {
+        this.sampleId = sampleId;
     }
 
     public double getPh() {

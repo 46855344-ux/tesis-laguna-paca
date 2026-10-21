@@ -8,6 +8,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import pe.edu.continental.lagunapaca.prediction.service.AiContractException;
+import pe.edu.continental.lagunapaca.prediction.service.AiUnavailableException;
+import pe.edu.continental.lagunapaca.prediction.service.IncompleteWindowException;
+import pe.edu.continental.lagunapaca.prediction.service.PredictionService;
 
 import java.security.Principal;
 
@@ -25,13 +29,16 @@ public class PanelController {
     private final PanelDashboardService dashboardService;
     private final PanelHistorialService historialService;
     private final PanelAlertasService alertasService;
+    private final PredictionService predictionService;
 
     public PanelController(PanelDashboardService dashboardService,
                            PanelHistorialService historialService,
-                           PanelAlertasService alertasService) {
+                           PanelAlertasService alertasService,
+                           PredictionService predictionService) {
         this.dashboardService = dashboardService;
         this.historialService = historialService;
         this.alertasService = alertasService;
+        this.predictionService = predictionService;
     }
 
     /**
@@ -146,6 +153,37 @@ public class PanelController {
         alertasService.reabrir(id);
         redirect.addFlashAttribute("mensaje", "La alerta vuelve a la lista de pendientes.");
         return volverAFiltros(estacion, estado, desde, hasta, pagina, redirect);
+    }
+
+    /**
+     * Genera una predicción para las cuatro estaciones desde el panel.
+     *
+     * <p>Es un POST con CSRF: dispara una inferencia y escribe en la base. Si la
+     * IA no está disponible, el panel lo explica y el resto del tablero sigue
+     * funcionando; nunca se inventa un valor.</p>
+     */
+    @PostMapping("/panel/predicciones")
+    public String generarPrediccion(
+            @RequestParam(name = "horizonte", defaultValue = "6") String horizonte,
+            RedirectAttributes redirect) {
+
+        int horas;
+        try {
+            horas = Integer.parseInt(horizonte);
+        } catch (NumberFormatException ex) {
+            horas = -1;
+        }
+
+        try {
+            predictionService.generar(horas);
+            redirect.addFlashAttribute("mensaje",
+                    "Predicción generada para las cuatro estaciones a " + horas + " h.");
+        } catch (AiUnavailableException | AiContractException
+                 | IncompleteWindowException | IllegalArgumentException ex) {
+            redirect.addFlashAttribute("error",
+                    "No se pudo generar la predicción: " + ex.getMessage());
+        }
+        return "redirect:/panel";
     }
 
     /**

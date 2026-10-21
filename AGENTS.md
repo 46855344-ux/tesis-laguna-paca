@@ -4,9 +4,11 @@ Repositorio de tesis: **"Sistema de software e IoT con Redes Neuronales de Grafo
 
 ## Estado actual (importante)
 
-- `backend/` tiene el esqueleto Spring Boot + ingesta de telemetría (HTTP y MQTT), alertas ECA-Agua y consulta histórica, con Swagger UI, un **panel web Thymeleaf** con sistema de diseño propio y un simulador del nodo. `iot-firmware/` tiene el **núcleo portable** del nodo ESP32 (con tests). `ia-model/` está **completo de extremo a extremo**: estaciones, grafo, ventanas temporales, métricas, modelo ST-GNN (TCN + GCN + Attention), generador de serie sintética, normalización, entrenamiento y el experimento `train_stgnn.py` que **demuestra el criterio de la tesis** (`R² = 0.9289` a 6 h, contra `0.7403` de la línea base de persistencia; 134 tests con pytest). `android-app/` sigue **vacío**.
-- `docs/` está **sin trackear** y es material de referencia, no código.
-- No hay CI. Las carpetas vacías no se versionan en git hasta que contengan archivos.
+- `backend/` está **completo**: Spring Boot + ingesta de telemetría (HTTP y MQTT) **idempotente** (`sample_id`), alertas ECA-Agua, consulta histórica, **predicciones del ST-GNN persistidas y evaluadas**, Swagger UI, panel Thymeleaf y simulador del nodo. **138 tests.**
+- `iot-firmware/` tiene el **núcleo portable** del nodo ESP32, transporte HTTP y MQTT QoS 1, Deep Sleep y `sample_id`; **38 tests nativos** y ambas variantes compilan.
+- `ia-model/` está **completo de extremo a extremo**: estaciones, grafo, ventanas, modelo ST-GNN (TCN + GCN + Attention), dataset sintético, normalización, entrenamiento, **artefacto versionado** (`artifacts/stgnn.pt`) y **servicio FastAPI** (`serve.py`). **151 tests con pytest.** El criterio de la tesis se cumple con datos sintéticos (`R² = 0.9289` a 6 h, contra `0.7403` de persistencia).
+- `docs/SDD/` es la documentación de diseño (versionada; índice en `docs/SDD/README.md`). El resto de `docs/` es material de referencia y **no se versiona**.
+- Docker/Compose, CI y SonarQube están **configurados pero no ejecutados** en esta máquina (no hay motor Docker ni servidor Sonar). `docker compose config` sí se validó y las migraciones V1–V5 se ejecutaron en PostgreSQL 16.9 embebido. `android-app/` sigue **vacío**.
 
 ## Mapa de componentes (stack planificado)
 
@@ -364,7 +366,52 @@ contenedor de Google, el contorno propio sigue en el HTML como respaldo y la cla
 **no** viaja en el JSON de `/panel/datos`. `PanelMapaTest` (sin Spring) comprueba
 lo mismo sobre la serialización, que es donde se escaparía.
 
-**Total del backend: 88 tests.**
+**Total del backend: 138 tests.** Cobertura JaCoCo: **91.5 % de instrucciones**
+(5321/5813) y **70.0 % de ramas** (254/363).
+
+### Predicciones e IA (contrato que no se debe romper)
+
+- Paquete `prediction/`: entidad `Prediction` (tabla propia), `PredictionService`,
+  `PredictionWindowBuilder`, `PredictionEvaluator`, `AiClient` (`java.net.http`,
+  2 s de conexión / 15 s de lectura), `AiProperties`.
+- `POST /api/v1/predictions` genera 1, 3 o 6 h para las 4 estaciones y persiste
+  4 filas `PENDING` con el mismo `model_run_id`. Otro horizonte responde 400.
+- La evaluación ocurre al llegar una muestra real dentro de ±30 min del
+  `target_at`, en `REQUIRES_NEW`, y **nunca rompe la ingesta**. El valor previsto
+  no se reescribe; se guardan observado, error y fecha.
+- Si la IA está caída: 503; respuesta inválida: 502; ventana incompleta: 409.
+  **No se inventa ninguna predicción.**
+- El panel tiene `POST /panel/predicciones` (sesión + CSRF) y muestra origen
+  `synthetic`/`field`, estado y error. No cambia el badge ECA-Agua.
+  `PanelPrediccionesIntegrationTest` (8) fija sesión, CSRF, IA caída, evaluación
+  y estado vacío.
+
+### Idempotencia de la ingesta
+
+- `V5__predictions_and_idempotency.sql` añade `sample_id` y un índice único
+  **parcial** (`WHERE sample_id IS NOT NULL`), más la tabla `prediction`.
+- `TelemetryService.ingest` devuelve `IngestOutcome`: 201 si creó, 200 si ya
+  existía; el controlador decide. Un choque por concurrencia responde 409.
+- El firmware genera `N1-<bootId 8 hex>-<secuencia>` (`SampleIdentity`): `bootId`
+  aleatorio por arranque en frío y secuencia en RTC que **solo avanza al
+  confirmar la entrega**. Un reintento reutiliza el id.
+
+### Docker, CI y calidad
+
+- `backend/Dockerfile` (multi-etapa, JRE 21, usuario sin privilegios, `curl` para
+  el healthcheck) e `ia-model/Dockerfile` (PyTorch CPU, artefacto incluido).
+- `compose.yaml`: `db` + `backend` siempre; `ai` con perfil `integrated`; `mqtt`
+  con perfil `mqtt`. La IA **no publica puerto**; el backend la alcanza por la red
+  interna. `.env.example` documenta las variables.
+- `.github/workflows/ci.yml`: backend (`mvn test` + JaCoCo), IA (`pytest`) y
+  firmware (`pio test -e native`); job de Sonar opcional si existen los secretos.
+- La migración V1–V5 se validó en **PostgreSQL 16.9 embebido** (columnas, índice
+  parcial, restricciones y SQLSTATE 23505/23514) y `docker compose config`
+  resolvió los cuatro servicios con los dos perfiles. El IT
+  `PostgresMigrationIT` reproduce esas comprobaciones y el job
+  `backend-postgres` del CI lo ejecuta contra `postgres:16-alpine`. **No se
+  ejecutaron** `build/up` ni SonarQube: se declara en
+  `docs/SDD/26-limitaciones.md`.
 
 ## Firmware IoT (`iot-firmware/`) — comandos
 
@@ -400,14 +447,16 @@ Estructura y credenciales:
 - `include/secrets.h` — WiFi y backend (**no se versiona**, está en `.gitignore`). Copiar de `include/secrets.example.h`. Si falta, el firmware compila con credenciales de ejemplo y emite un `#warning`.
 - **El core debe seguir siendo C++11**: el framework Arduino del ESP32 compila con `gnu++11` (los tests nativos usan `gnu++17`). Una `struct` con inicializadores de miembro deja de ser agregado en C++11 y rompe `TelemetryNodeConfig{...}`; por eso esa estructura usa constructor explícito.
 - El nodo se autentica con `POST /api/v1/auth/token` y **cachea el JWT en memoria RTC** (`RTC_DATA_ATTR`) para no re-autenticar en cada despertar. Sin NTP, el vencimiento se lleva de forma monótona sumando el tiempo dormido.
+- **`sample_id`**: el nodo envía `N1-<bootId 8 hex>-<secuencia>` (`formatSampleId`, en `SampleIdentity.h`). El `bootId` se genera con `esp_random()` en cada arranque en frío y vive en RTC; la secuencia también vive en RTC y **solo avanza cuando el transporte confirma**. Así el reintento reutiliza el id y un corte de luz no choca con ids anteriores. `TelemetryNode::runOnce(const char* sampleId)` mantiene el payload histórico si el puntero es nulo.
 - `HTTPClient` es HTTP plano: en producción requiere TLS (`WiFiClientSecure` + huella/bundle de CA) y el backend en HTTPS.
-- Flash al 72 % (946 KB de 1310 KB) con `WiFi` + `HTTPClient` + `ArduinoJson`: si se agrega OTA, cambiar el esquema de particiones (`board_build.partitions`).
+- Flash al **72.3 %** (947 261 B de 1 310 720 B) con `WiFi` + `HTTPClient` + `ArduinoJson`: si se agrega OTA, cambiar el esquema de particiones (`board_build.partitions`).
 - El `#warning` de `secrets.h` hace que PowerShell devuelva salida con código 1 aunque el build sea `SUCCESS` (gcc escribe el warning en stderr).
 - **Canal de telemetría**: HTTP POST es el default; MQTT se activa con `-DLAGUNA_TELEMETRY_MQTT` (entorno `esp32dev-mqtt`) o descomentando el `#define` en `include/config.h` (para Arduino IDE). Ambos implementan `laguna::TelemetryTransport`, así que el núcleo no cambia.
 - La vía MQTT usa `256dpi/MQTT` (arduino-mqtt) con **QoS 1**, coherente con `MQTT_QOS=1` del backend: el nodo solo da la muestra por entregada cuando llega el PUBACK. PubSubClient **no** sirve para esto porque solo publica con QoS 0.
 - Tópico MQTT: `laguna-paca/telemetry`, debe coincidir con `app.mqtt.topic`. El canal MQTT **no usa JWT**: se autentica con las credenciales del broker (nuevas variables `MQTT_BROKER_HOST`, `MQTT_USERNAME`, `MQTT_PASSWORD` en `secrets.h`).
 - El client id MQTT se construye con `buildMqttClientId()` (núcleo, testeado): `lp-<8 hex de la MAC>-<nodeId>`, recortado a **23 bytes** porque MQTT 3.1.1 solo obliga al broker a aceptar ese largo. La MAC va antes del node id para que el recorte nunca sacrifique la unicidad.
-- Presupuesto de flash: **HTTP 72.4 %** (948 KB) vs **MQTT 60.1 %** (787 KB). La vía HTTP arrastra `HTTPClient` + `WiFiClientSecure` + bundle de CA. `build_src_filter` excluye de cada entorno el transporte que no usa.
+- Presupuesto de flash: **HTTP 72.3 %** (947 261 B) vs **MQTT 59.8 %** (784 321 B). La vía HTTP arrastra `HTTPClient` + `WiFiClientSecure` + bundle de CA. `build_src_filter` excluye de cada entorno el transporte que no usa.
+- **38 tests nativos** (32 previos + 6 de `sample_id` y del payload con id). Los tests del nodo cubren también que una muestra inválida **no** se envíe con id.
 
 ## Modelo de IA (`ia-model/`) — comandos
 
@@ -421,7 +470,7 @@ ia-model\.venv\Scripts\python.exe -m pip install torch==2.14.1+cpu --index-url h
 ia-model\.venv\Scripts\python.exe -m pip install torch_geometric
 ```
 
-Versiones instaladas (en `requirements.txt`): torch 2.14.1+cpu, torch_geometric 2.8.1, numpy 2.5.4, pytest 9.1.1.
+Versiones instaladas (en `requirements.txt`): torch 2.14.1+cpu, torch_geometric 2.8.1, numpy 2.5.4, pytest 9.1.1, fastapi 0.115.12, starlette 0.46.2, uvicorn 0.34.0, pydantic 2.14.1, httpx 0.28.1.
 
 Comandos (desde `ia-model/`):
 
@@ -431,6 +480,8 @@ Comandos (desde `ia-model/`):
 | Un solo archivo | `.venv\Scripts\python.exe -m pytest tests/test_graph.py` |
 | Experimento del criterio de la tesis | `.venv\Scripts\python.exe train_stgnn.py` |
 | Experimento en varios horizontes | `.venv\Scripts\python.exe train_stgnn.py --horizons 1 3 6` |
+| Entrenar y guardar el artefacto | `.venv\Scripts\python.exe train_stgnn.py --horizons 1 3 6 --save artifacts\stgnn.pt` |
+| Servicio de inferencia | `.venv\Scripts\python.exe -m uvicorn serve:app --host 127.0.0.1 --port 8000` |
 
 Estructura y decisiones:
 
@@ -445,16 +496,21 @@ Estructura y decisiones:
 - `lagunapaca_gnn/dataset.py` — generador de la serie **sintética** `(estaciones, tiempo, variables)`. No reutiliza `backend/tools/simulate_node.py` porque ese genera **muestras independientes**: sirve para probar la ingesta y las alertas, pero no da nada que un modelo temporal pueda aprender. Aquí sí hay las tres propiedades que el ST-GNN necesita: **memoria temporal** (proceso AR(1)), **ciclo diario** (el pH con amplitud marcada: en un lago eutrófico sube de día por la fotosíntesis y baja de noche por la respiración) y **correlación espacial** (cada estación mezcla su proceso con el de sus vecinas vía la adyacencia gaussiana; sin esto el GCN sería decorativo). Los datos están marcados como simulación en el propio docstring: un R² alto aquí **valida la arquitectura**, no el comportamiento real de la laguna.
 - `lagunapaca_gnn/normalization.py` — `StandardScaler` por variable. Sin normalizar, el TDS (≈320 ppm) domina el gradiente y el pH (≈7) se vuelve invisible: medido en este proyecto, el R² pasó de **−0.02 a 0.79** solo con estandarizar. Regla que no se rompe: la media y la desviación se calculan **solo con el conjunto de entrenamiento**.
 - `lagunapaca_gnn/training.py` — `chronological_split`, `train_model`, `predict` y `evaluate_model`. La partición es **cronológica y con hueco** (igual al tamaño de la ventana de entrada): las ventanas se solapan, así que sin hueco la última de entrenamiento compartiría instantes con la primera de prueba. `evaluate_model` acepta el `scaler` para devolver las métricas a unidades reales (el R² es invariante a la escala, pero un RMSE en desviaciones típicas no le dice nada a nadie).
-- `train_stgnn.py` — el experimento ejecutable: simula, construye el grafo, parte, estandariza, entrena, evalúa **y compara contra la línea base trivial** de repetir el último pH. Devuelve código de salida 1 si el criterio no se cumple, para poder encadenarlo a un futuro CI.
+- `train_stgnn.py` — el experimento ejecutable: simula, construye el grafo, parte, estandariza, entrena, evalúa **y compara contra la línea base trivial** de repetir el último pH. Devuelve código de salida 1 si el criterio no se cumple, para poder encadenarlo al CI. Con `--save` guarda el artefacto y devuelve en el resultado el contexto (`model`, `scaler`, `edge_index`, `edge_weight`, `config`).
+- `artifacts/stgnn.pt` (~100 KB) — artefacto versionado para que la demo y Compose funcionen sin entrenar. `artifacts/README.md` explica cómo regenerarlo y declara que es sintético.
   - **Resultado medido** (semilla 42, 2000 pasos, ventana 24 h, 150 épocas, 1478 ventanas de entrenamiento y 469 de prueba):
 
     | Horizonte | R² persistencia | R² ST-GNN | RMSE (pH) | MAE (pH) |
     |---|---|---|---|---|
-    | 1 h | 0.9676 | 0.9819 | — | — |
-    | 3 h | 0.9009 | 0.9628 | — | — |
+    | 1 h | 0.9675 | 0.9817 | 0.0296 | 0.0235 |
+    | 3 h | 0.8986 | 0.9681 | 0.0391 | 0.0308 |
     | 6 h | 0.7403 | **0.9289** | 0.0584 | 0.0445 |
 
     El criterio (`R² > 0.90`) se cumple con holgura en el escenario principal (6 h) y el modelo **bate a la persistencia en los tres horizontes**. Cuanto más largo el horizonte, más aporta el modelo: a 1 h la persistencia ya es casi perfecta, a 6 h se desmorona (0.74) y la ST-GNN se mantiene en 0.93.
+- `lagunapaca_gnn/registry.py` — formato del artefacto (`FORMAT_VERSION = 1`): pesos, configuración, escalador, adyacencia, métricas y `data_source`. `new_version` produce `stgnn-synthetic-s{seed}-i{input_len}-e{epochs}`. `torch.load(..., weights_only=False)` es deliberado: el archivo contiene arrays de NumPy y lo produce el propio proyecto.
+- `lagunapaca_gnn/api.py` — contrato FastAPI: `/health` (público, 200 aunque falte el modelo), `/model` y `/predict` (token `X-Internal-Token` si está configurado). Valida forma `[4][24][4]`, finitos, `base_time` con zona y horizonte entrenado. Sin artefacto, `/predict` responde 503; no se inventan valores.
+- `serve.py` — `app` para uvicorn; lee `PORT`, `LAGUNA_MODEL_PATH` e `IA_INTERNAL_TOKEN`. El modelo se carga al arrancar, **no se entrena al arrancar**.
+- `requirements.txt` incluye FastAPI 0.115.12, Starlette 0.46.2, Uvicorn 0.34.0, Pydantic 2.14.1 y httpx 0.28.1 (este último para el `TestClient`). **151 tests** en total (134 previos + 6 de `test_registry.py` + 11 de `test_api.py`).
 - `pyproject.toml` fija `pythonpath = ["."]` para que pytest importe `lagunapaca_gnn` sin instalarlo.
 - `lagunapaca_gnn/__init__.py` **no reexporta** el modelo a propósito: importar el paquete no debe arrastrar PyTorch. Se usa `from lagunapaca_gnn.model import SpatioTemporalGNN`.
 - **El criterio de la tesis ya se demuestra de extremo a extremo con datos sintéticos**: `.venv\Scripts\python.exe train_stgnn.py` entrena y reporta `R² = 0.9289` a 6 h contra `0.7403` de la persistencia. Lo que falta no es código de entrenamiento, son **datos de campo**: `dataset.py` simula una dinámica que elegimos nosotros, así que el R² demuestra que la arquitectura aprende una dinámica espacio-temporal, **no** que prediga la laguna real.
@@ -469,6 +525,6 @@ Hardware de desarrollo (**importante para planificar**): Ryzen 5 2500U, 10.9 GB 
 - `README.md` es la puerta de entrada para humanos (arranque de la demo, estado de los
   módulos, resultados y pendientes). Si cambia el arranque, un total de pruebas o el
   estado de un módulo, actualiza el README junto con este archivo.
-- `docs/` es material binario de referencia (tesis y libros), **no código**. `docs/LIBROS/` contiene libros de consulta (Spring Boot, Neo4j, ESP32, GNN). Las herramientas de lectura no extraen PDF/DOCX directamente: DOCX/PPTX son ZIP y hay que descomprimirlos para leer su XML de texto.
+- `docs/` es material binario de referencia (tesis y libros), **no código**, salvo `docs/SDD/`, que es la documentación de diseño versionada (índice + 00–28 + 9 ADR). `docs/LIBROS/` contiene libros de consulta (Spring Boot, Neo4j, ESP32, GNN). Las herramientas de lectura no extraen PDF/DOCX directamente: DOCX/PPTX son ZIP y hay que descomprimirlos para leer su XML de texto.
 - Los comandos de build/test de cada módulo están documentados arriba (backend y firmware). Si agregas scripts o tareas nuevas, documéntalas aquí.
 - Git remoto: `origin` → `https://github.com/46855344-ux/tesis-laguna-paca.git`, rama única `main`.

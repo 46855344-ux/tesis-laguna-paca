@@ -54,8 +54,14 @@ public:
                   const TdsCalibration& tdsCalibration,
                   TelemetryTransport& transport);
 
-    /** Ejecuta un ciclo completo de medicion y envio. */
-    Outcome runOnce();
+    /**
+     * Ejecuta un ciclo completo de medicion y envio.
+     *
+     * @param sampleId identificador unico de la muestra (ver
+     *                 :func:`formatSampleId`). Si es nulo, el payload omite el
+     *                 campo y conserva el contrato historico.
+     */
+    Outcome runOnce(const char* sampleId = nullptr);
 
     const TelemetrySample& lastSample() const { return lastSample_; }
     const std::string& lastPayload() const { return lastPayload_; }

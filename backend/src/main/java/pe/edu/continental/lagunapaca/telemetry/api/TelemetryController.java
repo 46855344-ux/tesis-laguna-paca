@@ -6,14 +6,15 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import pe.edu.continental.lagunapaca.telemetry.domain.AlertCode;
+import pe.edu.continental.lagunapaca.telemetry.service.IngestOutcome;
 import pe.edu.continental.lagunapaca.telemetry.service.TelemetryQuery;
 import pe.edu.continental.lagunapaca.telemetry.service.TelemetryService;
 
@@ -32,10 +33,16 @@ public class TelemetryController {
         this.telemetryService = telemetryService;
     }
 
+    /**
+     * Ingesta una muestra. Responde 201 si se creó y 200 si el {@code sample_id}
+     * ya existía: el reintento es idempotente, no un error.
+     */
     @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public TelemetryResponse ingest(@Valid @RequestBody TelemetryRequest request) {
-        return telemetryService.ingest(request);
+    public ResponseEntity<TelemetryResponse> ingest(@Valid @RequestBody TelemetryRequest request) {
+        IngestOutcome outcome = telemetryService.ingest(request);
+        return ResponseEntity
+                .status(outcome.created() ? HttpStatus.CREATED : HttpStatus.OK)
+                .body(outcome.response());
     }
 
     @GetMapping

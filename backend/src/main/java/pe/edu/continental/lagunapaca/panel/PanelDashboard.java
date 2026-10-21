@@ -35,7 +35,10 @@ public record PanelDashboard(
         PanelMapa mapa,
 
         /** Puntos de las últimas 24 h, en orden cronológico. */
-        List<Punto> serie
+        List<Punto> serie,
+
+        /** Últimas predicciones del ST-GNN, de la más reciente a la más antigua. */
+        List<Prediccion> predicciones
 ) {
 
     public Instant getActualizadoEn() {
@@ -64,6 +67,10 @@ public record PanelDashboard(
 
     public List<Punto> getSerie() {
         return serie;
+    }
+
+    public List<Prediccion> getPredicciones() {
+        return predicciones;
     }
 
     /** Estaciones con al menos una muestra alguna vez (para el KPI "x / 4"). */
@@ -195,5 +202,71 @@ public record PanelDashboard(
             double temperatura,
             double tds
     ) {
+    }
+
+    /**
+     * Predicción ya formateada para la tarjeta.
+     *
+     * <p>Se muestra <strong>aparte</strong> de las mediciones y con su origen
+     * explícito: un valor previsto nunca se pinta como si fuera un sensor. Si el
+     * modelo se entrenó con datos sintéticos, la tarjeta lo dice.</p>
+     */
+    public record Prediccion(
+            String estacion,
+            int horizonte,
+            String phPrevisto,
+            String objetivo,
+            String generadoHace,
+            String modelo,
+            String origen,
+            String estado,
+            String phObservado,
+            String error,
+            boolean evaluada
+    ) {
+
+        public String getEstacion() {
+            return estacion;
+        }
+
+        public int getHorizonte() {
+            return horizonte;
+        }
+
+        public String getPhPrevisto() {
+            return phPrevisto;
+        }
+
+        public String getObjetivo() {
+            return objetivo;
+        }
+
+        public String getGeneradoHace() {
+            return generadoHace;
+        }
+
+        public String getModelo() {
+            return modelo;
+        }
+
+        public String getOrigen() {
+            return origen;
+        }
+
+        public String getEstado() {
+            return estado;
+        }
+
+        public String getPhObservado() {
+            return phObservado;
+        }
+
+        public String getError() {
+            return error;
+        }
+
+        public boolean isEvaluada() {
+            return evaluada;
+        }
     }
 }

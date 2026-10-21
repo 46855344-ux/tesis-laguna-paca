@@ -12,6 +12,9 @@
 
 #include <Arduino.h>
 #include <WiFi.h>
+#include <esp_random.h>
+
+#include <string>
 
 #include "config.h"
 
@@ -40,6 +43,7 @@
 #endif
 
 #include "lagunapaca/DeepSleepPolicy.h"
+#include "lagunapaca/SampleIdentity.h"
 #include "lagunapaca/TelemetryNode.h"
 
 using laguna::DeepSleepPolicy;
@@ -94,6 +98,29 @@ TelemetryNode g_node(g_nodeConfig,
 /** Contador de ciclos, en RTC para que sobreviva al Deep Sleep. */
 RTC_DATA_ATTR std::uint32_t g_cycle = 0;
 
+/**
+ * Identidad de las muestras.
+ *
+ * ``g_bootId`` se renueva solo en arranque en frio (cuando la magia de RTC no
+ * esta puesta) y ``g_sequence`` avanza solo cuando el transporte confirma la
+ * entrega. Asi un reintento reutiliza el mismo ``sample_id`` y el backend no
+ * duplica la muestra; tras un corte de energia la secuencia vuelve a cero pero
+ * el ``bootId`` es nuevo, de modo que no choca con identificadores anteriores.
+ */
+RTC_DATA_ATTR std::uint32_t g_bootId = 0;
+RTC_DATA_ATTR std::uint32_t g_sequence = 0;
+RTC_DATA_ATTR std::uint32_t g_bootMagic = 0;
+constexpr std::uint32_t kBootMagic = 0x4C504143;  // "LPAC"
+
+void ensureSampleIdentity() {
+    if (g_bootMagic == kBootMagic) {
+        return;
+    }
+    g_bootMagic = kBootMagic;
+    g_bootId = esp_random();
+    g_sequence = 0;
+}
+
 const char* describeWakeCause() {
     switch (esp_sleep_get_wakeup_cause()) {
         case ESP_SLEEP_WAKEUP_TIMER:
@@ -134,6 +161,7 @@ void setup() {
     delay(SERIAL_WARMUP_MILLIS);  // espera al adaptador USB-serie
 
     ++g_cycle;
+    ensureSampleIdentity();
     const std::uint32_t activeStart = millis();
 
     Serial.printf("\n=== Nodo %s | ciclo #%lu | despertar por %s ===\n",
@@ -158,7 +186,14 @@ void setup() {
     if (!online) {
         Serial.println("[wifi] sin conexion: se omite el envio, la muestra se descarta");
     } else {
-        logOutcome(g_node.runOnce());
+        const std::string sampleId = laguna::formatSampleId(NODE_ID, g_bootId, g_sequence);
+        Serial.printf("[nodo] muestra %s\n", sampleId.c_str());
+        const TelemetryNode::Outcome outcome = g_node.runOnce(sampleId.c_str());
+        logOutcome(outcome);
+        if (outcome == TelemetryNode::Outcome::Sent) {
+            // Solo avanza cuando el servidor confirmo: el reintento reutiliza el id.
+            ++g_sequence;
+        }
         WiFi.disconnect(true);
     }
 
