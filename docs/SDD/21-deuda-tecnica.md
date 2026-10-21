@@ -17,7 +17,7 @@ entrega.
 | DT-10 | `HTTPClient` sin TLS en el nodo | Tráfico interceptable | Alta | Requiere hardware y CA |
 | DT-11 | Calibración nominal de sensores | Medidas no confiables | Alta | Requiere laboratorio |
 | DT-12 | Coordenadas provisionales | El grafo no es el real | Alta | Requiere campaña de campo |
-| DT-13 | Modelo entrenado con sintético | No valida la laguna | Alta | No hay datos de campo |
+| DT-13 | Modelo entrenado con sintético | No valida la laguna | Alta | Cargador `--csv` listo; faltan datos de campo |
 | DT-14 | Sin prueba de carga | Límite desconocido | Baja | Sin operación real |
 | DT-15 | Sin OTA en el firmware | Actualización manual | Baja | Cambia particiones |
 | DT-16 | Sin CSP ni cabeceras de seguridad | Defensa en profundidad | Baja | No hay despliegue público |

@@ -13,8 +13,10 @@ demuestra que la arquitectura aprende una dinámica espacio-temporal; **no**
 demuestra que prediga la Laguna de Paca.
 
 **Cómo se resuelve:** campaña de muestreo, reentrenamiento y artefacto con
-`data_source = field`. Hasta entonces, toda cifra debe llevar la etiqueta
-«sintético».
+`data_source = field`. El cargador `lagunapaca_gnn/field_data.py` y el comando
+`train_stgnn.py --csv` ya existen y están probados con *fixtures*, pero **no hay
+mediciones de campo recolectadas**. Hasta entonces, toda cifra debe llevar la
+etiqueta «sintético».
 
 ### L-02 · Coordenadas provisionales
 
@@ -92,6 +94,14 @@ El firmware se compila y se prueba en el host con dobles. No se validó:
 `android-app/` está vacío. El contrato REST está listo, pero no hay cliente
 móvil, notificaciones push ni tema Material 3.
 
+### L-11 · Cargador de campo probado solo con *fixtures*
+
+`field_data.py` y `train_stgnn.py --csv` están cubiertos por 19 tests y por una
+prueba manual de extremo a extremo, pero todos los CSV usados se generaron a
+partir de la simulación o son fixtures. No se ha cargado una campaña real, así
+que no se conoce el comportamiento con huecos, deriva de sensores o errores de
+campo. Esta limitación se cierra con la primera campaña de muestreo.
+
 ## 26.3 Limitaciones de seguridad
 
 - **Sin TLS** en backend ni MQTT: no apto para internet.
@@ -139,8 +149,9 @@ Para no dejar una impresión solo negativa:
 3. El panel opera sin internet y sin JavaScript para lo esencial.
 4. El ST-GNN se entrena, se guarda como artefacto y se sirve por HTTP.
 5. El backend integra la IA sin acoplarse: si falla, el monitoreo continúa.
-6. Las predicciones se evalúan contra mediciones reales y guardan el error.
-7. 327 pruebas automatizadas pasan en esta máquina.
+6. Las predicciones se evalúan contra muestras posteriores y guardan el error; en la demo esas muestras las genera el simulador.
+7. 348 pruebas automatizadas pasan en esta máquina.
+8. El canal de carga de CSV de campo existe, valida el contrato y produce un artefacto `field`; lo que falta son las mediciones reales.
 
 ## 26.8 Cómo citar estas limitaciones
 

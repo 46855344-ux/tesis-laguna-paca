@@ -11,11 +11,11 @@ sin PostgreSQL instalado, sin SonarQube. Las migraciones se validaron con un
 |---|---|---|---|
 | Backend | 88 | **138** | +50 |
 | Firmware | 32 | **38** | +6 |
-| IA | 134 | **151** | +17 |
-| **Total** | **254** | **327** | **+73** |
+| IA | 134 | **172** | +38 |
+| **Total** | **254** | **348** | **+94** |
 
 Además de la suite por defecto, `PostgresMigrationIT` (1 test) se ejecuta con
-PostgreSQL real; con él, el total es **328**.
+PostgreSQL real; con él, el total es **349**.
 
 ## 28.2 Comandos y resultados
 
@@ -61,7 +61,7 @@ cd ia-model
 .venv\Scripts\python.exe -m pytest -q
 ```
 
-Resultado: **151 passed**, 2 warnings, 562 s.
+Resultado: **172 passed**, 2 warnings, 207 s.
 
 Artefacto:
 
@@ -80,6 +80,29 @@ Artefacto:
 - Artefacto: `artifacts/stgnn.pt`, **102 635 bytes**, versión
   `stgnn-synthetic-s42-i24-e150`, horizontes `[1, 3, 6]`.
 - Ventanas: 1482/470 (1 h), 1480/470 (3 h), 1478/469 (6 h).
+
+### Importación de datos de campo (canal, no evidencia de campo)
+
+```powershell
+.venv\Scripts\python.exe -m pytest tests\test_field_data.py -q
+```
+
+Resultado: **19 passed**. Cubre CSV válido, promedio horario, UTC obligatorio,
+nodo/columna/valor inválido, duplicado, rango común, estación sin datos y huecos
+interpolados solo con permiso explícito.
+
+También se ejecutó el camino completo con un CSV **temporal generado a partir de
+la serie sintética** (200 h, 800 filas), solo para comprobar que el canal
+`--csv` produce un artefacto de campo:
+
+```powershell
+.venv\Scripts\python.exe train_stgnn.py --csv <temporal>\campo.csv --horizons 1 --input-len 12 --epochs 3 --hidden 8 --quiet --save <temporal>\campo.pt
+```
+
+Resultado: artefacto `stgnn-field-s42-i12-e3-d96f271ed`, `data_source = field`,
+estaciones `N1`…`N4`, horizontes `[1]`. El R² de ese fixture (0.8903 a 1 h) **no
+es un resultado de la laguna** y no se reporta como tal; el criterio no se
+cumple con ese recorte. El artefacto quedó fuera del repositorio.
 
 ### Sintaxis de configuración
 
@@ -152,7 +175,7 @@ que las imágenes construyan ni que los healthchecks funcionen.
 | GitHub Actions | Sin runner conectado | Workflow escrito (incluye job PostgreSQL); IT ejecutado en local |
 | Prueba en placa ESP32 | Sin hardware | Firmware compila y tests nativos pasan |
 | Calibración de sensores | Sin laboratorio | Valores nominales |
-| Datos de campo | Sin campaña de muestreo | Modelo sintético |
+| Datos de campo | Sin campaña de muestreo | Cargador `--csv` probado; sin mediciones reales |
 | Prueba de carga | Sin entorno representativo | No medida |
 | Auditoría de accesibilidad | Sin herramienta | Contrastes medidos a mano |
 | Prueba de penetración | Sin alcance | No realizada |
@@ -180,11 +203,12 @@ que las imágenes construyan ni que los healthchecks funcionen.
 ### IA
 
 - `lagunapaca_gnn/registry.py`
+- `lagunapaca_gnn/field_data.py`
 - `lagunapaca_gnn/api.py`
 - `serve.py`
-- `train_stgnn.py` (`--save`, contexto)
+- `train_stgnn.py` (`--save`, `--csv`, contexto)
 - `artifacts/stgnn.pt`, `artifacts/README.md`
-- `tests/test_registry.py`, `tests/test_api.py`
+- `tests/test_registry.py`, `tests/test_api.py`, `tests/test_field_data.py`
 - `requirements.txt`, `Dockerfile`, `.dockerignore`
 
 ### Firmware
@@ -211,13 +235,17 @@ que las imágenes construyan ni que los healthchecks funcionen.
 2. Para PostgreSQL: definir `POSTGRES_URL`, `POSTGRES_USER` y
    `POSTGRES_PASSWORD` y ejecutar `mvn -Dtest=PostgresMigrationIT test` desde
    `backend/`.
-3. Seguir `22-guia-de-demostracion.md` para el flujo funcional.
-4. Comparar los totales con la tabla 28.1.
-5. Si algo difiere, revisar la versión del JDK (21), de Python (3.12) y de las
+3. Para el canal de campo, usar un CSV con el contrato de `10-contrato-ia.md` y
+   ejecutar `train_stgnn.py --csv`; no etiquetar como campo un archivo simulado.
+4. Seguir `22-guia-de-demostracion.md` para el flujo funcional.
+5. Comparar los totales con la tabla 28.1.
+6. Si algo difiere, revisar la versión del JDK (21), de Python (3.12) y de las
    dependencias de `requirements.txt`.
 
 ## 28.7 Declaración
 
 Los resultados de este registro se obtuvieron ejecutando los comandos
 indicados. No se reportan como ejecutados los que aparecen en 28.3. Las métricas
-del modelo corresponden a datos sintéticos y así deben citarse.
+del modelo corresponden a datos sintéticos y así deben citarse. El CSV usado
+para validar `--csv` se generó a partir de la simulación: **no es una medición
+de campo** y no se presenta como evidencia de la laguna.

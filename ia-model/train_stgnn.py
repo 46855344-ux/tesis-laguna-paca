@@ -19,11 +19,18 @@ Uso (desde ``ia-model/``)::
     .venv\\Scripts\\python.exe train_stgnn.py
     .venv\\Scripts\\python.exe train_stgnn.py --horizons 1 3 6
     .venv\\Scripts\\python.exe train_stgnn.py --horizon 6 --epochs 300
+    .venv\\Scripts\\python.exe train_stgnn.py --csv datos\\campo.csv --max-gap-hours 2
+
+Con ``--csv`` el origen es un archivo de campo: se remuestrea a horas, se
+recorta al rango común y se entrena con ese contenido. El R² obtenido describe
+**ese conjunto**, no la laguna en general; la cobertura y la calidad del CSV son
+parte del resultado.
 
 .. warning::
 
-   Los datos son **sintéticos**. Un R² alto aquí valida la arquitectura y el
-   procedimiento, no el comportamiento real de la Laguna de Paca.
+   Los datos sintéticos no son mediciones de la laguna. Un R² alto con ellos
+   valida la arquitectura y el procedimiento, no el comportamiento real de la
+   Laguna de Paca. Los datos de campo deben provenir de los sensores instalados.
 """
 
 from __future__ import annotations
@@ -44,6 +51,7 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 import torch
 
 from lagunapaca_gnn.dataset import VARIABLE_NAMES, simulate_lagoon
+from lagunapaca_gnn.field_data import load_field_csv
 from lagunapaca_gnn.graph import adjacency_to_edge_index, gaussian_adjacency, sparsify
 from lagunapaca_gnn.metrics import mean_absolute_error, r2_score, root_mean_squared_error
 from lagunapaca_gnn.model import SpatioTemporalGNN
@@ -65,7 +73,8 @@ CRITERION_R2 = 0.90
 def parse_args(argv=None) -> argparse.Namespace:
     """Argumentos de línea de comandos del experimento."""
     parser = argparse.ArgumentParser(
-        description="Entrena y evalúa la ST-GNN sobre la serie sintética de la laguna.")
+        description=("Entrena y evalúa la ST-GNN sobre la serie sintética de la "
+                     "laguna o sobre un CSV de mediciones de campo."))
     parser.add_argument(
         "--horizons", type=int, nargs="+", default=[6],
         help="horizontes en horas a evaluar (por defecto: 6, el escenario principal)")
@@ -73,8 +82,17 @@ def parse_args(argv=None) -> argparse.Namespace:
         "--horizon", type=int, default=None,
         help="atajo para evaluar un único horizonte; tiene prioridad sobre --horizons")
     parser.add_argument(
+        "--csv", type=str, default=None,
+        help=("entrena con un CSV de campo en formato largo "
+              "(timestamp,node_id,ph,turbidity_ntu,temp_c,tds_ppm); "
+              "ignora --steps y usa el rango común de las estaciones"))
+    parser.add_argument(
+        "--max-gap-hours", type=int, default=0,
+        help=("máximo de horas consecutivas que se pueden interpolar en el CSV "
+              "(por defecto: 0, no se inventa ningún instante)"))
+    parser.add_argument(
         "--steps", type=int, default=2000,
-        help="instantes horarios a simular (por defecto: 2000)")
+        help="instantes horarios a simular; solo se usa sin --csv (por defecto: 2000)")
     parser.add_argument(
         "--input-len", type=int, default=24,
         help="horas de historia que ve el modelo (por defecto: 24)")
@@ -101,12 +119,22 @@ def parse_args(argv=None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def build_graph(sigma: float = 1.5, k: int = 2):
+def build_graph(stations=PROVISIONAL_STATIONS, sigma: float = 1.5, k: int = 2):
     """Grafo de la laguna en el formato que espera PyG."""
-    distances = distance_matrix_km(PROVISIONAL_STATIONS)
+    distances = distance_matrix_km(stations)
     adjacency = gaussian_adjacency(distances, sigma=sigma)
     sparse = sparsify(adjacency, distances, k=k)
     return adjacency_to_edge_index(sparse)
+
+
+def _stations_for(station_ids) -> tuple:
+    """Recupera las coordenadas de las estaciones del CSV, en su orden."""
+    by_id = {station.id: station for station in PROVISIONAL_STATIONS}
+    missing = [station for station in station_ids if station not in by_id]
+    if missing:
+        raise ValueError(
+            "no hay coordenadas para las estaciones: " + ", ".join(missing))
+    return tuple(by_id[station] for station in station_ids)
 
 
 def persistence_baseline(inputs: np.ndarray, horizon: int,
@@ -120,12 +148,12 @@ def persistence_baseline(inputs: np.ndarray, horizon: int,
     return np.repeat(last[:, :, None], horizon, axis=2)
 
 
-def run_experiment(horizon: int, args: argparse.Namespace) -> dict:
+def run_experiment(horizon: int, args: argparse.Namespace, series: np.ndarray,
+                   station_ids, data_source: str = "synthetic") -> dict:
     """Entrena y evalúa un horizonte. Devuelve las métricas y los tiempos."""
     started = time.perf_counter()
 
-    distances = distance_matrix_km(PROVISIONAL_STATIONS)
-    series = simulate_lagoon(distances, steps=args.steps, seed=args.seed)
+    stations = _stations_for(station_ids)
     inputs, targets = build_windows(
         series, input_len=args.input_len, horizon=horizon,
         target_index=TARGET_INDEX)
@@ -154,7 +182,7 @@ def run_experiment(horizon: int, args: argparse.Namespace) -> dict:
     }
     model = SpatioTemporalGNN(**config)
 
-    edge_index, edge_weight = build_graph()
+    edge_index, edge_weight = build_graph(stations)
     history = train_model(
         model,
         scaler.transform(train_x), scaler.transform_targets(train_y, TARGET_INDEX),
@@ -176,6 +204,7 @@ def run_experiment(horizon: int, args: argparse.Namespace) -> dict:
 
     return {
         "horizon": horizon,
+        "data_source": data_source,
         "metrics": metrics,
         "baseline": baseline_metrics,
         "history": history,
@@ -225,6 +254,18 @@ def print_report(result: dict, quiet: bool) -> None:
           f"(entrenamiento: {result['train_seconds']:.1f} s)")
 
 
+def load_series(args: argparse.Namespace):
+    """Carga la serie sintética o el CSV de campo, y describe su origen."""
+    if args.csv:
+        field = load_field_csv(args.csv, max_gap_hours=args.max_gap_hours)
+        return field.values, field.station_ids, field.data_source, field
+
+    distances = distance_matrix_km(PROVISIONAL_STATIONS)
+    series = simulate_lagoon(distances, steps=args.steps, seed=args.seed)
+    return (series, tuple(station.id for station in PROVISIONAL_STATIONS),
+            "synthetic", None)
+
+
 def main(argv=None) -> int:
     """Ejecuta el experimento. Devuelve 0 si el criterio se cumple en todos."""
     args = parse_args(argv)
@@ -235,18 +276,56 @@ def main(argv=None) -> int:
         print(f"error: los horizontes deben ser positivos, no {invalid}",
               file=sys.stderr)
         return 2
-    if args.steps <= args.input_len * 2:
+    if not args.csv and args.steps <= args.input_len * 2:
         print("error: --steps debe superar el doble de --input-len",
               file=sys.stderr)
         return 2
 
-    print("ST-GNN para la Laguna de Paca (datos SINTÉTICOS: valida la arquitectura)")
-    print(f"Objetivo: {VARIABLE_NAMES[TARGET_INDEX]}  |  "
-          f"estaciones: {len(PROVISIONAL_STATIONS)}  |  "
-          f"pasos: {args.steps}  |  ventana: {args.input_len} h  |  "
-          f"épocas: {args.epochs}  |  semilla: {args.seed}")
+    if args.csv:
+        try:
+            series, station_ids, data_source, field = load_series(args)
+        except (FileNotFoundError, ValueError) as error:
+            print(f"error: {error}", file=sys.stderr)
+            return 2
 
-    results = [run_experiment(h, args) for h in horizons]
+        print("ST-GNN para la Laguna de Paca "
+              f"(datos de CAMPO: {field.source_path})")
+        print(f"Objetivo: {VARIABLE_NAMES[TARGET_INDEX]}  |  "
+              f"estaciones: {len(station_ids)}  |  horas: {field.hours}  |  "
+              f"ventana: {args.input_len} h  |  épocas: {args.epochs}  |  "
+              f"semilla: {args.seed}")
+        print(f"Rango UTC: {field.timestamps[0].isoformat()} a "
+              f"{field.timestamps[-1].isoformat()}")
+        print(f"Filas: {field.rows_read} leídas, {field.rows_used} usadas  |  "
+              f"horas con más de una muestra: {field.aggregated_buckets}")
+        if field.interpolated_slots:
+            print(f"Aviso: se interpolaron {field.interpolated_slots} instantes "
+                  f"en huecos de hasta {field.max_interpolated_gap} h.")
+        if args.steps != 2000:
+            print("Nota: --steps se ignora cuando se usa --csv.")
+
+        needed = args.input_len + max(horizons)
+        if field.hours < needed:
+            print(f"error: el CSV tiene {field.hours} h y se necesitan al menos "
+                  f"{needed} para una ventana de {args.input_len} h y un "
+                  f"horizonte de {max(horizons)} h.", file=sys.stderr)
+            return 2
+    else:
+        print("ST-GNN para la Laguna de Paca "
+              "(datos SINTÉTICOS: valida la arquitectura)")
+        print(f"Objetivo: {VARIABLE_NAMES[TARGET_INDEX]}  |  "
+              f"estaciones: {len(PROVISIONAL_STATIONS)}  |  "
+              f"pasos: {args.steps}  |  ventana: {args.input_len} h  |  "
+              f"épocas: {args.epochs}  |  semilla: {args.seed}")
+        series, station_ids, data_source, field = load_series(args)
+
+    try:
+        results = [run_experiment(h, args, series, station_ids, data_source)
+                   for h in horizons]
+    except ValueError as error:
+        print(f"error: {error}", file=sys.stderr)
+        return 2
+
     for result in results:
         print_report(result, args.quiet)
 
@@ -272,11 +351,14 @@ def main(argv=None) -> int:
 
     if args.save:
         bundle = ModelBundle(
-            version=new_version(args.seed, args.input_len, args.epochs),
+            version=new_version(
+                args.seed, args.input_len, args.epochs,
+                data_source=data_source,
+                data_tag=field.fingerprint[:8] if field else None),
             created_at=datetime.now(timezone.utc).isoformat(),
-            data_source="synthetic",
-            stations=tuple(station.id for station in PROVISIONAL_STATIONS),
-            variables=tuple(VARIABLE_NAMES),
+            data_source=data_source,
+            stations=tuple(station_ids),
+            variables=field.variables if field else tuple(VARIABLE_NAMES),
             input_len=args.input_len,
             target_index=TARGET_INDEX,
             horizons={
@@ -294,7 +376,7 @@ def main(argv=None) -> int:
         )
         destino = save_bundle(args.save, bundle)
         print(f"Artefacto guardado en {destino} (versión {bundle.version}, "
-              f"horizontes {sorted(bundle.horizons)})")
+              f"horizontes {sorted(bundle.horizons)}, origen {bundle.data_source})")
 
     if all_meet and all_beat:
         return 0

@@ -114,7 +114,38 @@ ia-model\.venv\Scripts\python.exe train_stgnn.py --horizons 1 3 6 --save artifac
 - Si no existe o está corrupto, el servicio queda degradado; el backend responde
   503 en `/predict` y el panel lo explica.
 
-## 10.6 Integración con Spring Boot
+## 10.6 Datos de campo
+
+`lagunapaca_gnn/field_data.py` convierte un CSV de campo en la serie horaria que
+consume el modelo. El contrato es deliberadamente estricto: un archivo mal
+alineado produciría un R² que no significa nada.
+
+| Columna | Regla |
+|---|---|
+| `timestamp` | ISO 8601 **con zona horaria** (`Z` o `-05:00`); se convierte a UTC |
+| `node_id` | `N1`…`N4` (los mismos del ESP32 y del backend) |
+| `ph`, `turbidity_ntu`, `temp_c`, `tds_ppm` | numéricos finitos, con punto decimal |
+
+- Varias muestras dentro de la misma hora se **promedian**; el modelo y los
+  horizontes están definidos en horas.
+- Se usa el rango en que **todas** las estaciones tienen datos. Fuera de él no
+  se extrapola.
+- `max_gap_hours=0` por defecto: cualquier hora faltante detiene la carga. Si se
+  permite interpolar, el reporte indica cuántos instantes se rellenaron y el
+  hueco máximo; no se oculta la decisión.
+- No se evalúa ECA-Agua aquí. El veredicto sigue siendo del backend.
+- El artefacto se guarda con `data_source = field` y versión
+  `stgnn-field-s<semilla>-i<ventana>-e<épocas>-d<huella>`; la huella SHA-256 del
+  contenido evita que dos campañas distintas se pisen.
+
+```powershell
+ia-model\.venv\Scripts\python.exe train_stgnn.py --csv datos\campo.csv --max-gap-hours 2 --horizons 1 3 6 --save artifacts\stgnn-field.pt
+```
+
+No se versiona ningún CSV de campo real. Los tests usan *fixtures*; un R²
+obtenido con ellos valida el canal de carga, no la laguna.
+
+## 10.7 Integración con Spring Boot
 
 - `AiClient` usa `java.net.http.HttpClient`: 2 s de conexión, 15 s de lectura.
 - Cabecera `X-Internal-Token` (variable `IA_INTERNAL_TOKEN`).
@@ -125,14 +156,15 @@ ia-model\.venv\Scripts\python.exe train_stgnn.py --horizons 1 3 6 --save artifac
   `target_at > base_time`, horizonte igual al solicitado, cuatro estaciones
   conocidas y pH finitos.
 
-## 10.7 Versionado del modelo
+## 10.8 Versionado del modelo
 
-`model_version` se deriva de la configuración: `stgnn-synthetic-s{seed}-i{input_len}-e{epochs}`.
+`model_version` se deriva de la configuración: `stgnn-synthetic-s{seed}-i{input_len}-e{epochs}`
+para sintético y `stgnn-field-s{seed}-i{input_len}-e{epochs}-d{huella}` para campo.
 No incluye la fecha para que dos ejecuciones equivalentes produzcan el mismo
 identificador; la fecha queda en `created_at`. Cada fila de `prediction` guarda
 la versión, así que un cambio de modelo no reescribe la historia.
 
-## 10.8 Ejecución local
+## 10.9 Ejecución local
 
 ```powershell
 cd ia-model
@@ -141,9 +173,11 @@ cd ia-model
 
 Sin artefacto, `/health` responde `degraded`; no se inventan predicciones.
 
-## 10.9 Límite científico
+## 10.10 Límite científico
 
 El artefacto actual se entrenó con la serie sintética de `dataset.py`. El
 contrato y la integración son reales; la precisión **no** es evidencia sobre la
-laguna. Cuando existan datos de campo, se reentrena, se guarda un artefacto con
-`data_source = field` y el panel cambiará la etiqueta sin tocar el backend.
+laguna. El cargador de CSV de campo ya existe y está probado, pero **no hay
+datos de campo recolectados**. Cuando existan, se reentrena con `--csv`, se
+guarda un artefacto con `data_source = field` y el panel cambiará la etiqueta
+sin tocar el backend.

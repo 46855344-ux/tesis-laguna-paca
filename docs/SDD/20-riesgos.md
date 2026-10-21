@@ -4,7 +4,7 @@ Escala: probabilidad e impacto `Baja` / `Media` / `Alta`.
 
 | ID | Riesgo | Prob. | Impacto | Mitigación | Residual |
 |---|---|---|---|---|---|
-| R-01 | No conseguir datos de campo de la laguna | Alta | Alto | Entrenar con sintético y declararlo; plan de campaña de muestreo | Alto |
+| R-01 | No conseguir datos de campo de la laguna | Alta | Alto | Entrenar con sintético y declararlo; cargador `--csv` listo; plan de campaña de muestreo | Alto |
 | R-02 | Coordenadas de estaciones provisionales | Alta | Medio | Importarlas de `stations.py`; reemplazarlas antes de reportar | Medio |
 | R-03 | Sobreajuste al simulador | Media | Alto | Propiedades del modelo, partición cronológica con hueco, línea base | Medio |
 | R-04 | La IA no está disponible en la demo | Media | Bajo | La ingesta no depende de ella; aviso claro; artefacto versionado | Bajo |

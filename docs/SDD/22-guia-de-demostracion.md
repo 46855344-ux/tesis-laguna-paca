@@ -28,12 +28,12 @@ cd iot-firmware
 ```
 
 ```powershell
-# IA: 151 tests (~9 min; si hay poco tiempo, omitir y mostrar el artefacto)
+# IA: 172 tests (~3.5 min; si hay poco tiempo, omitir y mostrar el artefacto)
 cd ia-model
 .venv\Scripts\python.exe -m pytest -q
 ```
 
-**Qué decir:** «327 pruebas automatizadas; el backend tiene 91.5 % de cobertura
+**Qué decir:** «348 pruebas automatizadas; el backend tiene 91.5 % de cobertura
 de instrucciones».
 
 ## 22.3 Paso 2 · El modelo (2 min)

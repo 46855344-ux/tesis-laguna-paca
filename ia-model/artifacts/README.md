@@ -34,3 +34,11 @@ tabla son las que corresponden a este archivo.
 El artefacto ocupa ~100 KB. Se versiona para que `docker compose` y la demo
 funcionen sin entrenar; si se cambia el modelo o los datos, se regenera con el
 comando de arriba y se actualiza este archivo.
+
+## Artefacto de campo
+
+`train_stgnn.py --csv datos\campo.csv --save artifacts\stgnn-field.pt` genera un
+artefacto con `data_source = field` y una versión que incluye la huella del CSV
+(`stgnn-field-...-d<huella>`). No se versiona ningún artefacto de campo en esta
+entrega porque no hay campaña de muestreo; el cargador está probado solo con
+*fixtures*.

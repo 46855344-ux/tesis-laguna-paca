@@ -54,7 +54,7 @@ identificadores técnicos van en inglés.
 
 | Documento | Contenido |
 |---|---|
-| [17 · Estrategia de pruebas](17-estrategia-de-pruebas.md) | Pirámide, 327 tests, cobertura y límites |
+| [17 · Estrategia de pruebas](17-estrategia-de-pruebas.md) | Pirámide, 348 tests, cobertura y límites |
 | [18 · Trazabilidad](18-trazabilidad.md) | RF/RNF → código → prueba |
 | [19 · Plan de sprints](19-plan-de-sprints.md) | Sprints, historias y definición de terminado |
 | [20 · Riesgos](20-riesgos.md) | R-01…R-17 con mitigación |
@@ -87,8 +87,8 @@ identificadores técnicos van en inglés.
 |---|---|---|
 | Backend | 138 | Verde |
 | Firmware | 38 | Verde |
-| IA | 151 | Verde |
-| **Total** | **327** | |
+| IA | 172 | Verde |
+| **Total** | **348** | |
 
 Cobertura del backend: 91.5 % de instrucciones, 70.0 % de ramas. Criterio de la
 tesis: `R² = 0.9289` a 6 h con datos sintéticos (persistencia: 0.7403).

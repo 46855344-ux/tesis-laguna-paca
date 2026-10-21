@@ -78,14 +78,31 @@ class ModelBundle:
         }
 
 
-def new_version(seed: int, input_len: int, epochs: int) -> str:
+def new_version(seed: int, input_len: int, epochs: int,
+                data_source: str = "synthetic",
+                data_tag: str | None = None) -> str:
     """Versión determinista a partir de la configuración del experimento.
 
     No incluye la fecha para que dos ejecuciones con la misma semilla y los
     mismos hiperparámetros produzcan el mismo identificador. La fecha sí queda
     en ``created_at``.
+
+    Para datos de campo se añade ``data_tag`` (normalmente los primeros
+    caracteres de :attr:`FieldSeries.fingerprint`). Sin esa huella, dos
+    campañas distintas con la misma semilla e hiperparámetros producirían la
+    misma versión, y el artefacto de una pisaría al de la otra.
     """
-    return f"stgnn-synthetic-s{seed}-i{input_len}-e{epochs}"
+    if data_source == "synthetic":
+        prefix = "stgnn-synthetic"
+    elif data_source == "field":
+        prefix = "stgnn-field"
+    else:
+        raise ValueError(
+            f"origen de datos desconocido: {data_source!r}; "
+            "se esperaba 'synthetic' o 'field'")
+
+    suffix = f"-d{data_tag}" if data_tag else ""
+    return f"{prefix}-s{seed}-i{input_len}-e{epochs}{suffix}"
 
 
 def save_bundle(path: str | Path, bundle: ModelBundle) -> Path:

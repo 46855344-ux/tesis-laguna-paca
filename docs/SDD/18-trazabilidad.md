@@ -42,7 +42,7 @@ fija. Si un requisito no tiene prueba, se dice; no se inventa cobertura.
 | RNF | Evidencia | ¿Verificado? |
 |---|---|---|
 | RNF-01 | `pom.xml` + 138 tests | Sí |
-| RNF-02 | `requirements.txt` + 151 tests | Sí |
+| RNF-02 | `requirements.txt` + 172 tests | Sí |
 | RNF-03 | Ingesta sin dependencia de IA | Sí |
 | RNF-04 | Timeouts 2 s/15 s | Sí |
 | RNF-05 | `.gitignore` + revisión | Parcial (sin escáner) |
@@ -73,7 +73,7 @@ fija. Si un requisito no tiene prueba, se dice; no se inventa cobertura.
 | Panel operativo | 59 tests de panel | Cumplido |
 | Idempotencia de ingesta | `sample_id` + firmware | Cumplido |
 | Despliegue reproducible | Compose + CI | Configurado, no ejecutado |
-| Datos de campo | — | **Pendiente** |
+| Datos de campo | Cargador `--csv` probado; faltan mediciones reales | **Pendiente** |
 
 ## 18.4 Huecos declarados
 
@@ -84,7 +84,8 @@ fija. Si un requisito no tiene prueba, se dice; no se inventa cobertura.
 3. **SonarQube**: configuración lista, análisis no ejecutado.
 4. **TLS**: no implementado.
 5. **Hardware**: firmware compilado y probado en host, no en placa.
-6. **Datos de campo**: el modelo se entrenó con datos sintéticos.
+6. **Datos de campo**: el cargador `field_data.py` y `--csv` están probados, pero
+   el modelo se entrenó con datos sintéticos porque no hay campaña de muestreo.
 7. **Coordenadas**: `PROVISIONAL_STATIONS` derivadas de OSM, no medidas.
 8. **App Android**: carpeta vacía.
 9. **Notificaciones**: solo panel y API, sin push ni correo.

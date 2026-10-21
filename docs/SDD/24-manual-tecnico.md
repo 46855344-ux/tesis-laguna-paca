@@ -50,6 +50,7 @@ $mvn = "C:\Users\USER\.m2\wrapper\dists\apache-maven-3.9.9\977a63e90f436cd6ade95
 cd ia-model
 .venv\Scripts\python.exe -m pytest
 .venv\Scripts\python.exe train_stgnn.py --horizons 1 3 6 --save artifacts\stgnn.pt
+.venv\Scripts\python.exe train_stgnn.py --csv datos\campo.csv --max-gap-hours 2 --save artifacts\stgnn-field.pt
 .venv\Scripts\python.exe -m uvicorn serve:app --host 127.0.0.1 --port 8000
 ```
 

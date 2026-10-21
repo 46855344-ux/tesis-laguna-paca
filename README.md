@@ -8,8 +8,8 @@ avisa en un **panel web** y predice el pH a futuro con un **ST-GNN** (red espaci
 sobre el grafo de estaciones).
 
 > **Estado:** backend, firmware e IA funcionando de extremo a extremo, con predicciones
-> persistidas y evaluadas contra mediciones reales. **327 pruebas** verdes (138 backend,
-> 38 firmware, 151 IA). La app Android todavía no está implementada. Los datos de
+> persistidas y evaluadas contra muestras posteriores. **348 pruebas** verdes (138 backend,
+> 38 firmware, 172 IA). La app Android todavía no está implementada. Los datos de
 > entrenamiento del modelo son **sintéticos**: el resultado demuestra la arquitectura,
 > no el comportamiento real de la laguna. El despliegue con Docker está configurado,
 > pero **no se ejecutó** en esta máquina (no hay Docker).
@@ -76,7 +76,7 @@ solo pronostica. Si la IA está caída, la ingesta y las alertas siguen funciona
 |---|---|---|
 | `backend/` | ✅ Completo (138 tests) | Ingesta HTTP y MQTT idempotente, alertas ECA-Agua, historial paginado, JWT, Flyway V1–V5, panel web, predicciones y su evaluación, Swagger UI |
 | `iot-firmware/` | ✅ Completo (38 tests) | Núcleo portable C++11, sensores, calibración, deep sleep, JWT cacheado, transporte HTTP y MQTT, `sample_id` |
-| `ia-model/` | ✅ Completo (151 tests) | Grafo, ventanas, ST-GNN, normalización, entrenamiento, artefacto versionado y servicio FastAPI |
+| `ia-model/` | ✅ Completo (172 tests) | Grafo, ventanas, ST-GNN, normalización, entrenamiento, carga de CSV de campo, artefacto versionado y servicio FastAPI |
 | `android-app/` | ⬜ Vacío | Pendiente: tema Material 3, login, tablero, alertas y FCM |
 | Docker/CI | ⚙️ Configurado, no ejecutado | `compose.yaml`, Dockerfiles, workflow de CI, JaCoCo y Sonar (sin Docker/Sonar en la máquina) |
 
@@ -323,6 +323,7 @@ los tres horizontes; cuanto más largo el horizonte, más aporta el modelo.
 .venv\Scripts\python.exe -m pytest
 .venv\Scripts\python.exe train_stgnn.py
 .venv\Scripts\python.exe train_stgnn.py --horizons 1 3 6 --save artifacts\stgnn.pt
+.venv\Scripts\python.exe train_stgnn.py --csv datos\campo.csv --max-gap-hours 2 --save artifacts\stgnn-field.pt
 .venv\Scripts\python.exe -m uvicorn serve:app --host 127.0.0.1 --port 8000
 ```
 
@@ -330,6 +331,24 @@ El artefacto `artifacts/stgnn.pt` (~100 KB) guarda pesos, configuración, escala
 adyacencia y métricas. El servicio FastAPI lo carga al arrancar y expone `/health`,
 `/model` y `/predict`; sin artefacto, `/predict` responde 503. El detalle del contrato
 está en `docs/SDD/10-contrato-ia.md`.
+
+### Datos de campo
+
+`lagunapaca_gnn/field_data.py` convierte un CSV en formato largo
+(`timestamp,node_id,ph,turbidity_ntu,temp_c,tds_ppm`) en la serie horaria que consume
+la ST-GNN:
+
+- el `timestamp` debe incluir zona horaria (se convierte a UTC);
+- varias muestras dentro de la misma hora se promedian;
+- se usa el rango en que **todas** las estaciones tienen datos, sin extrapolar;
+- por defecto (`--max-gap-hours 0`) no se interpola ningún hueco; si se permite, el
+  reporte dice cuántos instantes se rellenaron;
+- el artefacto se marca con `data_source = field` y versión
+  `stgnn-field-s<semilla>-i<ventana>-e<épocas>-d<huella>`, para que dos campañas
+  distintas no se pisen.
+
+No se incluye ningún CSV de campo real: las pruebas usan *fixtures*. El R² de un CSV
+describe ese conjunto, no la laguna en general.
 
 > ⚠️ `dataset.py` **simula** la dinámica (memoria AR(1), ciclo diario, correlación
 > espacial). El R² demuestra que la arquitectura aprende una dinámica espacio-temporal,
@@ -343,8 +362,8 @@ está en `docs/SDD/10-contrato-ia.md`.
 |---|---|---|
 | Backend | `mvn test` (con `JAVA_HOME` en JDK 21) | **138** |
 | Firmware | `pio test -e native` | **38** |
-| IA | `.venv\Scripts\python.exe -m pytest` | **151** |
-| **Total** | | **327** |
+| IA | `.venv\Scripts\python.exe -m pytest` | **172** |
+| **Total** | | **348** |
 
 - Cobertura del backend (JaCoCo): **91.5 %** de instrucciones y **70.0 %** de ramas.
 - No hay Docker ni Testcontainers: la persistencia se prueba con **H2**.
@@ -377,7 +396,7 @@ está en `docs/SDD/10-contrato-ia.md`.
 ├── ia-model/                ST-GNN (Python 3.12, entorno .venv propio)
 │   ├── lagunapaca_gnn/      estaciones, grafo, ventanas, modelo, registro, API
 │   ├── artifacts/           artefacto versionado + cómo regenerarlo
-│   ├── tests/               151 tests
+│   ├── tests/               172 tests
 │   ├── serve.py             uvicorn
 │   ├── Dockerfile
 │   └── train_stgnn.py       experimento del criterio de la tesis
@@ -423,7 +442,8 @@ en los ADR de `docs/SDD/`.
 ## Pendientes
 
 1. **Datos de campo**: reemplazar las estaciones provisionales y reentrenar el ST-GNN con
-   mediciones reales. Es el pendiente científico más importante.
+   mediciones reales. El cargador `field_data.py` y el entrenamiento con `--csv` ya existen
+   y están probados; falta la campaña de muestreo. Es el pendiente científico más importante.
 2. **Calibración de sensores** en laboratorio con soluciones buffer.
 3. **Validar el despliegue**: `docker compose build/up` y el workflow de CI en un
    runner. La V5 ya se validó en PostgreSQL 16.9 embebido y `compose config`;

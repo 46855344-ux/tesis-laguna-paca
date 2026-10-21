@@ -22,8 +22,8 @@ La pirámide es deliberadamente ancha en la base:
 |---|---|---|---|
 | Backend | `mvn test` | **138** | Verde |
 | Firmware | `pio test -e native` | **38** | Verde |
-| IA | `python -m pytest` | **151** | Verde |
-| **Total** | | **327** | |
+| IA | `python -m pytest` | **172** | Verde |
+| **Total** | | **348** | |
 
 Cobertura del backend (JaCoCo): **91.5 %** de instrucciones (5321/5813) y
 **70.0 %** de ramas (254/363). Se reporta como indicador, no como meta: la
@@ -31,7 +31,7 @@ cobertura sola no dice si una prueba comprueba lo correcto.
 
 Además, `PostgresMigrationIT` (1 test) valida las migraciones contra PostgreSQL
 real y **no** corre en `mvn test`: lo ejecuta el job `backend-postgres` del CI
-con `postgres:16-alpine`. Con él, el total sería **328**.
+con `postgres:16-alpine`. Con él, el total sería **349**.
 
 ## 17.3 Backend: 138 tests
 
@@ -82,17 +82,22 @@ con `postgres:16-alpine`. Con él, el total sería **328**.
 - Ambas variantes compilan (`esp32dev`, `esp32dev-mqtt`), lo que verifica el
   glue de Arduino que los tests nativos no tocan.
 
-## 17.5 IA: 151 tests
+## 17.5 IA: 172 tests
 
 - `test_stations.py`, `test_graph.py`, `test_windows.py`, `test_metrics.py`,
   `test_model.py`, `test_dataset.py`, `test_normalization.py`,
   `test_training.py`: la base de 134.
-- `test_registry.py` (6): guardar/cargar artefacto, versión, corrupción,
-  `FORMAT_VERSION`.
+- `test_registry.py` (8): guardar/cargar artefacto, versión sintética y de campo,
+  corrupción, `FORMAT_VERSION`.
 - `test_api.py` (11): `/health` sin modelo, `/predict` 503, token, forma,
   `base_time` con zona, NaN, horizonte no entrenado.
+- `test_field_data.py` (19): CSV válido, promedio por hora, UTC obligatorio,
+  nodo/columna/valor inválido, duplicado exacto, rango común, estación sin datos,
+  huecos interpolados solo con permiso explícito y archivo vacío.
 - Los tests del modelo comprueban **propiedades** (formas, causalidad,
   topología, gradientes, atención que suma 1), no valores mágicos.
+- Los CSV de `test_field_data.py` son *fixtures*: no son mediciones de la laguna.
+  El cargador está probado; la validación científica sigue pendiente de campo.
 
 ## 17.6 Cómo ejecutar
 
@@ -109,6 +114,7 @@ $env:PATH="C:\Users\USER\AppData\Local\Programs\mingw64\bin;$env:PATH"
 # IA
 cd ia-model
 .venv\Scripts\python.exe -m pytest
+.venv\Scripts\python.exe train_stgnn.py --csv datos\campo.csv --max-gap-hours 2
 ```
 
 ## 17.7 Datos de prueba
@@ -123,7 +129,7 @@ cd ia-model
 ## 17.8 Tiempo de ejecución
 
 - Backend: ~90 s (los tests de contexto completo dominan).
-- IA: ~9 min (los tests del modelo entrenan redes pequeñas en CPU).
+- IA: ~3.5 min en la última ejecución (los tests del modelo entrenan redes pequeñas en CPU); puede variar con la caché y la carga de la máquina.
 - Firmware: ~10 s.
 
 ## 17.9 Lección aprendida

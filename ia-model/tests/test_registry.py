@@ -109,8 +109,23 @@ def test_losPesosCargadosProducenLaMismaSalida(tmp_path):
 
 
 def test_versionEsDeterminista():
+    assert new_version(42, 24, 150) == "stgnn-synthetic-s42-i24-e150"
     assert new_version(42, 24, 150) == new_version(42, 24, 150)
     assert new_version(42, 24, 150) != new_version(43, 24, 150)
+
+
+def test_versionDeCampoIncluyeOrigenYHuella():
+    version = new_version(42, 24, 150, data_source="field",
+                          data_tag="a1b2c3d4")
+
+    assert version == "stgnn-field-s42-i24-e150-da1b2c3d4"
+    assert version != new_version(42, 24, 150, data_source="field",
+                                  data_tag="ffffffff")
+
+
+def test_origenDeDatosDesconocido_falla():
+    with pytest.raises(ValueError, match="origen de datos desconocido"):
+        new_version(42, 24, 150, data_source="otro")
 
 
 def test_archivoInexistente_fallaConMensajeClaro(tmp_path):

@@ -43,7 +43,7 @@ mediciones y de las predicciones.
 | Histórico con filtros y paginación | Implementado | `TelemetryService`, `PanelHistorialIntegrationTest` |
 | Panel Thymeleaf (tablero, historial, alertas, mapa) | Implementado | 9 tests de panel + 3 del mapa |
 | Predicciones 1/3/6 h | Implementado | `PredictionService`, `PredictionIntegrationTest` |
-| Servicio FastAPI + artefacto | Implementado | `ia-model/lagunapaca_gnn/api.py`, 151 tests de IA |
+| Servicio FastAPI + artefacto | Implementado | `ia-model/lagunapaca_gnn/api.py`, 172 tests de IA |
 | Evaluación posterior ±30 min | Implementado | `PredictionEvaluator`, tests |
 | Idempotencia por `sample_id` | Implementado | V5, `TelemetryServiceTest`, firmware |
 | Docker Compose | Configurado, **no ejecutado** en esta máquina | `compose.yaml` |

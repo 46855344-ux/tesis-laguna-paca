@@ -23,6 +23,9 @@ derechos ARCO.
   - la tabla `prediction`;
   - la API (`data_source`);
   - el panel («Datos sintéticos»).
+- El cargador `field_data.py` exige que un CSV de campo declare timestamps con
+  zona horaria y no rellena huecos sin permiso explícito. Un archivo simulado no
+  se puede presentar como campo: el reporte y el artefacto conservan el origen.
 - Las coordenadas de las estaciones son **provisionales** (derivadas de
   OpenStreetMap), no medidas en campo. Se documenta en `stations.py` y en
   `26-limitaciones.md`.
@@ -43,6 +46,8 @@ derechos ARCO.
 
 - Las métricas del modelo se reportan con su origen sintético.
 - No se afirma que el R² de 0.9289 sea precisión sobre la laguna.
+- El canal `--csv` está probado con *fixtures*; no se presenta ningún archivo
+  simulado como medición de campo.
 - Los tests y comandos que no se pudieron ejecutar se declaran (Docker,
   SonarQube, hardware, PostgreSQL real).
 - No se inventan certificaciones, cobertura ni resultados.
