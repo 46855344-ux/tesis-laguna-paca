@@ -327,7 +327,8 @@ Tests del frontend (Vitest + Testing Library): `estado.test.ts` (etiquetas y cla
 `client.test.ts` (CSRF, 401, reintento por 403, login), `components.test.tsx` (badge, mapa,
 paginación, gráfico) y `pages.test.tsx` (historial, alertas y tablero con datos simulados).
 
-**Total del backend: 145 tests.** Cobertura JaCoCo pendiente de recalcular tras la migración.
+**Total del backend: 145 tests.** Cobertura JaCoCo tras la migración: **91.7 %** de
+instrucciones y **68.8 %** de ramas sobre 89 clases. Se reporta como indicador, no como meta.
 
 ## Firmware IoT (`iot-firmware/`) — comandos
 
