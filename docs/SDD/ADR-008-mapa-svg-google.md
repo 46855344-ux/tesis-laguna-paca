@@ -16,7 +16,7 @@ sin internet; con internet, un mapa interactivo sería una mejora.
 - Con `GOOGLE_MAPS_API_KEY`, se carga Google Maps; si falla, el SVG queda como
   respaldo.
 - La clave se lee del entorno, se marca `@JsonIgnore` y no viaja en
-  `/panel/datos`.
+  `/panel/api/datos` (y su alias `/panel/datos`).
 - Las coordenadas se importan de `ia-model/.../stations.py`, no se copian.
 
 ## Alternativas
@@ -29,7 +29,9 @@ sin internet; con internet, un mapa interactivo sería una mejora.
 
 ## Consecuencias
 
-- El mapa funciona sin conexión y sin JavaScript para lo esencial.
+- El mapa propio funciona sin conexión: es SVG generado por el backend y no
+  depende de Google ni de un CDN. La SPA, como cualquier aplicación React,
+  necesita JavaScript.
 - La clave debe restringirse por referente; una clave expuesta se puede usar a
   costa de la cuenta.
 - El mapa de Google no es accesible por teclado; las tarjetas siguen siendo la

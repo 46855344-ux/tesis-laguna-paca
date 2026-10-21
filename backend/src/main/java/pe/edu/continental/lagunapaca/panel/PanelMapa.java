@@ -34,10 +34,10 @@ public record PanelMapa(
         /**
          * Clave de Google Maps para el navegador; vacía si no está configurada.
          *
-         * <p>Se pinta en el HTML del panel (el navegador la necesita para pedir
-         * el mapa), pero <strong>nunca</strong> viaja en el JSON de
-         * {@code /panel/datos}: ahí no hace falta y sería una fuga innecesaria.
-         * Por eso está marcada con {@link JsonIgnore}.</p>
+         * <p>Se entrega solo en {@code GET /panel/api/sesion} (el navegador la
+         * necesita para pedir el mapa), pero <strong>nunca</strong> viaja en el
+         * JSON de {@code /panel/api/datos}: ahí no hace falta y sería una fuga
+         * innecesaria. Por eso está marcada con {@link JsonIgnore}.</p>
          */
         @JsonIgnore
         String googleKey

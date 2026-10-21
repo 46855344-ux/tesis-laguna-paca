@@ -4,7 +4,8 @@ Repositorio de tesis: **"Sistema de software e IoT con Redes Neuronales de Grafo
 
 ## Estado actual (importante)
 
-- `backend/` está **completo**: Spring Boot + ingesta de telemetría (HTTP y MQTT) **idempotente** (`sample_id`), alertas ECA-Agua, consulta histórica, **predicciones del ST-GNN persistidas y evaluadas**, Swagger UI, panel Thymeleaf y simulador del nodo. **138 tests.**
+- `backend/` está **completo**: Spring Boot + ingesta de telemetría (HTTP y MQTT) **idempotente** (`sample_id`), alertas ECA-Agua, consulta histórica, **predicciones del ST-GNN persistidas y evaluadas**, Swagger UI, **API JSON del panel** y simulador del nodo. **145 tests.**
+- `frontend/` es una **SPA React 19 + TypeScript + Vite** (React Router): acceso, tablero, mapa, historial, alertas y predicciones. **16 tests** con Vitest + Testing Library. El build se escribe en `backend/src/main/resources/static/panel`.
 - `iot-firmware/` tiene el **núcleo portable** del nodo ESP32, transporte HTTP y MQTT QoS 1, Deep Sleep y `sample_id`; **38 tests nativos** y ambas variantes compilan.
 - `ia-model/` está **completo de extremo a extremo**: estaciones, grafo, ventanas, modelo ST-GNN (TCN + GCN + Attention), dataset sintético, normalización, entrenamiento, **carga de CSV de campo**, **artefacto versionado** (`artifacts/stgnn.pt`) y **servicio FastAPI** (`serve.py`). **172 tests con pytest.** El criterio de la tesis se cumple con datos sintéticos (`R² = 0.9289` a 6 h, contra `0.7403` de persistencia).
 - `docs/SDD/` es la documentación de diseño (versionada; índice en `docs/SDD/README.md`). El resto de `docs/` es material de referencia y **no se versiona**.
@@ -15,7 +16,8 @@ Repositorio de tesis: **"Sistema de software e IoT con Redes Neuronales de Grafo
 La fuente de verdad es `docs/Plantilla Plan Tesis Continental Sistemas_RONY.docx`.
 
 - `iot-firmware/` — firmware ESP32 (C++/Arduino): PH-4502C, TSW-20M, DS18B20 y Gravity TDS. Publica el payload JSON al **backend propio** (HTTP POST y/o MQTT) y entra en Deep Sleep. Estructura: `lib/lagunapaca_core/` (lógica portable y testeable) y `src/main.cpp` (glue de Arduino).
-- `backend/` — microservicios Java 21 / Spring Boot 3.2; APIs REST + WebSockets, JWT, PostgreSQL 16 + Neo4j AuraDB. Sirve también el **panel web** (Thymeleaf) desde el mismo JAR.
+- `backend/` — Java 21 / Spring Boot 3.2; API REST con JWT, PostgreSQL 16 + Flyway, Neo4j AuraDB y **API JSON del panel**. Sirve el build de React desde el mismo JAR.
+- `frontend/` — React 19 + TypeScript + Vite; SPA del panel (acceso, tablero, mapa, historial y alertas). El build se copia a `backend/src/main/resources/static/panel`.
 - `ia-model/` — Python 3.12 / PyTorch Geometric; modelo ST-GNN sobre el grafo de estaciones de la laguna (adyacencia gaussiana + MST/KNN); se evalúa con R², RMSE y MAE.
 - `android-app/` — Kotlin / Jetpack Compose (MVVM + unidirectional data flow); alertas vía Firebase Cloud Messaging.
 
@@ -59,7 +61,7 @@ desde las anotaciones y `OpenApiConfig`. Botón **Authorize** → usuario `admin
 
 | Objetivo | Comando (desde `backend/`) |
 |---|---|
-| Arrancar en modo demo (H2 en memoria) | `mvn spring-boot:run -Dspring-boot.run.profiles=demo -Dspring-boot.run.useTestClasspath=true` |
+| Arrancar en modo demo (H2 en memoria) | `mvn spring-boot:run "-Dspring-boot.run.profiles=demo" "-Dspring-boot.run.useTestClasspath=true"` |
 | Simulador del nodo (10 muestras) | `python tools/simulate_node.py` |
 | Simulador: forzar alertas | `python tools/simulate_node.py --scenario alert --count 6` |
 | Simulador: bordes 6.5 y 9.0 | `python tools/simulate_node.py --scenario limit` |
@@ -81,106 +83,106 @@ Los tests por slice (`@WebMvcTest` con `addFilters = false`, servicios instancia
 ni el arranque ni la seguridad. Antes de agregar funcionalidad, mantener este test de integración.
 
 
-## Panel web (`backend/`) — sistema de diseño "Laguna Paca"
+## Panel web (`frontend/` + `backend/`) - SPA React
 
-El backend sirve además un **panel de monitoreo renderizado en el servidor con Thymeleaf**.
-Se descartó JSP: habría exigido empaquetar en WAR y perder el arranque con `spring-boot:run`
-para obtener menos reutilización. El panel corre en el **mismo JAR** que la API, así que la
-demostración sigue siendo un solo comando.
+El panel es una **SPA React 19 + TypeScript + Vite** con React Router. Spring Boot la sirve
+desde el mismo JAR: el build de Vite se escribe en
+`backend/src/main/resources/static/panel` (`base: '/panel/'`). Ya **no hay Thymeleaf** ni
+plantillas renderizadas en el servidor.
 
 | Objetivo | Comando / URL |
 |---|---|
 | Abrir el panel (perfil `demo`) | `http://localhost:8080/panel` |
-| Formulario de acceso | `http://localhost:8080/login` → `admin` / `admin123` |
-| Tokens de diseño | `backend/src/main/resources/static/css/tokens.css` |
-| Componentes | `backend/src/main/resources/static/css/panel.css` |
-| Interactividad | `backend/src/main/resources/static/js/panel.js` |
-| Plantillas | `backend/src/main/resources/templates/` |
+| Formulario de acceso | `http://localhost:8080/login` -> `admin` / `admin123` |
+| Desarrollo con recarga | `cd frontend; npm run dev` (abrir `http://localhost:5173/panel`, proxy a 8080) |
+| Tests del frontend | `cd frontend; npm test` (Vitest + Testing Library) |
+| Build al JAR | `cd frontend; npm run build` |
+| Tokens de diseño | `frontend/src/styles/tokens.css` |
+| Componentes y páginas | `frontend/src/components/`, `frontend/src/pages/` |
+| Cliente de API/CSRF | `frontend/src/api/client.ts` |
 
-### Dos superficies, dos mecanismos de autenticación (decisión)
+El build se versiona para que `mvn spring-boot:run` y la demo funcionen sin Node. Si se
+modifica React hay que ejecutar `npm run build` antes de arrancar/empaquetar el backend.
+
+### Dos superficies, dos mecanismos de autenticación
 
 `SecurityConfig` tiene **dos cadenas de filtros**:
 
-1. `@Order(1)` — panel (`/panel/**`, `/login`, `/css/**`, `/js/**`): **sesión con formulario**
-   (`JSESSIONID`) y **CSRF activo**. Es la única forma razonable de proteger formularios en un
-   navegador: con el JWT en `localStorage` el token quedaría expuesto a XSS, y sin CSRF el
-   formulario de acceso sería falsificable.
-2. `@Order(2)` — API (`/api/**`): **stateless con JWT**, sin cookies y sin CSRF, porque su
+1. `@Order(1)` - panel (`/`, `/panel/**`, `/login`, `/logout`): **sesión con formulario**
+   (`JSESSIONID`) y **CSRF activo**. Es la única forma razonable de proteger un navegador:
+   con el JWT en `localStorage` el token quedaría expuesto a XSS, y sin CSRF el formulario
+   de acceso sería falsificable.
+2. `@Order(2)` - API (`/api/**`): **stateless con JWT**, sin cookies y sin CSRF, porque su
    cliente es el ESP32 y no un navegador.
 
-Consecuencia deliberada: **un JWT válido no abre el panel**. Hay un test que lo fija
+Consecuencia deliberada: **un JWT válido no abre el panel**. Hay tests que lo fijan
 (`PanelIntegrationTest.elPanelNoAceptaJwt`). El orden importa: si la cadena de la API fuera
 primero, su `anyRequest().authenticated()` respondería el panel con un 401 en JSON.
 
-### Tokens (fuente única de verdad)
+Detalles que no se deben romper:
 
-`tokens.css` define la paleta y la escala; `panel.css` **no escribe ningún color a mano**, así el
-modo oscuro funciona sin duplicar reglas. Los mismos valores se replicarán en el tema Material 3
-de `android-app/`.
+- `/panel/api/**` responde **401 JSON** si la sesión caducó; las rutas de página redirigen a
+  `/login`. Hacen falta **dos** `defaultAuthenticationEntryPointFor`: con una sola entrada,
+  Spring Security la aplica a todas las peticiones e ignora su matcher.
+- `/logout` pertenece a la cadena del panel. Si se deja fuera, la cadena stateless lo trata
+  como una petición sin JWT y el cierre de sesión responde 401.
+- `/login`, `/panel/csrf`, `/panel/assets/**` y `/panel/favicon.svg` son públicos. El resto
+  del panel exige rol `ADMIN`.
+- `GET /panel/csrf` entrega `{token, headerName, parameterName}` a React. El login de la SPA
+  hace POST a `/login` con `_csrf` y considera éxito cuando la URL final es `/panel`.
+- `SpaController` devuelve `static/panel/index.html` como `Resource` para `/login`, `/panel`,
+  `/panel/`, `/panel/historial` y `/panel/alertas`; la raíz `/` redirige a `/panel`. No se
+  usa `forward:` porque MockMvc debe recibir el HTML y no hace falta una segunda pasada.
+- La API del panel (`PanelApiController`) lee de `PanelDashboardService`,
+  `PanelHistorialService`, `PanelAlertasService` y `PredictionService`; **no** llama a
+  `/api/v1` ni duplica la regla ECA-Agua.
 
-| Token | Claro | Oscuro |
+### Endpoints JSON del panel
+
+| Método | Ruta | Uso |
 |---|---|---|
-| `--color-primary` (fondo sólido) | `#0F5C8C` | `#1C6FA8` |
-| `--color-primary-text` (texto sobre tenue) | `#0F5C8C` | `#6CB8E8` |
-| `--color-secondary` | `#178C7F` | `#2FA79A` |
-| `--color-success` | `#157347` | `#4FB383` |
-| `--color-warning` | `#8A5A0B` | `#D6A141` |
-| `--color-danger` | `#C0392B` | `#E0705F` |
-| `--color-info` | `#2B6CB0` | `#6CA9DE` |
+| `GET` | `/panel/api/sesion` | Usuario, rol, estaciones y clave opcional de Google |
+| `GET` | `/panel/api/datos` | Tablero completo (alias antiguo: `/panel/datos`) |
+| `GET` | `/panel/api/historial` | Filtros, orden y paginación |
+| `GET` | `/panel/api/alertas` | Alertas, contadores y filtros |
+| `POST` | `/panel/api/alertas/{id}/atender` | Sesión + CSRF; guarda usuario, hora y nota |
+| `POST` | `/panel/api/alertas/{id}/reabrir` | Sesión + CSRF; borra la auditoría |
+| `POST` | `/panel/api/predicciones` | Sesión + CSRF; cuerpo `{"horizonte": 1\|3\|6}` |
 
-**Por qué existe `--color-primary-text`:** el primario profundo sobre fondo oscuro daba
-**2.79:1** en el enlace activo del menú (AA exige 4.5:1). Con el token aclarado sube a **6.93:1**.
-El primario sólido se reserva para fondos de botón, donde el texto blanco queda en **5.40:1**.
-El mismo problema tenía el botón primario en oscuro (3.47:1 por usar texto oscuro) y se corrigió
-dejando `--color-text-inverse: #FFFFFF` en ambos temas.
-
-Contrastes medidos en el navegador: enlace activo 6.27 / 6.93, botón primario 7.17 / 5.40, texto
-de cuerpo 17.06 / 15.19, texto secundario 4.76 / 6.66, etiquetas semánticas entre 4.67 y 6.23
-(primero claro, luego oscuro). Todos cumplen AA.
+`/panel/datos` se conserva como alias del tablero. `/panel/api/**` no acepta JWT.
 
 ### Tablero con datos reales
-
-`/panel` deja de ser un estado vacío permanente y muestra telemetría de la base de datos:
 
 | Elemento | De dónde sale |
 |---|---|
 | Indicadores (muestras, alertas, estaciones, hora) | ventana de **24 h** |
-| Tarjetas N1–N4 | **última muestra de cada estación**, sin límite de antigüedad |
+| Tarjetas N1-N4 | **última muestra de cada estación**, sin límite de antigüedad |
 | Badge de estado | campo `alert` **persistido** por la ingesta, no se reevalúa |
 | Gráfico | puntos de las últimas 24 h, una línea por estación |
+| Predicciones | tabla `prediction`, con origen `synthetic`/`field` y evaluación posterior |
 
 Decisiones que conviene no deshacer:
 
-- **El panel lee del repositorio, no de la API REST.** El navegador usa sesión; meter un JWT en
-  `localStorage` para consultar `/api/v1/telemetry` sería un riesgo XSS y duplicaría el cliente.
-- **El estado no se recalcula en el panel.** `PanelDashboardService` solo lee `sample.isAlert()` y
-  los motivos ya redactados por `EcaWaterQualityRule`. Si el panel reevaluara el pH habría dos
-  reglas ECA-Agua que podrían divergir.
-- **Solo tres estados**: `SIN_DATOS` (gris), `DENTRO` (verde), `ALERTA` (rojo). No existe un
-  "cerca del límite": sería una cuarta regla que el backend no conoce.
-- **La tarjeta no aplica la ventana de 24 h.** Si N2 lleva tres días callado se muestra su último
-  dato con "hace 3 días", que es más honesto que fingir que nunca midió o que el dato es de ahora.
-- **La antigüedad se escribe en palabras** ("hace 3 minutos") porque un `HH:mm` suelto invita a
-  creer que el dato es actual.
-- **Formato numérico en Java con `Locale.ROOT`** (`"%.2f"`), no con `#numbers` de Thymeleaf: el
-  separador decimal no puede depender del locale de la máquina. El JSON reutiliza esos textos y
-  el gráfico recibe números; así no hay dos redondeos distintos.
-- **Gráfico en SVG hecho a mano** (`panel.js`, ~200 líneas) en vez de Chart.js/CDN: la demo debe
-  funcionar **sin internet**. Cuatro series con `--chart-1..4` (azul, teal, ámbar, violeta),
-  contraste ≥3:1 sobre la superficie en ambos temas.
-- **Si la ventana de datos dura menos de 30 min, el eje se abre hasta 30 min.** Una ráfaga del
-  simulador aplastaría el eje y todas las horas se leerían iguales. Es legibilidad, no datos:
-  las muestras siguen siendo solo las de 24 h.
-- **Refresco cada 20 s** contra `GET /panel/datos` (protegido por la misma cadena de sesión), en
-  pausa si la pestaña está oculta. El botón "Actualizar" hace lo mismo y confirma con un toast.
-- **Sin JavaScript** las tarjetas, los indicadores y las reglas siguen completos; solo el gráfico
-  muestra su estado vacío. El `<noscript>` lo dice explícitamente.
+- **El estado no se recalcula en React.** El backend envía `estado`, `etiqueta`, `motivos` y
+  `clase`; el frontend solo pinta. Si React reevaluara el pH habría dos reglas ECA-Agua que
+  podrían divergir.
+- **Solo tres estados**: `SIN_DATOS`, `DENTRO`, `ALERTA`. No existe un "cerca del límite".
+- **La tarjeta no aplica la ventana de 24 h.** Si N2 lleva tres días callado se muestra su
+  último dato con "hace 3 días"; es más honesto que fingir que nunca midió.
+- **La antigüedad se escribe en palabras** ("hace 3 minutos") y el backend la formatea con
+  `Locale.ROOT`; el JSON reutiliza esos textos.
+- **El gráfico es SVG hecho a mano** en React, sin Chart.js/CDN: la demo funciona sin
+  internet. Si la ventana dura menos de 30 min, el eje se abre hasta 30 min para que las
+  horas no se aplasten.
+- **Refresco cada 20 s** contra `/panel/api/datos`, en pausa si la pestaña está oculta. El
+  botón "Actualizar" hace lo mismo y confirma con un toast. En React se usa un `ref` para
+  evitar que el intervalo se recree en cada render.
 
 ### Mapa de la laguna
 
-El tablero dibuja el contorno **real** de la laguna (no un esquema) con las cuatro
-estaciones encima. El polígono sale de OpenStreetMap (`way 26947746`, 194 puntos,
-simplificado a 140 con Douglas-Peucker) y se guarda como GeoJSON en
+El tablero dibuja el contorno **real** de la laguna (no un esquema) con las cuatro estaciones
+encima. El polígono sale de OpenStreetMap (`way 26947746`, 194 puntos, simplificado a 140 con
+Douglas-Peucker) y se guarda como GeoJSON en
 `backend/src/main/resources/geo/laguna-paca.json`: el panel no descarga teselas.
 
 | Objetivo | Comando (desde la raíz) |
@@ -188,230 +190,144 @@ simplificado a 140 con Douglas-Peucker) y se guarda como GeoJSON en
 | Regenerar el contorno y las coordenadas | `ia-model\.venv\Scripts\python.exe backend\tools\fetch_laguna.py` |
 | Arrancar con el mapa de Google | definir `GOOGLE_MAPS_API_KEY` antes de `spring-boot:run` |
 
-**Mapa de Google (opcional).** Con `GOOGLE_MAPS_API_KEY` definida, el tablero carga
-Google Maps; si la API no carga (sin internet, clave restringida o cuota), el
-contorno propio se queda y la tarjeta no queda vacía. La clave **nunca** se
-versiona: `application.yml` la lee del entorno y `PanelMapa` la marca con
-`@JsonIgnore`, así que no viaja en `/panel/datos`.
+**Mapa de Google (opcional).** Con `GOOGLE_MAPS_API_KEY` definida, React carga Google Maps;
+si la API no carga (sin internet, clave restringida o cuota), el contorno SVG sigue ahí y la
+tarjeta no queda vacía. La clave **nunca** se versiona: viaja en `/panel/api/sesion` y no en
+`/panel/api/datos`.
 
 Decisiones que conviene no deshacer:
 
 - **La clave es de navegador y debe restringirse por referente** en Google Cloud
-  (`http://127.0.0.1:8080/*`, `http://localhost:8080/*` y, en producción, el
-  dominio real), habilitando solo *Maps JavaScript API*. Una clave sin restricción
-  en un repositorio público se puede usar a costa de la cuenta de facturación.
+  (`http://127.0.0.1:8080/*`, `http://localhost:8080/*` y, en producción, el dominio real),
+  habilitando solo *Maps JavaScript API*.
 - **Sin clave no se pide nada a Google**: el SVG es el camino por defecto.
-- **El contenedor se muestra antes de construir el mapa.** Google mide el div al
-  crear el `Map`; si está oculto recibe 0×0 y no dibuja teselas.
-- **No se usa el parámetro `callback` de la API** para inicializar: no se dispara
-  de forma fiable cuando el `<script>` se inserta dinámicamente. Se usa el evento
-  `load` del propio script, y el mapa se crea cuando están la API y los puntos
-  (pueden llegar en cualquier orden).
+- **El contenedor de Google se muestra antes de construir el mapa.** Google mide el div al
+  crear el `Map`; si está oculto recibe 0x0 y no dibuja teselas.
+- **No se usa el parámetro `callback` de la API** para inicializar: no se dispara de forma
+  fiable cuando el `<script>` se inserta dinámicamente. Se usa el evento `load`.
 - **En SVG no existe el atributo global `hidden`**: el contorno se oculta con
-  `display: none`; con `svg.hidden = true` el SVG seguiría viéndose.
-- **Las marcas usan los tokens CSS** (`--color-success`, `--color-danger`,
-  `--color-text-muted`) leídos con `getComputedStyle`, no una paleta duplicada.
-- **El mapa de Google no es accesible por teclado**; las tarjetas y el historial
-  siguen siendo la vía completa. El contorno SVG sí era navegable con Tab.
-
-Decisiones del contorno propio:
-
-- **Sin clave, no se usa Leaflet ni Google Maps.** Cargan teselas por internet y la
-  demo tiene que funcionar sin conexión (la misma razón por la que el gráfico es
-  SVG a mano). El contorno viaja en el JAR y se dibuja en el servidor. Con clave,
-  Google es una mejora opcional y el SVG queda como respaldo.
-- **Las coordenadas de las estaciones no se copian.** `fetch_laguna.py` las importa
-  de `ia-model/lagunapaca_gnn/stations.py`, que sigue siendo la fuente de verdad del
-  grafo. Si se reemplazan las provisionales por las de campo, se edita `stations.py`
-  y se vuelve a ejecutar el script; el mapa y el modelo no pueden discrepar.
-- **La proyección es equirectangular corregida por `cos(latitud)`.** Sin esa
-  corrección, a 11° sur el lago se vería estirado horizontalmente.
-- **La caja de la proyección incluye las estaciones**, no solo el lago: un punto en
-  la orilla quedaría pegado al borde o fuera del lienzo.
-- **El color es el veredicto persistido**, igual que en las tarjetas: verde
-  `DENTRO`, rojo `ALERTA`, gris `SIN_DATOS`. El mapa no evalúa el pH.
-- **Cada punto enlaza al historial filtrado** (`/panel/historial?estacion=N2`). El
-  mapa sirve para navegar, no solo para mirar.
-- **Sin JavaScript el mapa ya está dibujado**: el servidor renderiza el SVG y el
-  refresco de 20 s solo recolorea los puntos y actualiza su etiqueta.
-- **El texto accesible de cada punto** («N2 · pH 6.27 · Alerta ECA-Agua · hace
-  1 minuto») se construye en el servidor y viaja también en el JSON.
-- **En móvil se agrandan las etiquetas** dentro del SVG (`font-size` 19/16 px): el
-  lienzo se reduce con el ancho y, sin ese ajuste, el texto quedaría a 6 px.
-- Los contrastes de los puntos sobre el agua van de **3.84:1 a 5.24:1** en ambos
-  temas (mínimo 3:1 para elementos gráficos). El texto lleva halo del color de la
-  superficie, así que se lee tanto sobre el agua como sobre el borde.
+  `display: none`; las marcas usan los tokens CSS leídos con `getComputedStyle`.
+- **El color es el veredicto persistido**, igual que en las tarjetas: verde `DENTRO`, rojo
+  `ALERTA`, gris `SIN_DATOS`.
+- **Cada punto enlaza al historial filtrado** (`/panel/historial?estacion=N2`).
+- **Las coordenadas de las estaciones no se copian.** `fetch_laguna.py` las importa de
+  `ia-model/lagunapaca_gnn/stations.py`, que sigue siendo la fuente de verdad del grafo.
+- **La proyección es equirectangular corregida por `cos(latitud)`** y la caja incluye las
+  estaciones, no solo el lago.
+- **En móvil se agrandan las etiquetas** dentro del SVG (`font-size` 19/16 px).
 
 ### Historial con filtros y paginación
 
-`GET /panel/historial` lista las muestras de la más reciente a la más antigua, 20 por página.
-
-| Filtro | Comportamiento |
-|---|---|
-| Estación | `N1`…`N4` o todas |
-| Desde / Hasta | días de calendario **en hora de Lima** (00:00 y 23:59:59.999) |
-| Solo alertas | usa el campo `alert` persistido |
-| Buscar en el motivo | texto dentro del mensaje que redactó el backend |
-
-Decisiones que conviene no deshacer:
+`GET /panel/api/historial` lista las muestras de la más reciente a la más antigua, 20 por
+página. Filtros: estación, desde/hasta (días de calendario en **hora de Lima**) y solo
+alertas; además busca texto dentro del motivo que redactó el backend.
 
 - **No hay una segunda consulta.** El panel llama a `TelemetryService.search`, que ya aplica
-  `WaterQualitySampleSpecifications`. Duplicar los `LIKE`/rangos en el panel crearía dos formas de
+  `WaterQualitySampleSpecifications`. Duplicar los `LIKE`/rangos crearía dos formas de
   filtrar que podrían divergir.
-- **Los filtros llegan como texto, no como `LocalDate`.** Con un `@RequestParam LocalDate`, una
-  fecha mal tecleada responde 400 y pierde el formulario. Aquí se parsea a mano: se avisa
-  («La fecha «desde» no es válida…») y el resto del historial se sigue mostrando.
-- **Un rango invertido no se aplica y se avisa** en vez de romper o devolver una tabla vacía que
-  parecería "no hay datos".
+- **Los filtros llegan como texto, no como `LocalDate`.** Una fecha mal tecleada avisa y
+  conserva el resto del historial en vez de responder 400.
+- **Un rango invertido no se aplica y se avisa** en vez de romper o devolver una tabla vacía.
 - **Las fechas son de Lima, no UTC.** `recorded_at` es un instante; interpretar el día en UTC
-  desplazaría el corte cinco horas y una muestra de las 23:30 aparecería en el día siguiente. Hay
-  un test que fija justo ese caso (`2026-10-18T04:30Z` = 17/10 23:30 en Lima).
-- **Una página fuera de rango se ajusta a la última** (se vuelve a consultar). Si no, cambiar de
-  filtro estando en la página 5 mostraría una tabla vacía con "sin resultados", que es mentira.
-- **Formulario GET, sin JavaScript.** La búsqueda queda en la URL: se puede guardar, compartir y
-  el botón "atrás" del navegador funciona. Los enlaces de paginación arrastran todos los filtros.
-- La tabla se desplaza en horizontal dentro de su tarjeta (`min-width: 760px`) en vez de aplastar
-  siete columnas en un móvil.
+  desplazaría el corte cinco horas. Hay un test que fija `2026-10-18T04:30Z` = 17/10 23:30
+  en Lima.
+- **Una página fuera de rango se ajusta a la última** (se vuelve a consultar).
+- **La búsqueda vive en la URL** (`useSearchParams`): se puede guardar, compartir y el botón
+  "atrás" funciona. La paginación conserva todos los filtros.
+- La tabla se desplaza en horizontal dentro de su tarjeta en móvil.
 
 ### Gestión de alertas
 
-`GET /panel/alertas` lista las muestras **con alerta** ECA-Agua. Por defecto muestra las
-**pendientes**, porque es la pantalla de lo que exige acción.
-
-| Filtro | Comportamiento |
-|---|---|
-| Estación | `N1`…`N4` o todas |
-| Estado | pendientes / atendidas / todas |
-| Desde / Hasta | días de calendario en hora de Lima |
-
-Decisiones que conviene no deshacer:
+`GET /panel/api/alertas` lista las muestras **con alerta** ECA-Agua. Por defecto muestra las
+**pendientes**, porque es la pantalla de lo que exige acción. Filtros: estación, estado
+(pendientes/atendidas/todas) y desde/hasta en hora de Lima.
 
 - **Atender no cambia el veredicto.** `alert` y sus motivos siguen siendo lo que decidió
-  `EcaWaterQualityRule` al ingerir. La atención es otra dimensión y se guarda aparte:
-  `acknowledged_at`, `acknowledged_by` y `acknowledge_note` (migración V4). Mezclarlas borraría
-  evidencia: una muestra fuera de rango sigue estándolo aunque alguien ya la haya revisado.
-- **Solo las muestras con alerta se pueden atender.** Una muestra dentro del rango responde 404:
-  no es un recurso de esta pantalla. Un id inexistente también.
-- **Es un POST con CSRF**, no un enlace: cambia estado persistido y registra al usuario. El nombre
-  sale de la sesión (`Principal`), nunca del formulario.
+  `EcaWaterQualityRule` al ingerir. La atención se guarda aparte:
+  `acknowledged_at`, `acknowledged_by` y `acknowledge_note` (migración V4).
+- **Solo las muestras con alerta se pueden atender.** Una muestra dentro del rango o un id
+  inexistente responde 404.
+- **Es un POST con CSRF**, no un enlace: cambia estado persistido y registra al usuario. El
+  nombre sale de la sesión (`Principal`), nunca del formulario.
 - **Doble envío no pisa la auditoría.** Si la alerta ya estaba atendida, el segundo POST no
   reescribe quién la atendió primero.
-- **Los filtros se conservan al atender y al reabrir** reenviándolos como atributos de
-  redirección. No se acepta una URL de retorno del cliente: sería un redirect abierto.
-- **Tres contadores, cada uno con su ventana escrita en la etiqueta.** Pendientes no caduca (una
-  alerta vieja sigue pendiente); "atendidas (24 h)" corta por la hora de atención; "alertas (24 h)"
-  corta por la hora de medición, así que coincide con el número del tablero.
-- **El tablero refleja la atención** con una línea "Atendida por …" en la tarjeta de la estación,
-  sin añadir un cuarto estado: el veredicto sigue siendo `ALERTA`. El refresco en vivo la
-  actualiza igual que el resto.
-- **La API REST no expone la atención.** `TelemetryQuery` acepta el filtro y el panel lo usa, pero
-  `openapi.yaml` no cambia y `TelemetryResponse` sigue igual. Publicarlo es una decisión aparte
-  porque afecta al cliente Android; el panel es hoy el único lugar donde se atiende una alerta.
-- El **historial** tampoco muestra la atención: ahí se ve el veredicto ECA-Agua de cada muestra, que
-  es otra pregunta.
-
-### Reglas de interfaz que el código hace cumplir
-
-- **Todo el texto visible en español**; los identificadores técnicos (CSS, JS, Java) en inglés.
-- **Modo claro por defecto** y oscuro opcional, persistido en `localStorage` (`laguna-tema`).
-  El tema se aplica con un script en el `<head>` **antes del CSS** para evitar el destello blanco.
-- **Iconos siempre acompañados de texto** (Lucide incrustado como SVG con `aria-hidden="true"`);
-  nunca sustituyen a una etiqueta.
-- **Áreas táctiles de 44 px**, anillo de foco visible (`:focus-visible`), enlace "Saltar al
-  contenido", `aria-current="page"`, `aria-expanded`, `aria-pressed` y `aria-live` en los toasts.
-- **Responsive**: barra lateral fija de 264 px en ≥1024 px, colapsable a 76 px; en móvil es un
-  cajón con velo que se cierra con `Escape` devolviendo el foco al botón que lo abrió.
-- **Estados vacíos honestos**: lo que todavía no existe se muestra como "Pronto" deshabilitado,
-  en vez de un enlace que lleva a un 404.
-- `prefers-reduced-motion` desactiva las animaciones.
-- El panel **no reutiliza los controladores de la API**: el contrato de `openapi.yaml` no debe
-  arrastrar responsabilidades de presentación.
-
-### Tests
-
-`PanelIntegrationTest` (contexto completo, H2) fija el contrato: la raíz `/` redirige al panel
-(en vez del 401 en JSON de la API), `/panel` sin sesión redirige a `/login`, el formulario es
-público y está en español, los estáticos son públicos, el login válido entra, el inválido vuelve
-con `?error`, el POST exige CSRF, un JWT no abre el panel y la API conserva su 401 sin token.
-
-`PanelDashboardIntegrationTest` (contexto completo, H2, base propia) fija el tablero: las cuatro
-estaciones existen sin datos, la tarjeta muestra la muestra **más reciente** y no la primera, una
-alerta se pinta con el motivo que redactó el backend, el JSON trae las cuatro estaciones con su
-estado y la serie, el JSON **exige sesión**, y ni la serie ni los contadores incluyen muestras de
-más de 24 h. Las muestras se insertan por el repositorio para fijar `recordedAt` sin depender del
-reloj.
-
-`PanelHistorialIntegrationTest` (contexto completo, H2, base propia) fija el historial: exige
-sesión, ordena de la más reciente a la más antigua, pagina de 20 en 20, ajusta una página fuera de
-rango a la última, filtra por estación, por día **de Lima**, por "solo alertas" y por el texto del
-motivo, avisa (sin romper) cuando el rango está invertido o la fecha no es válida, conserva los
-filtros en los enlaces de paginación y muestra un estado vacío con salida.
-
-`PanelAlertasIntegrationTest` (contexto completo, H2, base propia) fija la gestión de alertas: exige
-sesión, lista solo muestras con alerta, muestra pendientes por defecto, filtra por estado y
-estación, cuenta pendientes/atendidas/alertas, exige CSRF para atender, registra usuario y nota sin
-tocar el veredicto, responde 404 en una muestra sin alerta o inexistente, reabrir borra la
-auditoría y el tablero informa la atención en su JSON.
-
-`PanelMapaIntegrationTest` (contexto completo, H2, base propia) fija el mapa: el
-tablero dibuja el contorno y una marca por estación, cada punto enlaza a su
-historial, las cuatro estaciones caen dentro del lienzo, el norte queda arriba del
-sur (la proyección respeta la latitud), las coordenadas reales acompañan a cada
-punto, el color es el veredicto persistido y el mapa no depende de teselas ni de
-scripts externos.
-
-`PanelMapaGoogleIntegrationTest` (contexto completo, H2, base propia, con
-`app.maps.google-key`) fija el mapa interactivo: con clave la tarjeta ofrece el
-contenedor de Google, el contorno propio sigue en el HTML como respaldo y la clave
-**no** viaja en el JSON de `/panel/datos`. `PanelMapaTest` (sin Spring) comprueba
-lo mismo sobre la serialización, que es donde se escaparía.
-
-**Total del backend: 138 tests.** Cobertura JaCoCo: **91.5 % de instrucciones**
-(5321/5813) y **70.0 % de ramas** (254/363).
+- **Los filtros se conservan al atender y al reabrir** en la URL de React; no se acepta una
+  URL de retorno del cliente (sería un redirect abierto).
+- **Tres contadores, cada uno con su ventana escrita en la etiqueta.** Pendientes no caduca;
+  "atendidas (24 h)" corta por la hora de atención; "alertas (24 h)" corta por la hora de
+  medición.
+- **El tablero refleja la atención** con una línea "Atendida por ..." en la tarjeta, sin
+  añadir un cuarto estado.
+- **La API REST pública no expone la atención.** `openapi.yaml` no cambia;
+  `TelemetryResponse` sigue igual. Publicarlo afectaría al cliente Android y es una decisión
+  aparte.
 
 ### Predicciones e IA (contrato que no se debe romper)
 
-- Paquete `prediction/`: entidad `Prediction` (tabla propia), `PredictionService`,
+- Paquete `prediction/`: entidad `Prediction`, `PredictionService`,
   `PredictionWindowBuilder`, `PredictionEvaluator`, `AiClient` (`java.net.http`,
   2 s de conexión / 15 s de lectura), `AiProperties`.
-- `POST /api/v1/predictions` genera 1, 3 o 6 h para las 4 estaciones y persiste
-  4 filas `PENDING` con el mismo `model_run_id`. Otro horizonte responde 400.
-- La evaluación ocurre al llegar una muestra real dentro de ±30 min del
-  `target_at`, en `REQUIRES_NEW`, y **nunca rompe la ingesta**. El valor previsto
-  no se reescribe; se guardan observado, error y fecha.
+- `POST /api/v1/predictions` genera 1, 3 o 6 h para las 4 estaciones y persiste 4 filas
+  `PENDING` con el mismo `model_run_id`. Otro horizonte responde 400.
+- La evaluación ocurre al llegar una muestra real dentro de +/-30 min del `target_at`, en
+  `REQUIRES_NEW`, y **nunca rompe la ingesta**. El valor previsto no se reescribe; se guardan
+  observado, error y fecha.
 - Si la IA está caída: 503; respuesta inválida: 502; ventana incompleta: 409.
   **No se inventa ninguna predicción.**
-- El panel tiene `POST /panel/predicciones` (sesión + CSRF) y muestra origen
+- El panel tiene `POST /panel/api/predicciones` (sesión + CSRF) y muestra origen
   `synthetic`/`field`, estado y error. No cambia el badge ECA-Agua.
-  `PanelPrediccionesIntegrationTest` (8) fija sesión, CSRF, IA caída, evaluación
-  y estado vacío.
+- `PanelPrediccionesIntegrationTest` fija sesión, CSRF, IA caída, evaluación y estado vacío.
 
-### Idempotencia de la ingesta
+### Reglas de interfaz que el código hace cumplir
 
-- `V5__predictions_and_idempotency.sql` añade `sample_id` y un índice único
-  **parcial** (`WHERE sample_id IS NOT NULL`), más la tabla `prediction`.
-- `TelemetryService.ingest` devuelve `IngestOutcome`: 201 si creó, 200 si ya
-  existía; el controlador decide. Un choque por concurrencia responde 409.
-- El firmware genera `N1-<bootId 8 hex>-<secuencia>` (`SampleIdentity`): `bootId`
-  aleatorio por arranque en frío y secuencia en RTC que **solo avanza al
-  confirmar la entrega**. Un reintento reutiliza el id.
+- **Todo el texto visible en español**; los identificadores técnicos (CSS, JS, TS, Java) en
+  inglés.
+- **Modo claro por defecto** y oscuro opcional, persistido en `localStorage` (`laguna-tema`).
+  Un script mínimo en `index.html` aplica el tema antes del CSS para evitar el destello;
+  React solo lo alterna y lo persiste.
+- **Iconos siempre acompañados de texto** (Lucide incrustado como SVG con
+  `aria-hidden="true"`); nunca sustituyen a una etiqueta.
+- **Áreas táctiles de 44 px**, anillo de foco visible (`:focus-visible`), enlace "Saltar al
+  contenido", `aria-current="page"`, `aria-expanded`, `aria-pressed` y `aria-live` en los
+  toasts.
+- **Responsive**: barra lateral fija de 264 px en >=1024 px, colapsable a 76 px; en móvil es
+  un cajón con velo que se cierra con `Escape` devolviendo el foco al botón que lo abrió.
+- **Estados vacíos honestos**: lo que todavía no existe se muestra como "Pronto"
+  deshabilitado, en vez de un enlace que lleva a un 404.
+- `prefers-reduced-motion` desactiva las animaciones.
+- **El panel no reutiliza los controladores de la API**: el contrato de `openapi.yaml` no
+  debe arrastrar responsabilidades de presentación.
 
-### Docker, CI y calidad
+### Tests del panel y del frontend
 
-- `backend/Dockerfile` (multi-etapa, JRE 21, usuario sin privilegios, `curl` para
-  el healthcheck) e `ia-model/Dockerfile` (PyTorch CPU, artefacto incluido).
-- `compose.yaml`: `db` + `backend` siempre; `ai` con perfil `integrated`; `mqtt`
-  con perfil `mqtt`. La IA **no publica puerto**; el backend la alcanza por la red
-  interna. `.env.example` documenta las variables.
-- `.github/workflows/ci.yml`: backend (`mvn test` + JaCoCo), IA (`pytest`) y
-  firmware (`pio test -e native`); job de Sonar opcional si existen los secretos.
-- La migración V1–V5 se validó en **PostgreSQL 16.9 embebido** (columnas, índice
-  parcial, restricciones y SQLSTATE 23505/23514) y `docker compose config`
-  resolvió los cuatro servicios con los dos perfiles. El IT
-  `PostgresMigrationIT` reproduce esas comprobaciones y el job
-  `backend-postgres` del CI lo ejecuta contra `postgres:16-alpine`. **No se
-  ejecutaron** `build/up` ni SonarQube: se declara en
-  `docs/SDD/26-limitaciones.md`.
+`PanelIntegrationTest` (contexto completo, H2) fija el contrato: la raíz redirige al panel,
+`/panel` sin sesión redirige a `/login`, `/login` devuelve el shell React (`id="root"` y
+assets de Vite), los estáticos son públicos, el login válido entra, el inválido vuelve con
+`?error`, el POST exige CSRF, un JWT no abre el panel, la API JSON responde 401 sin sesión,
+`/panel/csrf` es público y `/logout` invalida la sesión.
+
+`PanelDashboardIntegrationTest` fija el tablero: las cuatro estaciones existen sin datos, la
+tarjeta muestra la muestra **más reciente**, una alerta se pinta con el motivo del backend, el
+JSON trae las cuatro estaciones con su estado y la serie, exige sesión y ni la serie ni los
+contadores incluyen muestras de más de 24 h.
+
+`PanelHistorialIntegrationTest` fija orden, paginación de 20 en 20, ajuste de página fuera de
+rango, filtros por estación, día **de Lima**, solo alertas y texto del motivo; avisa sin
+romper ante rango invertido o fecha inválida.
+
+`PanelAlertasIntegrationTest` fija el listado solo con alerta, pendientes por defecto, filtros,
+contadores, CSRF, auditoría, 404 y reapertura; el veredicto ECA-Agua no cambia.
+
+`PanelMapaIntegrationTest` fija el contorno, una marca por estación, puntos dentro del lienzo,
+norte arriba del sur, coordenadas reales, color persistido, texto accesible y ausencia de
+teselas/scripts externos. `PanelMapaGoogleIntegrationTest` fija que la clave llega solo por
+`/panel/api/sesion`, no se incrusta en el HTML ni viaja en `/panel/api/datos`.
+
+Tests del frontend (Vitest + Testing Library): `estado.test.ts` (etiquetas y clases),
+`client.test.ts` (CSRF, 401, reintento por 403, login), `components.test.tsx` (badge, mapa,
+paginación, gráfico) y `pages.test.tsx` (historial, alertas y tablero con datos simulados).
+
+**Total del backend: 145 tests.** Cobertura JaCoCo pendiente de recalcular tras la migración.
 
 ## Firmware IoT (`iot-firmware/`) — comandos
 
@@ -527,6 +443,6 @@ Hardware de desarrollo (**importante para planificar**): Ryzen 5 2500U, 10.9 GB 
 - `README.md` es la puerta de entrada para humanos (arranque de la demo, estado de los
   módulos, resultados y pendientes). Si cambia el arranque, un total de pruebas o el
   estado de un módulo, actualiza el README junto con este archivo.
-- `docs/` es material binario de referencia (tesis y libros), **no código**, salvo `docs/SDD/`, que es la documentación de diseño versionada (índice + 00–28 + 9 ADR). `docs/LIBROS/` contiene libros de consulta (Spring Boot, Neo4j, ESP32, GNN). Las herramientas de lectura no extraen PDF/DOCX directamente: DOCX/PPTX son ZIP y hay que descomprimirlos para leer su XML de texto.
+- `docs/` es material binario de referencia (tesis y libros), **no código**, salvo `docs/SDD/`, que es la documentación de diseño versionada (índice + 00–28 + 10 ADR). `docs/LIBROS/` contiene libros de consulta (Spring Boot, Neo4j, ESP32, GNN). Las herramientas de lectura no extraen PDF/DOCX directamente: DOCX/PPTX son ZIP y hay que descomprimirlos para leer su XML de texto.
 - Los comandos de build/test de cada módulo están documentados arriba (backend y firmware). Si agregas scripts o tareas nuevas, documéntalas aquí.
 - Git remoto: `origin` → `https://github.com/46855344-ux/tesis-laguna-paca.git`, rama única `main`.

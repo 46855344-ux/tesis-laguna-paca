@@ -6,30 +6,27 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import pe.edu.continental.lagunapaca.telemetry.domain.AlertCode;
 import pe.edu.continental.lagunapaca.telemetry.domain.AlertReason;
 import pe.edu.continental.lagunapaca.telemetry.domain.WaterQualitySample;
 import pe.edu.continental.lagunapaca.telemetry.domain.WaterQualitySampleRepository;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestBuilders.formLogin;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -51,8 +48,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @DisplayName("Gestión de alertas: listado, filtros y atención")
 class PanelAlertasIntegrationTest {
-
-    private static final String MARCA_ALERTA = "data-alerta=\"";
 
     @Autowired
     private MockMvc mockMvc;
@@ -87,36 +82,11 @@ class PanelAlertasIntegrationTest {
         return repository.save(muestra);
     }
 
-    private String html(MockHttpServletRequestBuilder peticion) throws Exception {
-        return mockMvc.perform(peticion.session(sesionAdmin()))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString(StandardCharsets.UTF_8);
-    }
-
-    private static int tarjetas(String html) {
-        int total = 0;
-        int desde = 0;
-        while ((desde = html.indexOf(MARCA_ALERTA, desde)) >= 0) {
-            total++;
-            desde += MARCA_ALERTA.length();
-        }
-        return total;
-    }
-
-    /** Lee el número que pinta un KPI sin meter un parser HTML en el test. */
-    private static String valorKpi(String html, String id) {
-        Matcher matcher = Pattern.compile("id=\"" + id + "\"[^>]*>(\\d+)<").matcher(html);
-        return matcher.find() ? matcher.group(1) : null;
-    }
-
     @Test
     @DisplayName("la gestión de alertas exige sesión")
     void exigeSesion() throws Exception {
-        mockMvc.perform(get("/panel/alertas"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("http://localhost/login"));
+        mockMvc.perform(get("/panel/api/alertas"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -126,11 +96,11 @@ class PanelAlertasIntegrationTest {
         normal("N1", 7.20, base);
         alerta("N2", 9.60, base.plus(1, ChronoUnit.MINUTES));
 
-        String html = html(get("/panel/alertas"));
-
-        assertThat(tarjetas(html)).isEqualTo(1);
-        assertThat(html).contains("data-estacion=\"N2\"");
-        assertThat(html).doesNotContain("data-estacion=\"N1\"");
+        mockMvc.perform(get("/panel/api/alertas").session(sesionAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.filas", hasSize(1)))
+                .andExpect(jsonPath("$.filas[0].estacion").value("N2"))
+                .andExpect(jsonPath("$.total").value(1));
     }
 
     @Test
@@ -142,10 +112,11 @@ class PanelAlertasIntegrationTest {
         atendida.acknowledge(Instant.now().minus(10, ChronoUnit.MINUTES), "admin", null);
         repository.save(atendida);
 
-        String html = html(get("/panel/alertas"));
-
-        assertThat(tarjetas(html)).isEqualTo(1);
-        assertThat(html).contains("data-estacion=\"N1\"");
+        mockMvc.perform(get("/panel/api/alertas").session(sesionAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.filas", hasSize(1)))
+                .andExpect(jsonPath("$.filas[0].estacion").value("N1"))
+                .andExpect(jsonPath("$.filtros.estado").value("pendientes"));
     }
 
     @Test
@@ -157,12 +128,13 @@ class PanelAlertasIntegrationTest {
         atendida.acknowledge(Instant.now().minus(10, ChronoUnit.MINUTES), "admin", "Se avisó a la municipalidad");
         repository.save(atendida);
 
-        String html = html(get("/panel/alertas").param("estado", "atendidas"));
-
-        assertThat(tarjetas(html)).isEqualTo(1);
-        assertThat(html).contains("data-estacion=\"N2\"");
-        assertThat(html).contains("Atendida por");
-        assertThat(html).contains("Se avisó a la municipalidad");
+        mockMvc.perform(get("/panel/api/alertas").param("estado", "atendidas").session(sesionAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.filas", hasSize(1)))
+                .andExpect(jsonPath("$.filas[0].estacion").value("N2"))
+                .andExpect(jsonPath("$.filas[0].atendida").value(true))
+                .andExpect(jsonPath("$.filas[0].atendidaPor").value("admin"))
+                .andExpect(jsonPath("$.filas[0].nota").value("Se avisó a la municipalidad"));
     }
 
     @Test
@@ -173,10 +145,12 @@ class PanelAlertasIntegrationTest {
         alerta("N2", 9.70, base.plus(1, ChronoUnit.MINUTES));
         alerta("N2", 9.80, base.plus(2, ChronoUnit.MINUTES));
 
-        String html = html(get("/panel/alertas").param("estacion", "N2"));
-
-        assertThat(tarjetas(html)).isEqualTo(2);
-        assertThat(html).doesNotContain("data-estacion=\"N1\"");
+        mockMvc.perform(get("/panel/api/alertas").param("estacion", "N2").session(sesionAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.filas", hasSize(2)))
+                .andExpect(jsonPath("$.filas[0].estacion").value("N2"))
+                .andExpect(jsonPath("$.filas[1].estacion").value("N2"))
+                .andExpect(jsonPath("$.filtros.estacion").value("N2"));
     }
 
     @Test
@@ -189,11 +163,11 @@ class PanelAlertasIntegrationTest {
         atendida.acknowledge(ahora.minus(30, ChronoUnit.MINUTES), "admin", null);
         repository.save(atendida);
 
-        String html = html(get("/panel/alertas").param("estado", "todas"));
-
-        assertThat(valorKpi(html, "kpi-pendientes")).isEqualTo("2");
-        assertThat(valorKpi(html, "kpi-atendidas")).isEqualTo("1");
-        assertThat(valorKpi(html, "kpi-alertas")).isEqualTo("3");
+        mockMvc.perform(get("/panel/api/alertas").param("estado", "todas").session(sesionAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pendientes").value(2))
+                .andExpect(jsonPath("$.atendidas24h").value(1))
+                .andExpect(jsonPath("$.alertas24h").value(3));
     }
 
     @Test
@@ -201,9 +175,10 @@ class PanelAlertasIntegrationTest {
     void atenderExigeCsrf() throws Exception {
         WaterQualitySample pendiente = alerta("N1", 9.60, Instant.now());
 
-        mockMvc.perform(post("/panel/alertas/{id}/atender", pendiente.getId())
+        mockMvc.perform(post("/panel/api/alertas/{id}/atender", pendiente.getId())
                         .session(sesionAdmin())
-                        .param("nota", "intento sin token"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nota\":\"intento sin token\"}"))
                 .andExpect(status().isForbidden());
 
         assertThat(repository.findById(pendiente.getId()).orElseThrow().isAcknowledged()).isFalse();
@@ -215,12 +190,13 @@ class PanelAlertasIntegrationTest {
         WaterQualitySample pendiente = alerta("N1", 9.60, Instant.now());
         MockHttpSession sesion = sesionAdmin();
 
-        mockMvc.perform(post("/panel/alertas/{id}/atender", pendiente.getId())
+        mockMvc.perform(post("/panel/api/alertas/{id}/atender", pendiente.getId())
                         .session(sesion)
                         .with(csrf())
-                        .param("nota", "Se coordinó con el guardaparque")
-                        .param("estado", "pendientes"))
-                .andExpect(status().is3xxRedirection());
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nota\":\"Se coordinó con el guardaparque\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mensaje", containsString("Alerta atendida")));
 
         WaterQualitySample guardada = repository.findById(pendiente.getId()).orElseThrow();
         assertThat(guardada.isAcknowledged()).isTrue();
@@ -230,9 +206,10 @@ class PanelAlertasIntegrationTest {
         // El veredicto original no se toca: solo se añadió la atención.
         assertThat(guardada.isAlert()).isTrue();
 
-        String html = html(get("/panel/alertas").param("estado", "atendidas"));
-        assertThat(html).contains("Atendida por");
-        assertThat(html).contains("Se coordinó con el guardaparque");
+        mockMvc.perform(get("/panel/api/alertas").param("estado", "atendidas").session(sesion))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.filas[0].atendidaPor").value("admin"))
+                .andExpect(jsonPath("$.filas[0].nota").value("Se coordinó con el guardaparque"));
     }
 
     @Test
@@ -240,10 +217,13 @@ class PanelAlertasIntegrationTest {
     void noSePuedeAtenderUnaMuestraSinAlerta() throws Exception {
         WaterQualitySample sana = normal("N1", 7.20, Instant.now());
 
-        mockMvc.perform(post("/panel/alertas/{id}/atender", sana.getId())
+        mockMvc.perform(post("/panel/api/alertas/{id}/atender", sana.getId())
                         .session(sesionAdmin())
-                        .with(csrf()))
-                .andExpect(status().isNotFound());
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").isNotEmpty());
 
         assertThat(repository.findById(sana.getId()).orElseThrow().isAcknowledged()).isFalse();
     }
@@ -251,9 +231,11 @@ class PanelAlertasIntegrationTest {
     @Test
     @DisplayName("una alerta inexistente responde 404, no 500")
     void alertaInexistenteResponde404() throws Exception {
-        mockMvc.perform(post("/panel/alertas/{id}/atender", 999_999L)
+        mockMvc.perform(post("/panel/api/alertas/{id}/atender", 999_999L)
                         .session(sesionAdmin())
-                        .with(csrf()))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
                 .andExpect(status().isNotFound());
     }
 
@@ -264,10 +246,11 @@ class PanelAlertasIntegrationTest {
         atendida.acknowledge(Instant.now().minus(20, ChronoUnit.MINUTES), "admin", "Revisado");
         repository.save(atendida);
 
-        mockMvc.perform(post("/panel/alertas/{id}/reabrir", atendida.getId())
+        mockMvc.perform(post("/panel/api/alertas/{id}/reabrir", atendida.getId())
                         .session(sesionAdmin())
                         .with(csrf()))
-                .andExpect(status().is3xxRedirection());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mensaje", containsString("pendientes")));
 
         WaterQualitySample guardada = repository.findById(atendida.getId()).orElseThrow();
         assertThat(guardada.isAcknowledged()).isFalse();
@@ -283,7 +266,7 @@ class PanelAlertasIntegrationTest {
         atendida.acknowledge(Instant.now().minus(2, ChronoUnit.MINUTES), "admin", null);
         repository.save(atendida);
 
-        mockMvc.perform(get("/panel/datos").session(sesionAdmin()))
+        mockMvc.perform(get("/panel/api/datos").session(sesionAdmin()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.estaciones[2].id").value("N3"))
                 .andExpect(jsonPath("$.estaciones[2].estado").value("ALERTA"))

@@ -8,7 +8,7 @@
 | `GET /actuator/info` | Metadatos de la app | Pública |
 | `GET /api/v1/ai/health` | Contacto con FastAPI y modelo cargado | JWT |
 | `GET /health` (FastAPI) | Proceso y `model_loaded` | Pública en la red interna |
-| `GET /panel/datos` | Estado agregado para el navegador | Sesión |
+| `GET /panel/api/datos` | Estado agregado para el navegador (alias: `/panel/datos`) | Sesión |
 
 `/api/v1/ai/health` responde **200 aunque la IA esté caída**: el cuerpo lleva
 `available=false` y `detail`. Así se distingue «el backend no responde» de «el
@@ -50,7 +50,7 @@ backend responde y la IA no está disponible».
 
 ### El panel no refresca
 
-1. Confirmar sesión activa (sin sesión, `/panel/datos` redirige a `/login`).
+1. Confirmar sesión activa (sin sesión, `/panel/api/datos` responde 401 y las rutas de página redirigen a `/login`).
 2. Revisar la consola del navegador; el refresco se pausa si la pestaña está
    oculta.
 3. El botón «Actualizar» fuerza una lectura.

@@ -17,18 +17,18 @@ fija. Si un requisito no tiene prueba, se dice; no se inventa cobertura.
 | RF-08 | `Prediction`, `V5__predictions_and_idempotency.sql` | `FlywayMigrationsTest` |
 | RF-09 | `PredictionEvaluator` | `PredictionEvaluatorTest`, `PredictionIntegrationTest` |
 | RF-10 | `AiStatusController`, `AiClient.health` | `PredictionControllerTest`, `AiClientTest` |
-| RF-11 | `PanelDashboardService`, `panel.html` | `PanelDashboardIntegrationTest` |
-| RF-12 | `PanelHistorialService` | `PanelHistorialIntegrationTest` |
-| RF-13 | `PanelAlertasService`, `V4` | `PanelAlertasIntegrationTest` |
+| RF-11 | `PanelDashboardService`, `DashboardPage.tsx` | `PanelDashboardIntegrationTest`, `pages.test.tsx` |
+| RF-12 | `PanelHistorialService`, `HistoryPage.tsx` | `PanelHistorialIntegrationTest`, `pages.test.tsx` |
+| RF-13 | `PanelAlertasService`, `AlertsPage.tsx`, `V4` | `PanelAlertasIntegrationTest`, `pages.test.tsx` |
 | RF-14 | `MapaLagunaService`, `geo/laguna-paca.json` | `PanelMapaIntegrationTest` |
 | RF-15 | `TelemetryService.ingest`, `findBySampleId`, índice único | `TelemetryServiceTest`, `PredictionIntegrationTest` |
 | RF-16 | `GlobalExceptionHandler` (409) | `ApiIntegrationTest`, `TelemetryControllerTest` |
 | RF-17 | `PredictionController` (POST explícito) | `PredictionControllerTest` |
 | RF-18 | `PredictionService` (horizontes permitidos) | `PredictionServiceTest`, `PredictionControllerTest` |
 | RF-19 | `PredictionWindowBuilder`, `IncompleteWindowException` | `PredictionWindowBuilderTest`, `PredictionServiceTest` |
-| RF-20 | `PanelDashboardService`, `panel.html` | `PanelPrediccionesIntegrationTest` |
+| RF-20 | `PanelDashboardService`, `DashboardPage.tsx` | `PanelPrediccionesIntegrationTest` |
 | RF-21 | `data_source` en artefacto, tabla, DTO y panel | `AiClientTest`, `PanelPrediccionesIntegrationTest` |
-| RF-22 | Bloques vacío/error en `panel.html` | `PanelPrediccionesIntegrationTest` |
+| RF-22 | Estados vacío/error en `DashboardPage.tsx` | `PanelPrediccionesIntegrationTest` |
 | RF-23 | `MovingAverageFilter`, `TelemetryNode` | 38 tests nativos |
 | RF-24 | `SensorCalibration`, `TelemetryNode` | `test_node_descartaUnaMuestraImplausible` |
 | RF-25 | `SampleIdentity`, `TelemetryPayload`, `main.cpp` | `test_sampleId_*`, `test_payload_incluyeSampleId*` |
@@ -41,7 +41,7 @@ fija. Si un requisito no tiene prueba, se dice; no se inventa cobertura.
 
 | RNF | Evidencia | ¿Verificado? |
 |---|---|---|
-| RNF-01 | `pom.xml` + 138 tests | Sí |
+| RNF-01 | `pom.xml` + 145 tests | Sí |
 | RNF-02 | `requirements.txt` + 172 tests | Sí |
 | RNF-03 | Ingesta sin dependencia de IA | Sí |
 | RNF-04 | Timeouts 2 s/15 s | Sí |
@@ -53,11 +53,11 @@ fija. Si un requisito no tiene prueba, se dice; no se inventa cobertura.
 | RNF-10 | Compose + Dockerfiles + job PostgreSQL | Parcial: `config` e IT OK; imágenes y CI no ejecutados |
 | RNF-11 | `sample_id` + índice | Sí |
 | RNF-12 | H2, `HttpServer`, dobles | Sí |
-| RNF-13 | `panel.js` | Manual |
+| RNF-13 | `DashboardPage.tsx` | Manual |
 | RNF-14 | Artefacto, no entrenar al arrancar | Sí |
 | RNF-15 | Campos de evaluación | Sí |
 | RNF-16 | `data_source` | Sí |
-| RNF-17 | JaCoCo 91.5 % | Sí |
+| RNF-17 | JaCoCo 91.7 % de instrucciones | Sí |
 | RNF-18 | Flash 72.3 % / 59.8 % | Sí |
 | RNF-19 | Perfil `demo` | Sí (tests de contexto) |
 | RNF-20 | Texto en español | Revisión manual |
@@ -66,11 +66,11 @@ fija. Si un requisito no tiene prueba, se dice; no se inventa cobertura.
 
 | Objetivo | Evidencia | Estado |
 |---|---|---|
-| Ingesta IoT con alertas ECA-Agua | 138 tests, simulador | Cumplido |
+| Ingesta IoT con alertas ECA-Agua | 145 tests de backend, simulador | Cumplido |
 | ST-GNN con R² > 0.90 a 6 h | `R² = 0.9289` vs persistencia 0.7403 | Cumplido con datos sintéticos |
 | Servicio de inferencia integrado | FastAPI + `PredictionService` | Cumplido |
 | Evaluación de predicciones | `PredictionEvaluator` | Cumplido |
-| Panel operativo | 59 tests de panel | Cumplido |
+| Panel operativo | 66 tests de panel + 16 de frontend | Cumplido |
 | Idempotencia de ingesta | `sample_id` + firmware | Cumplido |
 | Despliegue reproducible | Compose + CI | Configurado, no ejecutado |
 | Datos de campo | Cargador `--csv` probado; faltan mediciones reales | **Pendiente** |

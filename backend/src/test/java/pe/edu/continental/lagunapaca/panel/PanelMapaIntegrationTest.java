@@ -10,7 +10,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import pe.edu.continental.lagunapaca.telemetry.domain.AlertCode;
 import pe.edu.continental.lagunapaca.telemetry.domain.AlertReason;
 import pe.edu.continental.lagunapaca.telemetry.domain.WaterQualitySample;
@@ -35,10 +34,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Contrato del mapa de la laguna.
  *
- * <p>Fija tres cosas que no se ven a simple vista: que el contorno se dibuja en
- * el servidor (sin teselas ni librerías externas), que las estaciones caen
+ * <p>Fija tres cosas que no se ven a simple vista: que el contorno se calcula
+ * en el servidor (sin teselas ni librerías externas), que las estaciones caen
  * dentro del lienzo y en el orden geográfico correcto, y que el color de cada
  * punto es el veredicto ECA-Agua que ya decidió el backend.</p>
+ *
+ * <p>El dibujo lo hace React; el backend entrega geometría, coordenadas y
+ * veredicto. No se duplica la regla ECA-Agua en el navegador.</p>
  */
 @SpringBootTest(properties = {
         "spring.datasource.url=jdbc:h2:mem:lagunapaca-mapa;DB_CLOSE_DELAY=-1",
@@ -72,16 +74,8 @@ class PanelMapaIntegrationTest {
         return (MockHttpSession) result.getRequest().getSession(false);
     }
 
-    private String html(MockHttpServletRequestBuilder peticion) throws Exception {
-        return mockMvc.perform(peticion.session(sesionAdmin()))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString(StandardCharsets.UTF_8);
-    }
-
     private String datos() throws Exception {
-        return mockMvc.perform(get("/panel/datos").session(sesionAdmin()))
+        return mockMvc.perform(get("/panel/api/datos").session(sesionAdmin()))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
@@ -97,34 +91,23 @@ class PanelMapaIntegrationTest {
     }
 
     @Test
-    @DisplayName("el tablero dibuja el contorno y una marca por estación")
+    @DisplayName("el JSON trae el contorno y una marca por estación")
     void dibujaElContornoYLasCuatroEstaciones() throws Exception {
-        String html = html(get("/panel"));
+        String json = datos();
 
-        assertThat(html).contains("class=\"mapa-laguna__agua\"");
-        // El trazo empieza en el primer vértice y cierra el anillo.
-        assertThat(html).containsPattern("d=\"M [\\d.]+ [\\d.]+ L ");
-        assertThat(count(html, "data-punto=\"")).isEqualTo(4);
-
-        for (String estacion : PanelDashboardService.ESTACIONES) {
-            assertThat(html).contains("data-punto=\"" + estacion + "\"");
-        }
-    }
-
-    @Test
-    @DisplayName("cada punto enlaza al historial filtrado por su estación")
-    void cadaPuntoEnlazaASuHistorial() throws Exception {
-        String html = html(get("/panel"));
-
-        for (String estacion : PanelDashboardService.ESTACIONES) {
-            assertThat(html).contains("/panel/historial?estacion=" + estacion);
-        }
+        assertThat(JsonPath.<String>read(json, "$.mapa.viewBox"))
+                .isEqualTo("0 0 " + ANCHO + " " + ALTO);
+        assertThat(JsonPath.<String>read(json, "$.mapa.camino"))
+                .startsWith("M ")
+                .contains(" L ");
+        assertThat(JsonPath.<List<String>>read(json, "$.mapa.puntos[*].id"))
+                .containsExactly("N1", "N2", "N3", "N4");
     }
 
     @Test
     @DisplayName("las cuatro estaciones caen dentro del lienzo")
     void lasEstacionesCaenDentroDelLienzo() throws Exception {
-        mockMvc.perform(get("/panel/datos").session(sesionAdmin()))
+        mockMvc.perform(get("/panel/api/datos").session(sesionAdmin()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.mapa.puntos", hasSize(4)))
                 .andExpect(jsonPath("$.mapa.puntos[*].x").value(
@@ -161,7 +144,7 @@ class PanelMapaIntegrationTest {
         alerta("N2", 9.62, AlertCode.PH_HIGH,
                 "pH 9.62 supera el límite superior ECA-Agua (9.0)");
 
-        mockMvc.perform(get("/panel/datos").session(sesionAdmin()))
+        mockMvc.perform(get("/panel/api/datos").session(sesionAdmin()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.mapa.puntos[1].id").value("N2"))
                 .andExpect(jsonPath("$.mapa.puntos[1].clase").value("peligro"))
@@ -176,31 +159,21 @@ class PanelMapaIntegrationTest {
         alerta("N3", 6.10, AlertCode.PH_LOW,
                 "pH 6.10 es inferior al límite ECA-Agua (6.5)");
 
-        mockMvc.perform(get("/panel/datos").session(sesionAdmin()))
+        mockMvc.perform(get("/panel/api/datos").session(sesionAdmin()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.mapa.puntos[2].titulo",
                         containsString("N3 · pH 6.10 · Alerta ECA-Agua")));
     }
 
     @Test
-    @DisplayName("el mapa se dibuja sin teselas ni scripts externos")
+    @DisplayName("el mapa entregado por el backend no depende de teselas ni scripts externos")
     void elMapaNoDependeDeInternet() throws Exception {
-        String html = html(get("/panel"));
+        String json = datos();
 
-        assertThat(html).doesNotContain("tile.openstreetmap.org");
-        assertThat(html).doesNotContain("leaflet");
-        assertThat(html).doesNotContain("maps.googleapis");
-        assertThat(html).contains("class=\"mapa-laguna__lienzo\"");
-        assertThat(html).contains("viewBox=\"0 0 " + ANCHO + " " + ALTO + "\"");
-    }
-
-    private static int count(String texto, String buscado) {
-        int total = 0;
-        int desde = 0;
-        while ((desde = texto.indexOf(buscado, desde)) >= 0) {
-            total++;
-            desde += buscado.length();
-        }
-        return total;
+        assertThat(json).doesNotContain("tile.openstreetmap.org");
+        assertThat(json).doesNotContain("leaflet");
+        assertThat(json).doesNotContain("maps.googleapis");
+        assertThat(json).doesNotContain("googleKey");
+        assertThat(JsonPath.<String>read(json, "$.mapa.camino")).isNotEmpty();
     }
 }

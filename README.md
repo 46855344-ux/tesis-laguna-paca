@@ -7,12 +7,12 @@ muestra contra los límites de la **ECA-Agua** (pH entre 6.5 y 9.0), guarda el h
 avisa en un **panel web** y predice el pH a futuro con un **ST-GNN** (red espacio-temporal
 sobre el grafo de estaciones).
 
-> **Estado:** backend, firmware e IA funcionando de extremo a extremo, con predicciones
-> persistidas y evaluadas contra muestras posteriores. **348 pruebas** verdes (138 backend,
-> 38 firmware, 172 IA). La app Android todavía no está implementada. Los datos de
-> entrenamiento del modelo son **sintéticos**: el resultado demuestra la arquitectura,
-> no el comportamiento real de la laguna. El despliegue con Docker está configurado,
-> pero **no se ejecutó** en esta máquina (no hay Docker).
+> **Estado:** backend, frontend, firmware e IA funcionando de extremo a extremo, con
+> predicciones persistidas y evaluadas contra muestras posteriores. **371 pruebas** verdes
+> (145 backend, 16 frontend, 38 firmware, 172 IA). La app Android todavía no está
+> implementada. Los datos de entrenamiento del modelo son **sintéticos**: el resultado
+> demuestra la arquitectura, no el comportamiento real de la laguna. El despliegue con
+> Docker está configurado, pero **no se ejecutó** en esta máquina (no hay Docker).
 
 ---
 
@@ -42,7 +42,7 @@ sobre el grafo de estaciones).
 │  pH, turbidez,     │   sample_id           │  · regla ECA-Agua (alerta)   │
 │  temperatura, TDS  │                       │  · PostgreSQL + Flyway       │
 └────────────────────┘                       │  · API REST con JWT          │
-                                             │  · panel web (Thymeleaf)     │
+                                             │  · SPA React + JSON de panel │
                                              └───────┬──────────────┬───────┘
                                                      │              │ /predict
                                      series históricas│              │ (red interna)
@@ -64,7 +64,8 @@ solo pronostica. Si la IA está caída, la ingesta y las alertas siguen funciona
 | Capa | Tecnología |
 |---|---|
 | Firmware | ESP32 (C++/Arduino, PlatformIO), deep sleep, HTTP y MQTT QoS 1 |
-| Backend | Java 21, Spring Boot 3.2, PostgreSQL 16, Flyway, JWT, Thymeleaf |
+| Backend | Java 21, Spring Boot 3.2, PostgreSQL 16, Flyway, JWT |
+| Frontend | React 19, TypeScript, Vite, React Router; build servido desde el JAR |
 | IA | Python 3.12, PyTorch (CPU), PyTorch Geometric, NumPy, FastAPI |
 | Móvil (pendiente) | Kotlin, Jetpack Compose, Firebase Cloud Messaging |
 
@@ -74,7 +75,8 @@ solo pronostica. Si la IA está caída, la ingesta y las alertas siguen funciona
 
 | Módulo | Estado | Qué incluye |
 |---|---|---|
-| `backend/` | ✅ Completo (138 tests) | Ingesta HTTP y MQTT idempotente, alertas ECA-Agua, historial paginado, JWT, Flyway V1–V5, panel web, predicciones y su evaluación, Swagger UI |
+| `backend/` | ✅ Completo (145 tests) | Ingesta HTTP y MQTT idempotente, alertas ECA-Agua, historial paginado, JWT, Flyway V1–V5, API JSON del panel, predicciones y su evaluación, Swagger UI |
+| `frontend/` | ✅ Completo (16 tests) | SPA React + TypeScript: acceso, tablero, mapa, historial, alertas, predicciones, tema y accesibilidad |
 | `iot-firmware/` | ✅ Completo (38 tests) | Núcleo portable C++11, sensores, calibración, deep sleep, JWT cacheado, transporte HTTP y MQTT, `sample_id` |
 | `ia-model/` | ✅ Completo (172 tests) | Grafo, ventanas, ST-GNN, normalización, entrenamiento, carga de CSV de campo, artefacto versionado y servicio FastAPI |
 | `android-app/` | ⬜ Vacío | Pendiente: tema Material 3, login, tablero, alertas y FCM |
@@ -93,6 +95,8 @@ Los datos viven en memoria y **se borran al reiniciar**.
   ⚠️ No uses JDK 26: Spring Boot 3.2 no arranca con él.
 - **Maven 3.9** (o el Maven integrado de IntelliJ).
 - **Python 3.12** para el simulador de nodos y el servicio de IA (ambos opcionales).
+- **Node.js 22 + npm** solo si vas a **modificar** la SPA. La demo usa el build ya
+  incluido en `backend/src/main/resources/static/panel`, así que no necesita Node.
 
 ### 1. Arrancar
 
@@ -101,7 +105,7 @@ Desde `backend/` (PowerShell):
 ```powershell
 $env:JAVA_HOME="D:\Intellij\IntelliJ IDEA 2025.2.1\jbr"
 $env:GOOGLE_MAPS_API_KEY="tu-clave"   # opcional: mapa de Google
-mvn spring-boot:run -Dspring-boot.run.profiles=demo -Dspring-boot.run.useTestClasspath=true
+mvn spring-boot:run "-Dspring-boot.run.profiles=demo" "-Dspring-boot.run.useTestClasspath=true"
 ```
 
 `useTestClasspath=true` es necesario porque H2 está en ámbito `test`: así la demo arranca
@@ -163,37 +167,66 @@ Sin IA, el panel muestra un aviso y no inventa valores.
 
 ## Panel web
 
-Panel renderizado en el servidor con Thymeleaf, en español, con sistema de diseño propio
-(tokens CSS, modo claro/oscuro, sin dependencias externas: funciona sin internet).
+El panel es una **SPA React + TypeScript** servida por Spring Boot desde el mismo JAR.
+El build de Vite se escribe en `backend/src/main/resources/static/panel`, así que la demo
+no necesita Node ni un servidor de desarrollo. El navegador usa **sesión con formulario y
+CSRF**; la API pública sigue usando **JWT sin estado**.
 
 | Pantalla | Ruta | Qué muestra |
 |---|---|---|
-| Tablero | `/panel` | Indicadores de 24 h, mapa de la laguna, tarjetas N1–N4 y gráfico |
+| Acceso | `/login` | Formulario de sesión (usuario `admin` / `admin123` en la demo) |
+| Tablero | `/panel` | Indicadores de 24 h, mapa de la laguna, tarjetas N1–N4, gráfico y predicciones |
 | Historial | `/panel/historial` | Muestras paginadas con filtros por estación, fecha, alerta y motivo |
 | Alertas | `/panel/alertas` | Muestras con alerta, pendientes por defecto; atender y reabrir con auditoría |
-| Predicciones | `/panel` (sección) | Generación a 1, 3 o 6 h, con origen sintético/campo y evaluación contra la medición real |
-| Datos (JSON) | `/panel/datos` | El mismo tablero en JSON, para el refresco cada 20 s |
+
+| Endpoint JSON | Uso |
+|---|---|
+| `GET /panel/api/sesion` | Usuario, estaciones y clave opcional de Google |
+| `GET /panel/api/datos` | Tablero completo; refresco cada 20 s |
+| `GET /panel/api/historial` | Filtros y paginación del historial |
+| `GET /panel/api/alertas` | Listado y contadores de alertas |
+| `POST /panel/api/alertas/{id}/atender` | Atención con nota (sesión + CSRF) |
+| `POST /panel/api/alertas/{id}/reabrir` | Reapertura (sesión + CSRF) |
+| `POST /panel/api/predicciones` | Genera 1, 3 o 6 h (sesión + CSRF) |
+
+`/panel/datos` se conserva como alias del tablero para no romper integraciones anteriores.
+Todos los endpoints del panel exigen sesión y **no aceptan JWT**; sin sesión responden 401.
 
 ### Mapa
 
-- **Sin clave ni internet:** el servidor dibuja el contorno **real** de la laguna
-  (OpenStreetMap `way 26947746`, simplificado a 140 puntos) como SVG, con una marca por
-  estación coloreada según el veredicto persistido (`DENTRO` verde, `ALERTA` rojo,
-  `SIN_DATOS` gris). Cada marca enlaza al historial filtrado.
+- **Sin clave ni internet:** el **backend** entrega el contorno **real** de la laguna
+  (OpenStreetMap `way 26947746`, simplificado a 140 puntos) y React lo dibuja como SVG,
+  con una marca por estación coloreada según el veredicto persistido (`DENTRO` verde,
+  `ALERTA` rojo, `SIN_DATOS` gris). Cada marca enlaza al historial filtrado.
 - **Con clave (`GOOGLE_MAPS_API_KEY`):** se carga Google Maps y las estaciones se ubican
   en su coordenada real. Si la API no carga, el SVG sigue ahí como respaldo.
-- La clave **nunca** se versiona ni viaja en `/panel/datos`; se lee del entorno.
-  Restríngela por referente (`http://127.0.0.1:8080/*`, `http://localhost:8080/*`) y
-  habilita solo *Maps JavaScript API*.
+- La clave **nunca** se versiona ni viaja en `/panel/api/datos`; la SPA la recibe una sola
+  vez en `/panel/api/sesion`. Restríngela por referente (`http://127.0.0.1:8080/*`,
+  `http://localhost:8080/*`) y habilita solo *Maps JavaScript API*.
 
 ### Diseño
 
-- Tokens en `backend/src/main/resources/static/css/tokens.css` (fuente única de la paleta,
-  compartida con el futuro tema Material 3 de Android).
+- Tokens en `frontend/src/styles/tokens.css` (fuente única de la paleta, compartida con el
+  futuro tema Material 3 de Android). El build los copia al JAR.
 - Modo oscuro persistido en `localStorage`, aplicado antes del CSS para evitar el destello.
 - Accesibilidad: contraste WCAG AA, foco visible, áreas táctiles de 44 px, navegación con
   teclado, `aria-live` en avisos y estados vacíos honestos.
-- Gráfico y mapa en SVG hechos a mano: la demo no depende de CDN ni de teselas.
+- Gráfico en SVG hecho a mano y mapa con contorno propio: la demo no depende de CDN ni de
+  teselas. Google Maps es una mejora opcional.
+
+### Desarrollo del frontend
+
+```powershell
+cd frontend
+npm install
+npm run dev      # Vite en http://localhost:5173/panel con proxy a 8080
+npm test         # Vitest + Testing Library
+npm run build    # escribe el build en backend/src/main/resources/static/panel
+```
+
+Para que la demo y el JAR incluyan los últimos cambios hay que ejecutar `npm run build`
+antes de empaquetar o arrancar el backend. El build de producción se versiona para que
+`mvn spring-boot:run` funcione sin Node.
 
 ---
 
@@ -360,15 +393,18 @@ describe ese conjunto, no la laguna en general.
 
 | Módulo | Comando | Tests |
 |---|---|---|
-| Backend | `mvn test` (con `JAVA_HOME` en JDK 21) | **138** |
+| Backend | `mvn test` (con `JAVA_HOME` en JDK 21) | **145** |
+| Frontend | `npm test` (desde `frontend/`) | **16** |
 | Firmware | `pio test -e native` | **38** |
 | IA | `.venv\Scripts\python.exe -m pytest` | **172** |
-| **Total** | | **348** |
+| **Total** | | **371** |
 
-- Cobertura del backend (JaCoCo): **91.5 %** de instrucciones y **70.0 %** de ramas.
+- Cobertura del backend (JaCoCo): **91.7 %** de instrucciones y **68.8 %** de ramas.
 - No hay Docker ni Testcontainers: la persistencia se prueba con **H2**.
 - El backend incluye tests de integración con contexto completo (arranque, seguridad,
   panel, mapa y predicciones), no solo pruebas por capa.
+- El frontend usa **Vitest + Testing Library**: cliente CSRF/401, componentes, mapa y
+  las tres pantallas principales.
 - `train_stgnn.py` devuelve código de salida 1 si no se cumple el criterio, para encadenarlo
   al CI.
 - **No se ejecutaron** `docker compose build/up`, SonarQube, la CI en un runner ni
@@ -383,13 +419,17 @@ describe ese conjunto, no la laguna en general.
 
 ```
 .
-├── backend/                 Spring Boot + API REST + panel web
+├── backend/                 Spring Boot + API REST + API JSON del panel
 │   ├── src/main/java/       dominio, ingesta, alertas, predicciones, seguridad, panel
-│   ├── src/main/resources/  templates, css, js, geo/, migraciones Flyway V1–V5
-│   ├── src/test/java/       138 tests (unitarios, slice e integración)
+│   ├── src/main/resources/  static/panel (build React), geo/, migraciones Flyway V1–V5
+│   ├── src/test/java/       145 tests (unitarios, slice e integración)
 │   ├── tools/               simulador de nodo y fetch_laguna.py
 │   ├── Dockerfile
 │   └── openapi.yaml         contrato de la API
+├── frontend/                SPA React + TypeScript (Vite)
+│   ├── src/                 api, componentes, hooks, páginas y estilos
+│   ├── src/test/            16 tests (Vitest + Testing Library)
+│   └── vite.config.ts       proxy de desarrollo y salida al JAR
 ├── iot-firmware/            ESP32 (PlatformIO)
 │   ├── lib/lagunapaca_core/ lógica portable + 38 tests nativos
 │   └── src/                 glue de Arduino, hardware y red
@@ -417,7 +457,8 @@ describe ese conjunto, no la laguna en general.
   veredicto persistido; reevaluar el pH en otro sitio crearía dos reglas que podrían divergir.
 - **Dos cadenas de seguridad:** panel con sesión + CSRF (navegador) y API con JWT sin estado
   (ESP32). Un JWT no abre el panel.
-- **El panel lee del repositorio, no de la API REST** (evita un JWT en `localStorage`).
+- **El panel React consume `/panel/api/**`, no `/api/v1`** (evita un JWT en `localStorage`).
+  Esos endpoints leen de los servicios de dominio, así que no duplican la regla ECA-Agua.
 - **Atender una alerta no cambia el veredicto.** Es otra dimensión, con auditoría aparte
   (`acknowledged_at`, `acknowledged_by`, `acknowledge_note`).
 - **Las fechas del historial son de Lima**, no UTC.
@@ -466,7 +507,7 @@ artefacto. Se justificaría con decenas de cuerpos de agua y relaciones heterog�
 - `docs/SDD/` — documentación de diseño del sistema (empieza por
   [`docs/SDD/README.md`](docs/SDD/README.md)): visión, requisitos, arquitectura,
   modelo de datos, contratos, seguridad, despliegue, pruebas, trazabilidad, riesgos,
-  deuda técnica, manuales, limitaciones, evidencias y 9 ADR.
+  deuda técnica, manuales, limitaciones, evidencias y 10 ADR.
 - `AGENTS.md` — decisiones técnicas, comandos y totales de pruebas (mantenerlo al día).
 - `backend/openapi.yaml` — contrato de la API.
 - `docs/` — tesis y libros de referencia (**no versionado**, ~257 MB; `docs/SDD/` es la

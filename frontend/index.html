@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="description"
+      content="Panel de monitoreo de la contaminación de la Laguna de Paca"
+    />
+    <title>Laguna Paca · Panel de monitoreo</title>
+    <link rel="icon" type="image/svg+xml" href="%BASE_URL%favicon.svg" />
+    <script>
+      // Se aplica antes del CSS para evitar el destello blanco al recargar.
+      (function () {
+        try {
+          var guardado = localStorage.getItem('laguna-tema');
+          document.documentElement.dataset.tema = guardado === 'oscuro' ? 'oscuro' : 'claro';
+        } catch (error) {
+          document.documentElement.dataset.tema = 'claro';
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -46,11 +46,7 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
-        <!-- Panel web renderizado en el servidor (Thymeleaf). -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-thymeleaf</artifactId>
-        </dependency>
+        <!-- El panel web es una SPA React compilada dentro de static/panel. -->
 
         <!-- Documentación interactiva de la API (Swagger UI en /swagger-ui.html) -->
         <dependency>

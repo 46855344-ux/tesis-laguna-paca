@@ -22,17 +22,16 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestBuilders.formLogin;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Contrato del tablero: qué ve una persona cuando ya existen muestras reales.
+ * Contrato del tablero: qué recibe la SPA cuando ya existen muestras reales.
  *
- * <p>Se prueban dos caminos del mismo modelo: el HTML renderizado en el
- * servidor (que debe funcionar aunque el navegador no ejecute JavaScript) y el
- * JSON de {@code /panel/datos}, que alimenta el refresco en vivo y el gráfico.</p>
+ * <p>Se prueban dos caminos del mismo modelo: el JSON de
+ * {@code /panel/api/datos}, que alimenta el tablero, y el alias anterior
+ * {@code /panel/datos}, que se conserva para no romper integraciones.</p>
  *
  * <p>Las muestras se insertan directamente en el repositorio, no por la API,
  * para poder fijar {@code recordedAt} y comprobar el corte de 24 horas sin
@@ -80,11 +79,15 @@ class PanelDashboardIntegrationTest {
     @Test
     @DisplayName("sin muestras, el tablero sigue mostrando las cuatro estaciones")
     void sinMuestrasSeVenLasCuatroEstaciones() throws Exception {
-        mockMvc.perform(get("/panel").session(sesionAdmin()))
+        mockMvc.perform(get("/panel/api/datos").session(sesionAdmin()))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("N1")))
-                .andExpect(content().string(containsString("N4")))
-                .andExpect(content().string(containsString("Sin datos")));
+                .andExpect(jsonPath("$.estaciones", hasSize(4)))
+                .andExpect(jsonPath("$.estaciones[0].id").value("N1"))
+                .andExpect(jsonPath("$.estaciones[3].id").value("N4"))
+                .andExpect(jsonPath("$.estaciones[0].estado").value("SIN_DATOS"))
+                .andExpect(jsonPath("$.estaciones[0].conDatos").value(false))
+                .andExpect(jsonPath("$.sinDatos").value(true))
+                .andExpect(jsonPath("$.estacionesConDatos").value(0));
     }
 
     @Test
@@ -94,10 +97,14 @@ class PanelDashboardIntegrationTest {
         muestra("N1", 7.20, ahora.minus(2, ChronoUnit.HOURS), false, null);
         muestra("N1", 7.35, ahora.minus(3, ChronoUnit.MINUTES), false, null);
 
-        mockMvc.perform(get("/panel").session(sesionAdmin()))
+        mockMvc.perform(get("/panel/api/datos").session(sesionAdmin()))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("7.35")))
-                .andExpect(content().string(containsString("Dentro del rango")));
+                .andExpect(jsonPath("$.estaciones[0].ultima.ph").value("7.35"))
+                .andExpect(jsonPath("$.estaciones[0].estado").value("DENTRO"))
+                .andExpect(jsonPath("$.estaciones[0].conDatos").value(true))
+                // La tarjeta no aplica la ventana de 24 h: la última muestra
+                // sigue siendo la más reciente aunque tenga días.
+                .andExpect(jsonPath("$.estacionesConDatos").value(1));
     }
 
     @Test
@@ -106,10 +113,13 @@ class PanelDashboardIntegrationTest {
         String motivo = "pH 9.60 supera el límite superior ECA-Agua (9.0)";
         muestra("N2", 9.60, Instant.now().minus(5, ChronoUnit.MINUTES), true, motivo);
 
-        mockMvc.perform(get("/panel").session(sesionAdmin()))
+        mockMvc.perform(get("/panel/api/datos").session(sesionAdmin()))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Alerta ECA-Agua")))
-                .andExpect(content().string(containsString("supera el límite superior")));
+                .andExpect(jsonPath("$.estaciones[1].id").value("N2"))
+                .andExpect(jsonPath("$.estaciones[1].estado").value("ALERTA"))
+                .andExpect(jsonPath("$.estaciones[1].motivos", hasSize(1)))
+                .andExpect(jsonPath("$.estaciones[1].motivos[0]", containsString("supera el límite superior")))
+                .andExpect(jsonPath("$.alertas").value(1));
     }
 
     @Test
@@ -120,7 +130,7 @@ class PanelDashboardIntegrationTest {
         muestra("N3", 6.40, ahora.minus(30, ChronoUnit.MINUTES), true,
                 "pH 6.40 está por debajo del límite inferior ECA-Agua (6.5)");
 
-        mockMvc.perform(get("/panel/datos").session(sesionAdmin()))
+        mockMvc.perform(get("/panel/api/datos").session(sesionAdmin()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.estaciones", hasSize(4)))
                 .andExpect(jsonPath("$.estaciones[0].id").value("N1"))
@@ -137,11 +147,22 @@ class PanelDashboardIntegrationTest {
     }
 
     @Test
-    @DisplayName("el JSON exige sesión: no es un endpoint público")
-    void elJsonExigeSesion() throws Exception {
+    @DisplayName("el alias /panel/datos se conserva y exige sesión")
+    void elAliasDelTableroSeConserva() throws Exception {
         mockMvc.perform(get("/panel/datos"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("http://localhost/login"));
+
+        mockMvc.perform(get("/panel/datos").session(sesionAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estaciones", hasSize(4)));
+    }
+
+    @Test
+    @DisplayName("la API JSON exige sesión: no es un endpoint público")
+    void elJsonExigeSesion() throws Exception {
+        mockMvc.perform(get("/panel/api/datos"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -151,9 +172,12 @@ class PanelDashboardIntegrationTest {
         muestra("N1", 7.0, ahora.minus(25, ChronoUnit.HOURS), false, null);
         muestra("N1", 7.1, ahora.minus(1, ChronoUnit.HOURS), false, null);
 
-        mockMvc.perform(get("/panel/datos").session(sesionAdmin()))
+        mockMvc.perform(get("/panel/api/datos").session(sesionAdmin()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.serie", hasSize(1)))
-                .andExpect(jsonPath("$.muestras").value(1));
+                .andExpect(jsonPath("$.muestras").value(1))
+                // La tarjeta sí conserva la última muestra antigua: es más
+                // honesto mostrar "hace 25 horas" que fingir que no midió.
+                .andExpect(jsonPath("$.estaciones[0].ultima.ph").value("7.10"));
     }
 }

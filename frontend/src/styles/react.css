@@ -1,0 +1,47 @@
+/* Ajustes propios de la SPA. El resto del sistema de diseño vive en
+   tokens.css y panel.css, que se conservan sin duplicar valores. */
+
+.pantalla-cargando {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: var(--space-5);
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.pantalla-cargando__caja {
+  width: min(100%, 460px);
+}
+
+.tarjeta__nota--atencion {
+  color: var(--color-success);
+  font-weight: 600;
+}
+
+.grafico__linea {
+  fill: none;
+}
+
+.prediccion--pendiente {
+  border-left: 3px solid var(--color-warning);
+}
+
+.prediccion--evaluada {
+  border-left: 3px solid var(--color-success);
+}
+
+@media (max-width: 640px) {
+  .encabezado-pagina__acciones {
+    width: 100%;
+  }
+
+  .encabezado-pagina__acciones .boton {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  .formulario-prediccion {
+    align-items: stretch;
+  }
+}

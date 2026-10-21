@@ -1,7 +1,7 @@
 # 22 · Guía de demostración
 
 Guion para la defensa. Todo lo marcado como **verificado** se ejecutó en esta
-máquina el 20/10/2026; lo que no, se dice.
+máquina el 21/10/2026; lo que no, se dice.
 
 ## 22.1 Antes de empezar (5 min)
 
@@ -14,10 +14,16 @@ máquina el 20/10/2026; lo que no, se dice.
 ## 22.2 Paso 1 · Pruebas (3 min)
 
 ```powershell
-# Backend: 138 tests
+# Backend: 145 tests
 cd backend
 $env:JAVA_HOME="D:\Intellij\IntelliJ IDEA 2025.2.1\jbr"
 & "C:\Users\USER\.m2\wrapper\dists\apache-maven-3.9.9\977a63e90f436cd6ade95b4c0e10c20c\bin\mvn.cmd" test
+```
+
+```powershell
+# Frontend: 16 tests
+cd frontend
+npm test
 ```
 
 ```powershell
@@ -33,7 +39,7 @@ cd ia-model
 .venv\Scripts\python.exe -m pytest -q
 ```
 
-**Qué decir:** «348 pruebas automatizadas; el backend tiene 91.5 % de cobertura
+**Qué decir:** «371 pruebas automatizadas; el backend tiene 91.7 % de cobertura
 de instrucciones».
 
 ## 22.3 Paso 2 · El modelo (2 min)
@@ -55,10 +61,11 @@ integración, no la laguna real. La validación de campo está pendiente».
 ```powershell
 cd backend
 $env:JAVA_HOME="D:\Intellij\IntelliJ IDEA 2025.2.1\jbr"
-& "C:\Users\USER\.m2\wrapper\dists\apache-maven-3.9.9\977a63e90f436cd6ade95b4c0e10c20c\bin\mvn.cmd" spring-boot:run -Dspring-boot.run.profiles=demo -Dspring-boot.run.useTestClasspath=true
+& "C:\Users\USER\.m2\wrapper\dists\apache-maven-3.9.9\977a63e90f436cd6ade95b4c0e10c20c\bin\mvn.cmd" spring-boot:run "-Dspring-boot.run.profiles=demo" "-Dspring-boot.run.useTestClasspath=true"
 ```
 
 Abrir `http://localhost:8080/panel` → redirige a `/login` → `admin` / `admin123`.
+La SPA y sus assets ya vienen en el JAR; no hace falta `npm run dev` para la demo.
 
 **Qué mostrar:** tablero con cuatro estaciones sin datos, mapa con el contorno
 real, modo oscuro, navegación por teclado.
@@ -118,6 +125,8 @@ no abre el panel, y hay un test que lo fija».
 - `backend/src/main/java/.../prediction/` — paquete de predicciones.
 - `backend/src/main/resources/db/migration/V5...sql` — idempotencia y tabla.
 - `ia-model/lagunapaca_gnn/model.py` — TCN + GCN + atención.
+- `frontend/src/` — SPA React y cliente CSRF; el build está en
+  `backend/src/main/resources/static/panel`.
 - `docs/SDD/` — esta documentación.
 - `compose.yaml`, `.github/workflows/ci.yml`.
 
@@ -127,7 +136,7 @@ no abre el panel, y hay un test que lo fija».
 |---|---|
 | ¿Por qué no Neo4j? | Cuatro estaciones y una matriz de distancias; un motor de grafos añadiría un servicio sin mejorar el modelo |
 | ¿Por qué no TimescaleDB? | ~140 k muestras/año; un índice compuesto basta |
-| ¿Por qué el panel no es React? | Renderizado en servidor, sin build ni CDN, funciona sin internet |
+| ¿Por qué React y no Thymeleaf? | La SPA separa presentación y API JSON; el build viaja en el JAR, la demo no necesita Node y el mapa/gráfico siguen siendo SVG propios sin CDN |
 | ¿Por qué la IA está separada? | Python es el entorno del modelo; el contrato HTTP aísla versiones y permite degradar |
 | ¿Qué pasa si la IA falla? | La ingesta y las alertas no dependen de ella; solo se pierde la predicción |
 | ¿Los datos son reales? | No: son sintéticos y el sistema lo declara en la tabla, la API y el panel |

@@ -9,6 +9,9 @@
    falló.
 
 La sesión se cierra con «Salir» (POST con CSRF). Cerrar la pestaña no la cierra.
+Si la sesión caduca mientras se navega, la SPA vuelve al formulario de acceso; no
+se muestran datos a medias. El panel es una SPA y necesita JavaScript, pero no
+internet: sus mapas y gráficos son SVG propios.
 
 ## 23.2 Tablero
 

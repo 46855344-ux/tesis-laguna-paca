@@ -25,13 +25,14 @@ entrega.
 | DT-18 | Sin Android | Funcionalidad móvil ausente | Media | Fuera de alcance |
 | DT-19 | `requirements.txt` incluye pytest/httpx en la imagen | Imagen algo más grande | Baja | Simplicidad; PyTorch domina el tamaño |
 | DT-20 | Sin SBOM ni firma de imágenes | Cadena de suministro | Baja | Etapa académica |
+| DT-21 | Sin pruebas E2E de navegador | Refresco de 20 s, cajón móvil y Google Maps solo se validan a mano | Media | Se priorizó Vitest + Testing Library; no hay navegador en CI |
 
 ## 21.1 Deuda que **no** existe (decisiones deliberadas)
 
 - **No** hay JWT en `localStorage`: no es deuda, es una decisión de seguridad.
 - **No** hay una tabla de estaciones: no hay atributos reales que guardar.
 - **No** hay TimescaleDB/Neo4j: no se justifican con 4 nodos.
-- **No** hay React: el panel renderizado en servidor cumple y funciona sin build.
+- **No** hay un servidor Node en producción: el build de Vite se sirve desde el JAR.
 - **No** se recalculan alertas en el panel: sería duplicar la regla.
 
 ## 21.2 Orden sugerido para pagar

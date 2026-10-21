@@ -182,6 +182,10 @@ que las imágenes construyan ni que los healthchecks funcionen.
 
 ## 28.5 Archivos principales creados o modificados
 
+> Las rutas de esta sección corresponden a la entrega del 20/10/2026. El panel
+> Thymeleaf fue reemplazado por la SPA React el 21/10/2026; la evidencia nueva
+> está en 28.8.
+
 ### Backend
 
 - `station/StationCatalog.java`
@@ -226,7 +230,7 @@ que las imágenes construyan ni que los healthchecks funcionen.
 - `.env.example`, `.gitignore`
 - `.github/workflows/ci.yml`
 - `sonar-project.properties`
-- `docs/SDD/00…28` y `docs/SDD/ADR-001…009`
+- `docs/SDD/00…28` y `docs/SDD/ADR-001…010`
 - `README.md`, `AGENTS.md`
 
 ## 28.6 Cómo reproducir esta evidencia
@@ -249,3 +253,62 @@ indicados. No se reportan como ejecutados los que aparecen en 28.3. Las métrica
 del modelo corresponden a datos sintéticos y así deben citarse. El CSV usado
 para validar `--csv` se generó a partir de la simulación: **no es una medición
 de campo** y no se presenta como evidencia de la laguna.
+
+## 28.8 Migración del panel a React (21/10/2026)
+
+Se reemplazó el panel Thymeleaf por una **SPA React 19 + TypeScript + Vite**. El
+build se escribe en `backend/src/main/resources/static/panel` y Spring Boot lo
+sirve desde el JAR; la demo sigue sin Node. La API del panel quedó en
+`/panel/api/**` y conserva `/panel/datos` como alias.
+
+### Comandos ejecutados
+
+```powershell
+cd frontend
+npm test
+npm run build
+
+cd ..\backend
+$env:JAVA_HOME="D:\Intellij\IntelliJ IDEA 2025.2.1\jbr"
+& "C:\Users\USER\.m2\wrapper\dists\apache-maven-3.9.9\977a63e90f436cd6ade95b4c0e10c20c\bin\mvn.cmd" test
+```
+
+### Resultados
+
+| Suite | Tests | Resultado |
+|---|---|---|
+| Backend | **145** | `BUILD SUCCESS`, 0 fallos, 0 errores, 0 omitidos |
+| Frontend | **16** | 4 archivos, 16 tests verdes (Vitest + Testing Library) |
+| **Total del proyecto** | **371** | 145 backend + 16 frontend + 38 firmware + 172 IA |
+
+Cobertura JaCoCo tras la migración (89 clases):
+
+- instrucciones: **91.7 %** (5491/5989);
+- ramas: **68.8 %** (265/385).
+
+### Demostración verificada
+
+Con el perfil `demo` y H2 en memoria se comprobó por HTTP:
+
+- `GET /login` → 200 con el shell React y assets de Vite;
+- `GET /panel` sin sesión → 302 a `/login`;
+- `GET /panel/api/datos` sin sesión → 401 JSON;
+- `GET /panel/assets/...` → 200;
+- `GET /panel/csrf` → token; login `admin/admin123` → `/panel`;
+- `/panel/api/sesion`, `/panel/api/datos`, `/panel/api/historial` y
+  `/panel/api/alertas` → 200 con sesión;
+- `POST /logout` con CSRF → `/login?logout` y `/panel/api/sesion` → 401.
+
+Se corrigió un fallo detectado al probar el cierre de sesión: `/logout` no estaba
+en la cadena del panel y la cadena stateless respondía 401. Ahora hay tests que
+fijan que el logout invalida la sesión y que exige CSRF.
+
+### Lo que no se ejecutó
+
+- Pruebas E2E con un navegador real (solo jsdom).
+- `docker compose build/up`, CI en un runner y SonarQube.
+- Carga real de Google Maps (no hay clave configurada en esta máquina).
+
+El build de React sí se generó y el backend lo sirvió desde el JAR. Los datos
+mostrados en la demo siguen siendo del simulador o de la base vacía; no se
+presentan como mediciones de campo.

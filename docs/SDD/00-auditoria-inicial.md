@@ -1,5 +1,10 @@
 # 00 · Auditoría inicial
 
+> **Nota de vigencia:** esta auditoría describe la línea base del 20/10/2026. El
+> panel Thymeleaf fue reemplazado el 21/10/2026 por una SPA React; la decisión
+> está en [ADR-010](ADR-010-react-spa.md) y la evidencia nueva en
+> [28.8](28-registro-de-evidencias.md).
+
 **Fecha:** 2026-10-20
 **Commit de partida:** `bd10567` (rama `main`, árbol limpio)
 **Autor de la auditoría:** equipo de modernización (OpenCode)

@@ -12,7 +12,8 @@ flowchart LR
     end
 
     subgraph Servidor
-        B[Spring Boot 3.2<br/>API + panel]
+        B[Spring Boot 3.2<br/>API + JSON del panel]
+        FE[React SPA<br/>build en el JAR]
         DB[(PostgreSQL 16)]
         IA[FastAPI<br/>ST-GNN]
     end
@@ -22,7 +23,8 @@ flowchart LR
     N1 & N2 & N3 & N4 -->|HTTP POST / JWT<br/>o MQTT QoS 1| B
     B --> DB
     B -->|X-Internal-Token<br/>/health /predict| IA
-    OP -->|sesión + CSRF| B
+    OP -->|sesión + CSRF| FE
+    FE -->|/panel/api/**| B
     M[Cliente API / futuro Android] -->|JWT| B
 ```
 
@@ -34,7 +36,8 @@ componente interno sin acceso a la base.
 
 | Contenedor | Tecnología | Responsabilidad | Puerto |
 |---|---|---|---|
-| Backend | Java 21, Spring Boot 3.2 | API REST, panel Thymeleaf, ingesta, reglas, predicciones | 8080 |
+| Backend | Java 21, Spring Boot 3.2 | API REST, API JSON del panel, ingesta, reglas, predicciones y servido del build React | 8080 |
+| Frontend | React 19, TypeScript, Vite | SPA del panel; el build se copia al JAR y no corre como servicio aparte | — |
 | Base de datos | PostgreSQL 16 | Persistencia y migraciones Flyway | 5432 |
 | IA | Python 3.12, FastAPI | Inferencia del ST-GNN desde un artefacto | 8000 (interno) |
 | Broker MQTT | Eclipse Mosquitto 2 | Transporte alternativo de telemetría | 1883 (perfil) |
@@ -50,7 +53,7 @@ flowchart TB
     end
 
     subgraph Panel
-        PNL[PanelController]
+        PNL[PanelApiController + SpaController]
         PDS[PanelDashboardService]
         PHS[PanelHistorialService]
         PAS[PanelAlertasService]
@@ -105,13 +108,27 @@ pe.edu.continental.lagunapaca
 │   ├── client/    AiClient, AiProperties, payloads
 │   ├── domain/    Prediction, PredictionRepository, estado
 │   └── service/   PredictionService, WindowBuilder, Evaluator, errores
-└── panel/         controlador, servicios de vista y modelos
+└── panel/         API JSON, SPA, servicios de vista y modelos
+```
+
+El frontend vive fuera del backend, en `frontend/`:
+
+```
+frontend/
+├── src/api/        cliente CSRF/fetch y tipos del contrato
+├── src/components/ componentes reutilizables
+├── src/hooks/      sesión, tema y toasts
+├── src/pages/      acceso, tablero, historial y alertas
+├── src/styles/     tokens y CSS de la SPA
+└── src/test/       Vitest + Testing Library
 ```
 
 ### Reglas de dependencia
 
 - `panel` puede leer repositorios y `prediction.service`, pero **no** llama a
   los controladores de la API.
+- El frontend consume **`/panel/api/**`**, no `/api/v1`; así no necesita un JWT
+  en `localStorage` y conserva la sesión con CSRF.
 - `telemetry` no depende de `prediction.client`: la ingesta nunca espera a la
   IA. Solo depende de `PredictionEvaluator`, que absorbe sus errores.
 - `prediction` no importa `panel`.
@@ -155,7 +172,7 @@ sequenceDiagram
     participant I as FastAPI
     participant D as PostgreSQL
 
-    U->>B: POST /panel/predicciones (CSRF) o /api/v1/predictions (JWT)
+    U->>B: POST /panel/api/predicciones (CSRF) o /api/v1/predictions (JWT)
     B->>I: GET /health
     I-->>B: input_len, horizontes, versión
     B->>D: últimas 24 muestras por estación
@@ -172,7 +189,7 @@ sequenceDiagram
 | Monolito modular Spring Boot | Microservicios separados | Un solo JAR simplifica la demo y la tesis; los límites son de paquetes, no de red |
 | PostgreSQL + Flyway | TimescaleDB | El volumen de la tesis no justifica una extensión; se documenta cuándo sí |
 | Sin Neo4j | Grafo en memoria | El grafo tiene 4 nodos y se construye determinísticamente; Neo4j añadiría un servicio sin aportar |
-| Thymeleaf renderizado en servidor | SPA React | Funciona sin build de frontend y sin internet; el panel es de solo lectura + formularios |
+| SPA React + API JSON | Thymeleaf renderizado en servidor | Mejor separación, estados de carga y refresco sin recargar; el build se sirve desde el JAR y la demo sigue sin Node |
 | FastAPI separado | Cargar PyTorch en la JVM | Python es el entorno natural del modelo; el contrato HTTP aísla versiones |
 | `java.net.http.HttpClient` | Feign/WebClient | Sin dependencias nuevas y con timeouts explícitos |
 | Predicción en tabla propia | Columna en la muestra | Una predicción no es una medición y debe evaluarse después |

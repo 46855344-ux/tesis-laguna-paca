@@ -27,7 +27,7 @@ docker compose ps
 docker compose logs -f backend
 ```
 
-- Panel: `http://localhost:8080/panel`
+- Panel React: `http://localhost:8080/panel`
 - Swagger: `http://localhost:8080/swagger-ui.html`
 - Salud: `http://localhost:8080/actuator/health`
 
@@ -67,8 +67,11 @@ arranca igual y solo se degradan `/api/v1/predictions` y el botón del panel.
 ## 15.5 Imágenes
 
 - **Backend**: build multi-etapa `maven:3.9.9-eclipse-temurin-21` →
-  `eclipse-temurin:21-jre-jammy`. Usuario sin privilegios (uid 1001),
-  `-XX:MaxRAMPercentage=75`, `curl` solo para el healthcheck.
+  `eclipse-temurin:21-jre-jammy`. Copia `src`, que ya incluye el build de React
+  en `static/panel`; la imagen **no** necesita Node. Usuario sin privilegios
+  (uid 1001), `-XX:MaxRAMPercentage=75`, `curl` solo para el healthcheck.
+  Si se modifica React, ejecutar `npm run build` en `frontend/` antes de
+  `docker compose build`.
 - **IA**: `python:3.12-slim`, instala primero la rueda de PyTorch CPU desde su
   índice y después `requirements.txt`, copia `lagunapaca_gnn/`, `serve.py` y
   `artifacts/`. Usuario sin privilegios, sin puerto publicado.
@@ -94,7 +97,7 @@ JWT para saber si el proceso vive. No revela datos de negocio.
 ```powershell
 cd backend
 $env:JAVA_HOME="D:\Intellij\IntelliJ IDEA 2025.2.1\jbr"
-mvn spring-boot:run -Dspring-boot.run.profiles=demo -Dspring-boot.run.useTestClasspath=true
+mvn spring-boot:run "-Dspring-boot.run.profiles=demo" "-Dspring-boot.run.useTestClasspath=true"
 ```
 
 - H2 en memoria, esquema creado por Hibernate, Flyway desactivado.

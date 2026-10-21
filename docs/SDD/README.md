@@ -54,7 +54,7 @@ identificadores técnicos van en inglés.
 
 | Documento | Contenido |
 |---|---|
-| [17 · Estrategia de pruebas](17-estrategia-de-pruebas.md) | Pirámide, 348 tests, cobertura y límites |
+| [17 · Estrategia de pruebas](17-estrategia-de-pruebas.md) | Pirámide, 371 tests, cobertura y límites |
 | [18 · Trazabilidad](18-trazabilidad.md) | RF/RNF → código → prueba |
 | [19 · Plan de sprints](19-plan-de-sprints.md) | Sprints, historias y definición de terminado |
 | [20 · Riesgos](20-riesgos.md) | R-01…R-17 con mitigación |
@@ -73,24 +73,26 @@ identificadores técnicos van en inglés.
 |---|---|
 | [ADR-001](ADR-001-monolito-modular.md) | Monolito modular con Spring Boot |
 | [ADR-002](ADR-002-postgresql-flyway.md) | PostgreSQL + Flyway; sin TimescaleDB ni Neo4j |
-| [ADR-003](ADR-003-thymeleaf.md) | Panel con Thymeleaf renderizado en servidor |
+| [ADR-003](ADR-003-thymeleaf.md) | Panel con Thymeleaf renderizado en servidor (superado por ADR-010) |
 | [ADR-004](ADR-004-dos-autenticaciones.md) | Dos superficies, dos mecanismos de autenticación |
 | [ADR-005](ADR-005-predicciones-tabla-propia.md) | Predicciones en tabla propia y evaluación diferida |
 | [ADR-006](ADR-006-fastapi-artefacto.md) | FastAPI con artefacto y cliente HTTP del JDK |
 | [ADR-007](ADR-007-idempotencia-sample-id.md) | Idempotencia con `sample_id` opcional |
 | [ADR-008](ADR-008-mapa-svg-google.md) | Mapa SVG propio y Google Maps opcional |
 | [ADR-009](ADR-009-datos-sinteticos.md) | Datos sintéticos y coordenadas provisionales, declarados |
+| [ADR-010](ADR-010-react-spa.md) | Panel React SPA con API JSON y build servido desde el JAR |
 
 ## Resumen de evidencia
 
 | Suite | Tests | Estado |
 |---|---|---|
-| Backend | 138 | Verde |
+| Backend | 145 | Verde |
+| Frontend | 16 | Verde |
 | Firmware | 38 | Verde |
 | IA | 172 | Verde |
-| **Total** | **348** | |
+| **Total** | **371** | |
 
-Cobertura del backend: 91.5 % de instrucciones, 70.0 % de ramas. Criterio de la
+Cobertura del backend: 91.7 % de instrucciones, 68.8 % de ramas. Criterio de la
 tesis: `R² = 0.9289` a 6 h con datos sintéticos (persistencia: 0.7403).
 
 **No ejecutado en esta máquina** (declarado en `26` y `28`): Docker Compose,

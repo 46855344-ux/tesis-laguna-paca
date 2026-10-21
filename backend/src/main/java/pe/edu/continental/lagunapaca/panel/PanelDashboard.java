@@ -5,11 +5,11 @@ import java.util.List;
 
 /**
  * Modelo de vista del tablero. No es una entidad ni un DTO de la API: es lo que
- * la pantalla necesita, ya formateado y sin lógica que resolver en la plantilla.
+ * la pantalla necesita, ya formateado y sin lógica que resolver en React.
  *
- * <p>Se usa para dos salidas del mismo cálculo: el HTML renderizado en el
- * servidor (que funciona sin JavaScript) y el JSON de {@code /panel/datos}, que
- * refresca las tarjetas y dibuja el gráfico en vivo.</p>
+ * <p>Se sirve como JSON en {@code /panel/api/datos} (y su alias
+ * {@code /panel/datos}); el frontend refresca las tarjetas, el gráfico y el mapa
+ * sin recargar la página.</p>
  *
  * <p>Los valores numéricos de {@link Muestra} ya vienen como texto con el
  * formato de la interfaz. Así el servidor y el navegador no tienen dos reglas de
@@ -130,7 +130,7 @@ public record PanelDashboard(
             return ultima != null;
         }
 
-        /** Texto del veredicto, para el HTML y para el refresco en vivo. */
+        /** Texto del veredicto, para las tarjetas y el refresco en vivo. */
         public String getEtiqueta() {
             return estado.getEtiqueta();
         }

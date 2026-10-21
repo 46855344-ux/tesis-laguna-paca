@@ -1,6 +1,6 @@
 # ADR-003 · Panel con Thymeleaf renderizado en servidor
 
-**Estado:** aceptado · **Fecha:** 2026
+**Estado:** reemplazado por [ADR-010](ADR-010-react-spa.md) · **Fecha:** 2026
 
 ## Contexto
 
@@ -28,3 +28,11 @@ mínimo para el refresco y el gráfico. Sin framework SPA.
 - El estado se lee en el servidor; no hay que exponer un JWT al navegador.
 - Si el panel creciera a una aplicación compleja, habría que evaluar una SPA con
   un ADR nuevo.
+
+## Nota de reemplazo
+
+El panel creció hasta tener refresco, filtros con estado en la URL, atención de
+alertas, predicciones y un mapa interactivo. Thymeleaf obligaba a duplicar
+fragmentos y a mezclar presentación con el controlador. Se reemplazó por una SPA
+React; la decisión y sus consecuencias están en
+[ADR-010](ADR-010-react-spa.md).

@@ -6,9 +6,9 @@ import java.util.TreeSet;
 /**
  * Números de página que se dibujan en la paginación.
  *
- * <p>Siempre la primera, la última y las vecinas de la actual; la plantilla
- * convierte los saltos en «…». Se calcula en el servidor para que la paginación
- * funcione sin JavaScript y para que el historial y las alertas numeren igual.</p>
+ * <p>Siempre la primera, la última y las vecinas de la actual; React convierte
+ * los saltos en «…». Se calcula en el servidor para que el historial y las
+ * alertas numeren igual y para no duplicar la regla de paginación.</p>
  */
 final class Paginas {
 

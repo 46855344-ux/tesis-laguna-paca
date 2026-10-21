@@ -75,6 +75,11 @@ public class MapaLagunaService {
         return new PanelMapa(viewBox, camino, puntos, googleKey);
     }
 
+    /** Clave pública del mapa opcional; el frontend la pide a la API del panel. */
+    public String getGoogleKey() {
+        return googleKey;
+    }
+
     private PanelMapa.Punto punto(PanelDashboard.Estacion estacion) {
         PuntoGeo geo = estaciones.get(estacion.getId());
         if (geo == null) {

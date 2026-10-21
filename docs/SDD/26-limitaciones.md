@@ -146,11 +146,11 @@ Para no dejar una impresión solo negativa:
 
 1. La ingesta HTTP/MQTT funciona y es idempotente.
 2. La regla ECA-Agua es única, determinista y probada en los bordes.
-3. El panel opera sin internet y sin JavaScript para lo esencial.
+3. El panel React opera sin internet: el mapa y el gráfico son SVG propios; requiere JavaScript, como cualquier SPA.
 4. El ST-GNN se entrena, se guarda como artefacto y se sirve por HTTP.
 5. El backend integra la IA sin acoplarse: si falla, el monitoreo continúa.
 6. Las predicciones se evalúan contra muestras posteriores y guardan el error; en la demo esas muestras las genera el simulador.
-7. 348 pruebas automatizadas pasan en esta máquina.
+7. 371 pruebas automatizadas pasan en esta máquina.
 8. El canal de carga de CSV de campo existe, valida el contrato y produce un artefacto `field`; lo que falta son las mediciones reales.
 
 ## 26.8 Cómo citar estas limitaciones

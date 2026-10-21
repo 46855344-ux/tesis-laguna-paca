@@ -19,7 +19,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.security.web.util.matcher.NegatedRequestMatcher;
 
 /**
  * Seguridad del sistema, con <strong>dos superficies y dos mecanismos</strong>.
@@ -59,16 +62,32 @@ public class SecurityConfig {
      */
     @Bean
     @Order(1)
-    SecurityFilterChain panelSecurityFilterChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain panelSecurityFilterChain(HttpSecurity http,
+                                                 ObjectMapper objectMapper) throws Exception {
         http
                 // La raíz entra aquí porque redirige al panel: si la manejara la
                 // cadena de la API, el navegador recibiría un 401 en JSON al
                 // escribir la dirección del servidor.
-                .securityMatcher("/", "/panel/**", "/login", "/css/**", "/js/**")
+                .securityMatcher("/", "/panel/**", "/login", "/logout")
                 .authorizeHttpRequests(auth -> auth
-                        // Sin esto no se podría ni ver el formulario de acceso.
-                        .requestMatchers("/", "/css/**", "/js/**", "/login").permitAll()
+                        // Sin esto no se podría ni ver la SPA de acceso ni pedir
+                        // el token CSRF que necesita su formulario.
+                        .requestMatchers("/", "/login", "/panel/csrf",
+                                "/panel/assets/**", "/panel/favicon.svg").permitAll()
                         .anyRequest().hasRole("ADMIN"))
+                // La SPA pide JSON: si la sesión caducó, un 401 explícito es más
+                // fácil de detectar que un 302 que termina en el HTML del login.
+                // Las páginas normales conservan la redirección al formulario.
+                // Hacen falta las dos entradas: con una sola, Spring Security la
+                // aplica a todas las peticiones e ignora su matcher.
+                .exceptionHandling(ex -> ex
+                        .defaultAuthenticationEntryPointFor(
+                                new PanelApiAuthenticationEntryPoint(objectMapper),
+                                new AntPathRequestMatcher("/panel/api/**"))
+                        .defaultAuthenticationEntryPointFor(
+                                new LoginUrlAuthenticationEntryPoint("/login"),
+                                new NegatedRequestMatcher(
+                                        new AntPathRequestMatcher("/panel/api/**"))))
                 .formLogin(form -> form
                         .loginPage("/login")
                         .loginProcessingUrl("/login")

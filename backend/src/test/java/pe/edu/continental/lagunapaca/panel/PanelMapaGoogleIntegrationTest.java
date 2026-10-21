@@ -14,15 +14,17 @@ import java.nio.charset.StandardCharsets;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestBuilders.formLogin;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * El mapa de Google es opcional: se activa con {@code app.maps.google-key},
  * que en producción llega por la variable de entorno {@code GOOGLE_MAPS_API_KEY}.
  *
- * <p>Fija las dos reglas que protegen la clave y la demo: el contorno propio se
- * sigue renderizando como respaldo (sin internet la tarjeta no queda vacía) y
- * la clave nunca viaja en el JSON de {@code /panel/datos}.</p>
+ * <p>Fija las dos reglas que protegen la clave y la demo: la SPA recibe la
+ * clave por el endpoint de sesión, y la clave nunca viaja en el JSON que se
+ * refresca cada 20 segundos ni se incrusta en el HTML. El contorno propio sigue
+ * siendo el respaldo si la API de Google no carga.</p>
  */
 @SpringBootTest(properties = {
         "spring.datasource.url=jdbc:h2:mem:lagunapaca-mapa-google;DB_CLOSE_DELAY=-1",
@@ -46,7 +48,7 @@ class PanelMapaGoogleIntegrationTest {
         return (MockHttpSession) result.getRequest().getSession(false);
     }
 
-    private String html(String ruta) throws Exception {
+    private String texto(String ruta) throws Exception {
         return mockMvc.perform(get(ruta).session(sesionAdmin()))
                 .andExpect(status().isOk())
                 .andReturn()
@@ -55,34 +57,25 @@ class PanelMapaGoogleIntegrationTest {
     }
 
     @Test
-    @DisplayName("con clave, la tarjeta ofrece el mapa de Google")
-    void ofreceElMapaDeGoogle() throws Exception {
-        String html = html("/panel");
-
-        assertThat(html).contains("id=\"mapa-google\"");
-        assertThat(html).contains("data-clave=\"clave-de-prueba\"");
-        assertThat(html).contains("Con conexión se muestra el mapa de Google");
+    @DisplayName("la configuración de sesión entrega la clave a la SPA")
+    void laSesionEntregaLaClave() throws Exception {
+        mockMvc.perform(get("/panel/api/sesion").session(sesionAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.googleMapsApiKey").value("clave-de-prueba"));
     }
 
     @Test
-    @DisplayName("el contorno propio sigue en el HTML como respaldo")
-    void elContornoPropioSigueSiendoElRespaldo() throws Exception {
-        String html = html("/panel");
-
-        // Sin internet, la API de Google no carga y el SVG ya está dibujado.
-        assertThat(html).contains("id=\"mapa-laguna-svg\"");
-        assertThat(html).contains("data-punto=\"N1\"");
+    @DisplayName("el shell HTML no incrusta la clave: la pide al arrancar la SPA")
+    void elShellNoIncrustaLaClave() throws Exception {
+        assertThat(texto("/login")).doesNotContain("clave-de-prueba");
+        assertThat(texto("/panel")).doesNotContain("clave-de-prueba");
     }
 
     @Test
     @DisplayName("la clave no viaja en el JSON del refresco")
     void laClaveNoViajaEnElJson() throws Exception {
-        String json = mockMvc.perform(get("/panel/datos").session(sesionAdmin()))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString(StandardCharsets.UTF_8);
-
+        String json = texto("/panel/api/datos");
         assertThat(json).doesNotContain("clave-de-prueba");
+        assertThat(json).doesNotContain("googleMapsApiKey");
     }
 }

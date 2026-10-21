@@ -7,7 +7,7 @@
 | Credenciales del panel | Fuerza bruta, reutilización | BCrypt, un solo usuario, red controlada |
 | JWT de la API | Robo y uso desde otro cliente | TTL de 2 h, HTTPS pendiente, no se guarda en el navegador |
 | Formularios del panel | CSRF | Token CSRF de Spring Security |
-| Sesión del panel | XSS | Thymeleaf escapa por defecto; no se usa `th:utext` |
+| Sesión del panel | XSS | React escapa por defecto; no se usa `dangerouslySetInnerHTML` |
 | Datos de telemetría | Inyección SQL | JPA/Criteria API con parámetros |
 | Secretos | Filtración en git | `.env` y `secrets.h` ignorados; variables de entorno |
 | Servicio de IA | Acceso desde fuera de la red | Sin puerto publicado en Compose + `X-Internal-Token` |
@@ -18,7 +18,7 @@
 
 `SecurityConfig` define dos cadenas:
 
-1. **`@Order(1)` — panel** (`/panel/**`, `/login`, `/css/**`, `/js/**`):
+1. **`@Order(1)` — panel** (`/`, `/panel/**`, `/login`, `/logout`):
    sesión con formulario (`JSESSIONID`) y **CSRF activo**. Logout por POST.
 2. **`@Order(2)` — API** (`/api/**`): **stateless con JWT**, sin cookies y sin
    CSRF, porque su cliente es el ESP32 y no un navegador.
@@ -27,9 +27,19 @@ Consecuencia deliberada: **un JWT válido no abre el panel**. Con el JWT en
 `localStorage` el token quedaría expuesto a XSS, y sin CSRF el formulario de
 acceso sería falsificable.
 
-Públicos: `/login`, estáticos, `/api/v1/auth/token`, Swagger
+La SPA obtiene el token en `GET /panel/csrf` (`{token, headerName,
+parameterName}`) y lo envía en la cabecera `X-CSRF-TOKEN`. Si recibe 403 por un
+token rotado, lo descarta, pide uno nuevo y reintenta **una sola vez**. Al
+iniciar y cerrar sesión también descarta el token cacheado, porque Spring
+Security puede cambiar el id de sesión. El nombre del usuario que atiende una
+alerta sale de `Principal`, nunca del cuerpo de la petición.
+
+Públicos: `/login`, `/panel/csrf`, `/panel/assets/**`,
+`/panel/favicon.svg`, `/api/v1/auth/token`, Swagger
 (`/swagger-ui*`, `/v3/api-docs/**`) y `actuator/health|info`. Todo lo demás exige
-autenticación.
+autenticación. `/panel/api/**` responde **401 JSON** sin sesión mediante
+`PanelApiAuthenticationEntryPoint` (`{"error": "La sesión caducó..."}`); las
+rutas de página redirigen a `/login`.
 
 ## 14.3 JWT
 
@@ -78,8 +88,9 @@ en el repositorio, **debe rotarse** y la nueva debe restringirse por referente:
 y habilitar solo *Maps JavaScript API*. Una clave sin restricción en un
 repositorio público se puede usar a costa de la cuenta de facturación.
 
-La clave se marca con `@JsonIgnore` en `PanelMapa`, así que no viaja en
-`/panel/datos`; hay tests que lo comprueban.
+La clave no viaja en `/panel/api/datos` ni en `/panel/datos`; solo se entrega
+en `GET /panel/api/sesion`. Hay tests que comprueban que no aparece en el HTML
+ni en el JSON del tablero.
 
 Verificación del 20/10/2026: la clave **no** está en el árbol de trabajo, en
 `HEAD` ni en el historial (`git log -S "AIza"` no devuelve nada). Rotarla exige

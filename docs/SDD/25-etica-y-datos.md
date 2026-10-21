@@ -60,7 +60,8 @@ derechos ARCO.
 | PostgreSQL | PostgreSQL License | Base de datos |
 | Flyway Community | Apache 2.0 | Migraciones |
 | JJWT | Apache 2.0 | JWT |
-| Thymeleaf | Apache 2.0 | Plantillas |
+| React | MIT | SPA del panel |
+| Vite | MIT | Build del frontend |
 | Lucide | ISC | Iconos SVG |
 | PyTorch | BSD-3-Clause | Modelo |
 | PyTorch Geometric | MIT | GNN |

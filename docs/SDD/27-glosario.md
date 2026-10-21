@@ -38,7 +38,9 @@
 | **Flyway** | Herramienta de migraciones versionadas. |
 | **JaCoCo** | Herramienta de cobertura de código Java. |
 | **SonarQube** | Plataforma de análisis estático; configurada, no ejecutada aquí. |
-| **Thymeleaf** | Motor de plantillas HTML del panel. |
+| **SPA** | Aplicación de una sola página; el panel React carga una vez y navega sin recargar. |
+| **Vite** | Empaquetador y servidor de desarrollo del frontend. |
+| **Vitest** | Ejecutor de pruebas del frontend, integrado con Vite. |
 | **SVG** | Gráfico vectorial; el mapa y el gráfico se dibujan a mano. |
 | **ODbL** | Licencia de OpenStreetMap que exige atribución y compartir igual. |
 | **CRISP-DM** | Metodología de minería de datos: comprensión, preparación, modelado, evaluación, despliegue. |

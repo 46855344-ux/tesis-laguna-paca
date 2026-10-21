@@ -20,19 +20,22 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestBuilders.formLogin;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * Contrato del historial: filtros, orden, ventana de fechas y paginación.
  *
+ * <p>La SPA consume {@code /panel/api/historial}. Los filtros llegan como texto
+ * (no como {@code LocalDate}) para que una fecha mal tecleada no convierta la
+ * pantalla en un 400. Las fechas de calendario se interpretan en hora de Lima.</p>
+ *
  * <p>Se insertan muestras por el repositorio para fijar {@code recordedAt}, así
- * los tests de fechas no dependen del reloj. Las aserciones cuentan filas por el
- * atributo {@code data-muestra}, en vez de buscar texto suelto que podría
- * aparecer también en el formulario de filtros.</p>
+ * los tests de fechas no dependen del reloj.</p>
  */
 @SpringBootTest(properties = {
         "spring.datasource.url=jdbc:h2:mem:lagunapaca-historial;DB_CLOSE_DELAY=-1",
@@ -45,8 +48,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @DisplayName("Historial del panel: filtros, orden y paginación")
 class PanelHistorialIntegrationTest {
-
-    private static final String MARCA_FILA = "data-muestra=\"";
 
     @Autowired
     private MockMvc mockMvc;
@@ -75,7 +76,7 @@ class PanelHistorialIntegrationTest {
         return repository.save(muestra);
     }
 
-    private String html(MockHttpServletRequestBuilder peticion) throws Exception {
+    private String json(MockHttpServletRequestBuilder peticion) throws Exception {
         return mockMvc.perform(peticion.session(sesionAdmin()))
                 .andExpect(status().isOk())
                 .andReturn()
@@ -83,38 +84,26 @@ class PanelHistorialIntegrationTest {
                 .getContentAsString(StandardCharsets.UTF_8);
     }
 
-    /** Cuenta filas de la tabla sin depender de un parser HTML en los tests. */
-    private static int filas(String html) {
-        int total = 0;
-        int desde = 0;
-        while ((desde = html.indexOf(MARCA_FILA, desde)) >= 0) {
-            total++;
-            desde += MARCA_FILA.length();
-        }
-        return total;
-    }
-
     @Test
     @DisplayName("el historial exige sesión, igual que el resto del panel")
     void exigeSesion() throws Exception {
-        mockMvc.perform(get("/panel/historial"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("http://localhost/login"));
+        mockMvc.perform(get("/panel/api/historial"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
     @DisplayName("las muestras más recientes aparecen primero")
     void ordenaDeMasRecienteAMasAntigua() throws Exception {
         Instant base = Instant.parse("2026-10-19T12:00:00Z");
-        WaterQualitySample primera = muestra("N1", 7.10, base, false, null);
+        muestra("N1", 7.10, base, false, null);
         muestra("N1", 7.20, base.plus(1, ChronoUnit.MINUTES), false, null);
         WaterQualitySample ultima = muestra("N1", 7.30, base.plus(2, ChronoUnit.MINUTES), false, null);
 
-        String html = html(get("/panel/historial"));
-
-        assertThat(filas(html)).isEqualTo(3);
-        assertThat(html.indexOf("data-muestra=\"" + ultima.getId() + "\""))
-                .isLessThan(html.indexOf("data-muestra=\"" + primera.getId() + "\""));
+        mockMvc.perform(get("/panel/api/historial").session(sesionAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.filas", hasSize(3)))
+                .andExpect(jsonPath("$.filas[0].id").value(ultima.getId()))
+                .andExpect(jsonPath("$.filas[0].ph").value("7.30"));
     }
 
     @Test
@@ -125,13 +114,20 @@ class PanelHistorialIntegrationTest {
             muestra("N1", 7.0 + i * 0.01, base.plus(i, ChronoUnit.MINUTES), false, null);
         }
 
-        String primera = html(get("/panel/historial"));
-        String segunda = html(get("/panel/historial").param("page", "1"));
+        mockMvc.perform(get("/panel/api/historial").session(sesionAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.filas", hasSize(20)))
+                .andExpect(jsonPath("$.total").value(25))
+                .andExpect(jsonPath("$.pagina").value(1))
+                .andExpect(jsonPath("$.desdeFila").value(1))
+                .andExpect(jsonPath("$.hastaFila").value(20));
 
-        assertThat(filas(primera)).isEqualTo(20);
-        assertThat(filas(segunda)).isEqualTo(5);
-        assertThat(primera).contains("25 muestras");
-        assertThat(segunda).contains("21–25");
+        mockMvc.perform(get("/panel/api/historial").param("page", "1").session(sesionAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.filas", hasSize(5)))
+                .andExpect(jsonPath("$.pagina").value(2))
+                .andExpect(jsonPath("$.desdeFila").value(21))
+                .andExpect(jsonPath("$.hastaFila").value(25));
     }
 
     @Test
@@ -142,10 +138,12 @@ class PanelHistorialIntegrationTest {
             muestra("N1", 7.0, base.plus(i, ChronoUnit.MINUTES), false, null);
         }
 
-        String html = html(get("/panel/historial").param("page", "99"));
-
-        assertThat(filas(html)).isEqualTo(5);
-        assertThat(html).contains("21–25");
+        mockMvc.perform(get("/panel/api/historial").param("page", "99").session(sesionAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.filas", hasSize(5)))
+                .andExpect(jsonPath("$.pagina").value(2))
+                .andExpect(jsonPath("$.desdeFila").value(21))
+                .andExpect(jsonPath("$.hastaFila").value(25));
     }
 
     @Test
@@ -153,14 +151,17 @@ class PanelHistorialIntegrationTest {
     void filtraPorEstacion() throws Exception {
         Instant base = Instant.parse("2026-10-19T12:00:00Z");
         muestra("N1", 7.10, base, false, null);
-        muestra("N2", 9.40, base.plus(1, ChronoUnit.MINUTES), true, "pH 9.40 supera el límite superior ECA-Agua (9.0)");
-        muestra("N2", 9.50, base.plus(2, ChronoUnit.MINUTES), true, "pH 9.50 supera el límite superior ECA-Agua (9.0)");
+        muestra("N2", 9.40, base.plus(1, ChronoUnit.MINUTES), true,
+                "pH 9.40 supera el límite superior ECA-Agua (9.0)");
+        muestra("N2", 9.50, base.plus(2, ChronoUnit.MINUTES), true,
+                "pH 9.50 supera el límite superior ECA-Agua (9.0)");
 
-        String html = html(get("/panel/historial").param("estacion", "N2"));
-
-        assertThat(filas(html)).isEqualTo(2);
-        assertThat(html).contains("data-estacion=\"N2\"");
-        assertThat(html).doesNotContain("data-estacion=\"N1\"");
+        mockMvc.perform(get("/panel/api/historial").param("estacion", "N2").session(sesionAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.filas", hasSize(2)))
+                .andExpect(jsonPath("$.filas[0].estacion").value("N2"))
+                .andExpect(jsonPath("$.filas[1].estacion").value("N2"))
+                .andExpect(jsonPath("$.filtros.estacion").value("N2"));
     }
 
     @Test
@@ -169,15 +170,19 @@ class PanelHistorialIntegrationTest {
         // 04:30 UTC del día 18 es 23:30 del día 17 en Lima (UTC-5).
         muestra("N1", 7.20, Instant.parse("2026-10-18T04:30:00Z"), false, null);
 
-        String dia17 = html(get("/panel/historial")
-                .param("desde", "2026-10-17")
-                .param("hasta", "2026-10-17"));
-        String dia18 = html(get("/panel/historial")
-                .param("desde", "2026-10-18")
-                .param("hasta", "2026-10-18"));
+        mockMvc.perform(get("/panel/api/historial")
+                        .param("desde", "2026-10-17")
+                        .param("hasta", "2026-10-17")
+                        .session(sesionAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.filas", hasSize(1)));
 
-        assertThat(filas(dia17)).isEqualTo(1);
-        assertThat(filas(dia18)).isZero();
+        mockMvc.perform(get("/panel/api/historial")
+                        .param("desde", "2026-10-18")
+                        .param("hasta", "2026-10-18")
+                        .session(sesionAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.filas", hasSize(0)));
     }
 
     @Test
@@ -188,11 +193,11 @@ class PanelHistorialIntegrationTest {
         muestra("N2", 9.60, base.plus(1, ChronoUnit.MINUTES), true,
                 "pH 9.60 supera el límite superior ECA-Agua (9.0)");
 
-        String html = html(get("/panel/historial").param("soloAlertas", "true"));
-
-        assertThat(filas(html)).isEqualTo(1);
-        assertThat(html).contains("Alerta ECA-Agua");
-        assertThat(html).doesNotContain("7.20");
+        mockMvc.perform(get("/panel/api/historial").param("soloAlertas", "true").session(sesionAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.filas", hasSize(1)))
+                .andExpect(jsonPath("$.filas[0].estado").value("ALERTA"))
+                .andExpect(jsonPath("$.filtros.soloAlertas").value(true));
     }
 
     @Test
@@ -203,10 +208,10 @@ class PanelHistorialIntegrationTest {
         muestra("N2", 6.20, base.plus(1, ChronoUnit.MINUTES), true,
                 "pH 6.20 está por debajo del límite inferior ECA-Agua (6.5)");
 
-        String html = html(get("/panel/historial").param("motivo", "por debajo"));
-
-        assertThat(filas(html)).isEqualTo(1);
-        assertThat(html).contains("data-estacion=\"N2\"");
+        mockMvc.perform(get("/panel/api/historial").param("motivo", "por debajo").session(sesionAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.filas", hasSize(1)))
+                .andExpect(jsonPath("$.filas[0].estacion").value("N2"));
     }
 
     @Test
@@ -215,12 +220,13 @@ class PanelHistorialIntegrationTest {
         Instant base = Instant.parse("2026-10-19T12:00:00Z");
         muestra("N1", 7.20, base, false, null);
 
-        String html = html(get("/panel/historial")
-                .param("desde", "2026-10-19")
-                .param("hasta", "2026-10-17"));
-
-        assertThat(filas(html)).isEqualTo(1);
-        assertThat(html).contains("no se aplicó");
+        mockMvc.perform(get("/panel/api/historial")
+                        .param("desde", "2026-10-19")
+                        .param("hasta", "2026-10-17")
+                        .session(sesionAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.filas", hasSize(1)))
+                .andExpect(jsonPath("$.aviso", containsString("no se aplicó")));
     }
 
     @Test
@@ -228,14 +234,14 @@ class PanelHistorialIntegrationTest {
     void fechaInvalidaSeAvisa() throws Exception {
         muestra("N1", 7.20, Instant.parse("2026-10-19T12:00:00Z"), false, null);
 
-        String html = html(get("/panel/historial").param("desde", "2026-13-45"));
-
-        assertThat(filas(html)).isEqualTo(1);
-        assertThat(html).contains("no es válida");
+        mockMvc.perform(get("/panel/api/historial").param("desde", "2026-13-45").session(sesionAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.filas", hasSize(1)))
+                .andExpect(jsonPath("$.aviso", containsString("no es válida")));
     }
 
     @Test
-    @DisplayName("los enlaces de paginación conservan los filtros aplicados")
+    @DisplayName("la paginación conserva los filtros aplicados")
     void laPaginacionConservaLosFiltros() throws Exception {
         Instant base = Instant.parse("2026-10-19T12:00:00Z");
         for (int i = 0; i < 25; i++) {
@@ -243,19 +249,20 @@ class PanelHistorialIntegrationTest {
                     "pH 9.50 supera el límite superior ECA-Agua (9.0)");
         }
 
-        String html = html(get("/panel/historial").param("estacion", "N2"));
-
-        assertThat(html).contains("estacion=N2");
-        assertThat(html).contains("page=1");
+        mockMvc.perform(get("/panel/api/historial").param("estacion", "N2").session(sesionAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.filtros.estacion").value("N2"))
+                .andExpect(jsonPath("$.totalPaginas").value(2))
+                .andExpect(jsonPath("$.paginas", hasSize(2)));
     }
 
     @Test
-    @DisplayName("sin resultados muestra un estado vacío con salida a quitar filtros")
-    void sinResultadosMuestraEstadoVacio() throws Exception {
-        String html = html(get("/panel/historial").param("estacion", "N4"));
-
-        assertThat(filas(html)).isZero();
-        assertThat(html).contains("Sin resultados");
-        assertThat(html).contains("Quitar los filtros");
+    @DisplayName("sin resultados el JSON lo dice y la SPA puede ofrecer salida")
+    void sinResultados() throws Exception {
+        mockMvc.perform(get("/panel/api/historial").param("estacion", "N4").session(sesionAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.hayResultados").value(false))
+                .andExpect(jsonPath("$.filas", hasSize(0)))
+                .andExpect(jsonPath("$.total").value(0));
     }
 }

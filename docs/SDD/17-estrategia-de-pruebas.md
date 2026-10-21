@@ -13,27 +13,29 @@ La pirámide es deliberadamente ancha en la base:
   `HttpServer` del JDK, filtros y payload del firmware.
 - **De slice**: controladores con `@WebMvcTest` y servicios instanciados a mano.
 - **De integración**: contexto completo con H2 (`@SpringBootTest`), panel y API.
+- **De componentes**: React con Vitest + Testing Library y `jsdom`.
 - **De contrato**: el servicio FastAPI con `TestClient`.
 - **Nativas**: el núcleo del firmware en el host, con dobles de sensores.
 
-## 17.2 Totales verificados (20/10/2026)
+## 17.2 Totales verificados (21/10/2026)
 
 | Suite | Comando | Tests | Estado |
 |---|---|---|---|
-| Backend | `mvn test` | **138** | Verde |
+| Backend | `mvn test` | **145** | Verde |
+| Frontend | `npm test` | **16** | Verde |
 | Firmware | `pio test -e native` | **38** | Verde |
 | IA | `python -m pytest` | **172** | Verde |
-| **Total** | | **348** | |
+| **Total** | | **371** | |
 
-Cobertura del backend (JaCoCo): **91.5 %** de instrucciones (5321/5813) y
-**70.0 %** de ramas (254/363). Se reporta como indicador, no como meta: la
+Cobertura del backend (JaCoCo): **91.7 %** de instrucciones (5491/5989) y
+**68.8 %** de ramas (265/385). Se reporta como indicador, no como meta: la
 cobertura sola no dice si una prueba comprueba lo correcto.
 
 Además, `PostgresMigrationIT` (1 test) valida las migraciones contra PostgreSQL
 real y **no** corre en `mvn test`: lo ejecuta el job `backend-postgres` del CI
-con `postgres:16-alpine`. Con él, el total sería **349**.
+con `postgres:16-alpine`. Con él, el total sería **372**.
 
-## 17.3 Backend: 138 tests
+## 17.3 Backend: 145 tests
 
 | Clase | Tests | Qué fija |
 |---|---|---|
@@ -52,14 +54,14 @@ con `postgres:16-alpine`. Con él, el total sería **349**.
 | `AiClientTest` | 10 | Timeouts, token, 4xx/5xx, JSON inválido, contrato |
 | `JwtServiceTest` | 5 | Firma, expiración, issuer |
 | `FlywayMigrationsTest` | 3 | Contigüidad, no destructivo, V5 aditiva |
-| `PanelIntegrationTest` | 9 | Login, CSRF, JWT no abre panel, estáticos |
-| `PanelDashboardIntegrationTest` | 6 | Última muestra, alerta, JSON, 24 h |
+| `PanelIntegrationTest` | 13 | Raíz, shell React, assets, login, CSRF, logout, JWT no abre panel, 401 JSON |
+| `PanelDashboardIntegrationTest` | 7 | Última muestra, alerta, JSON, 24 h |
 | `PanelHistorialIntegrationTest` | 12 | Filtros, Lima, paginación, avisos |
 | `PanelAlertasIntegrationTest` | 12 | Atención, CSRF, auditoría, 404, reabrir |
-| `PanelMapaIntegrationTest` | 7 | Contorno, proyección, colores, sin teselas |
+| `PanelMapaIntegrationTest` | 6 | Contorno, proyección, colores, sin teselas |
 | `PanelMapaGoogleIntegrationTest` | 3 | Google opcional, clave fuera del JSON |
 | `PanelMapaTest` | 2 | Serialización sin clave |
-| `PanelPrediccionesIntegrationTest` | 8 | Predicciones, origen, evaluación, IA caída, CSRF |
+| `PanelPrediccionesIntegrationTest` | 11 | Predicciones, origen, evaluación, IA caída, CSRF, horizonte inválido |
 
 ### Qué **no** cubren
 
@@ -69,10 +71,27 @@ con `postgres:16-alpine`. Con él, el total sería **349**.
 - **No hay motor Docker**: `compose config` se validó; `build/up` no se ejecuta
   en los tests.
 - **No hay SonarQube**: el análisis está configurado, no ejecutado.
-- **No hay navegador**: el refresco de 20 s y el cajón móvil se validan a mano.
+- **No hay E2E con navegador real**: el refresco de 20 s, el cajón móvil y la
+  carga opcional de Google Maps se validan a mano. Las pruebas de componentes
+  usan `jsdom` y dobles de `fetch`; no son datos de campo.
 - **No hay hardware**: los sensores del firmware son dobles.
 
-## 17.4 Firmware: 38 tests
+## 17.4 Frontend: 16 tests
+
+| Archivo | Tests | Qué fija |
+|---|---|---|
+| `estado.test.ts` | 2 | Etiquetas, clases y los tres estados ECA-Agua |
+| `client.test.ts` | 5 | CSRF en cada petición, 401, reintento por 403, login y detección por URL final |
+| `components.test.tsx` | 6 | Badge, mapa con enlaces, paginación y gráfico SVG |
+| `pages.test.tsx` | 3 | Historial con filtros, atención de alertas y tablero con datos simulados |
+
+- Usan **Vitest + Testing Library + jsdom**, no un navegador real.
+- Los dobles de `fetch` devuelven JSON del contrato del panel; no se usan
+  mediciones de la laguna ni se presentan como validación de campo.
+- No cubren Google Maps real, el refresco de 20 s ni el cajón móvil: eso se
+  valida a mano porque depende del navegador y de la red.
+
+## 17.5 Firmware: 38 tests
 
 - `test_core.cpp` cubre filtros, calibración, payload exacto, `sample_id`,
   plausibilidad, transporte, Deep Sleep y client id MQTT.
@@ -82,7 +101,7 @@ con `postgres:16-alpine`. Con él, el total sería **349**.
 - Ambas variantes compilan (`esp32dev`, `esp32dev-mqtt`), lo que verifica el
   glue de Arduino que los tests nativos no tocan.
 
-## 17.5 IA: 172 tests
+## 17.6 IA: 172 tests
 
 - `test_stations.py`, `test_graph.py`, `test_windows.py`, `test_metrics.py`,
   `test_model.py`, `test_dataset.py`, `test_normalization.py`,
@@ -99,13 +118,18 @@ con `postgres:16-alpine`. Con él, el total sería **349**.
 - Los CSV de `test_field_data.py` son *fixtures*: no son mediciones de la laguna.
   El cargador está probado; la validación científica sigue pendiente de campo.
 
-## 17.6 Cómo ejecutar
+## 17.7 Cómo ejecutar
 
 ```powershell
 # Backend
 cd backend
 $env:JAVA_HOME="D:\Intellij\IntelliJ IDEA 2025.2.1\jbr"
 & "C:\Users\USER\.m2\wrapper\dists\apache-maven-3.9.9\977a63e90f436cd6ade95b4c0e10c20c\bin\mvn.cmd" test
+
+# Frontend
+cd frontend
+npm test
+npm run build
 
 # Firmware
 $env:PATH="C:\Users\USER\AppData\Local\Programs\mingw64\bin;$env:PATH"
@@ -117,22 +141,25 @@ cd ia-model
 .venv\Scripts\python.exe train_stgnn.py --csv datos\campo.csv --max-gap-hours 2
 ```
 
-## 17.7 Datos de prueba
+## 17.8 Datos de prueba
 
 - Las muestras se insertan por repositorio para fijar `recordedAt` sin depender
   del reloj.
 - Hay un `Clock` inyectable (`config/ClockConfig`) para pruebas deterministas.
 - La IA se sustituye con `@MockBean` en los tests de integración; el cliente real
   se prueba contra `com.sun.net.httpserver.HttpServer`.
+- El frontend usa `vi.fn()` para `fetch` y renderiza con `MemoryRouter`; el test
+  de login fija la URL final `/panel`, no solo el código HTTP.
 - El firmware usa `FakeAnalogChannel`, `FakeTemperatureSensor` y `FakeTransport`.
 
-## 17.8 Tiempo de ejecución
+## 17.9 Tiempo de ejecución
 
 - Backend: ~90 s (los tests de contexto completo dominan).
+- Frontend: ~6 s (Vitest + jsdom).
 - IA: ~3.5 min en la última ejecución (los tests del modelo entrenan redes pequeñas en CPU); puede variar con la caché y la carga de la máquina.
 - Firmware: ~10 s.
 
-## 17.9 Lección aprendida
+## 17.10 Lección aprendida
 
 El primer test que cargó el contexto completo descubrió dos bugs que 32 tests de
 slice no podían ver: `TelemetryService` tenía dos constructores sin `@Autowired`
