@@ -10,7 +10,7 @@ planificó.
 | S0 | Línea base y auditoría | `00-auditoria-inicial.md`, `.gitignore`, línea base de 254 tests | Hallazgos priorizados | Hecho |
 | S1 | Requisitos y arquitectura | `01`–`08`, ADR-001…004 | Requisitos trazables y arquitectura aprobada | Hecho |
 | S2 | Backend de ingesta | API, JWT, ECA-Agua, histórico, MQTT | 88 tests verdes | Hecho |
-| S3 | Panel operativo | Tablero, historial, alertas, mapa, tokens | 51 tests de panel | Hecho |
+| S3 | Panel operativo | Tablero, métricas, historial, alertas, mapa, tokens | 51 tests de panel | Hecho |
 | S4 | Firmware | Núcleo portable, HTTP/MQTT, Deep Sleep | 32 tests nativos + builds | Hecho |
 | S5 | Modelo | Grafo, ventanas, ST-GNN, entrenamiento | R² > 0.90 sintético | Hecho |
 | S6 | Servicio IA e integración | FastAPI, artefacto, predicciones, evaluación, carga de CSV de campo | 172 tests IA + 50 tests backend nuevos | Hecho |

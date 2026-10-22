@@ -21,7 +21,7 @@ $env:JAVA_HOME="D:\Intellij\IntelliJ IDEA 2025.2.1\jbr"
 ```
 
 ```powershell
-# Frontend: 16 tests
+# Frontend: 17 tests
 cd frontend
 npm test
 ```
@@ -39,7 +39,7 @@ cd ia-model
 .venv\Scripts\python.exe -m pytest -q
 ```
 
-**Qué decir:** «371 pruebas automatizadas; el backend tiene 91.7 % de cobertura
+**Qué decir:** «372 pruebas automatizadas; el backend tiene 91.7 % de cobertura
 de instrucciones».
 
 ## 22.3 Paso 2 · El modelo (2 min)
@@ -81,6 +81,8 @@ python tools\simulate_node.py --scenario alert --count 3
 ```
 
 - Refrescar el tablero (o esperar 20 s).
+- Abrir «Métricas»: los KPIs, la tendencia de pH, la dona de estados y las alertas
+  recientes se construyen con la misma telemetría.
 - La tarjeta de la estación que recibió pH fuera de rango se pinta en rojo con el
   motivo redactado por el backend.
 - Abrir «Historial» y filtrar por esa estación y «solo alertas».

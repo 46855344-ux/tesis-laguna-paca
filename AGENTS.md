@@ -5,7 +5,7 @@ Repositorio de tesis: **"Sistema de software e IoT con Redes Neuronales de Grafo
 ## Estado actual (importante)
 
 - `backend/` está **completo**: Spring Boot + ingesta de telemetría (HTTP y MQTT) **idempotente** (`sample_id`), alertas ECA-Agua, consulta histórica, **predicciones del ST-GNN persistidas y evaluadas**, Swagger UI, **API JSON del panel** y simulador del nodo. **145 tests.**
-- `frontend/` es una **SPA React 19 + TypeScript + Vite** (React Router): acceso, tablero, mapa, historial, alertas y predicciones. **16 tests** con Vitest + Testing Library. El build se escribe en `backend/src/main/resources/static/panel`.
+- `frontend/` es una **SPA React 19 + TypeScript + Vite** (React Router): acceso, tablero, métricas, mapa, historial, alertas y predicciones. **17 tests** con Vitest + Testing Library. El build se escribe en `backend/src/main/resources/static/panel`.
 - `iot-firmware/` tiene el **núcleo portable** del nodo ESP32, transporte HTTP y MQTT QoS 1, Deep Sleep y `sample_id`; **38 tests nativos** y ambas variantes compilan.
 - `ia-model/` está **completo de extremo a extremo**: estaciones, grafo, ventanas, modelo ST-GNN (TCN + GCN + Attention), dataset sintético, normalización, entrenamiento, **carga de CSV de campo**, **artefacto versionado** (`artifacts/stgnn.pt`) y **servicio FastAPI** (`serve.py`). **172 tests con pytest.** El criterio de la tesis se cumple con datos sintéticos (`R² = 0.9289` a 6 h, contra `0.7403` de persistencia).
 - `docs/SDD/` es la documentación de diseño (versionada; índice en `docs/SDD/README.md`). El resto de `docs/` es material de referencia y **no se versiona**.
@@ -17,7 +17,7 @@ La fuente de verdad es `docs/Plantilla Plan Tesis Continental Sistemas_RONY.docx
 
 - `iot-firmware/` — firmware ESP32 (C++/Arduino): PH-4502C, TSW-20M, DS18B20 y Gravity TDS. Publica el payload JSON al **backend propio** (HTTP POST y/o MQTT) y entra en Deep Sleep. Estructura: `lib/lagunapaca_core/` (lógica portable y testeable) y `src/main.cpp` (glue de Arduino).
 - `backend/` — Java 21 / Spring Boot 3.2; API REST con JWT, PostgreSQL 16 + Flyway, Neo4j AuraDB y **API JSON del panel**. Sirve el build de React desde el mismo JAR.
-- `frontend/` — React 19 + TypeScript + Vite; SPA del panel (acceso, tablero, mapa, historial y alertas). El build se copia a `backend/src/main/resources/static/panel`.
+- `frontend/` — React 19 + TypeScript + Vite; SPA del panel (acceso, tablero, métricas, mapa, historial y alertas). El build se copia a `backend/src/main/resources/static/panel`.
 - `ia-model/` — Python 3.12 / PyTorch Geometric; modelo ST-GNN sobre el grafo de estaciones de la laguna (adyacencia gaussiana + MST/KNN); se evalúa con R², RMSE y MAE.
 - `android-app/` — Kotlin / Jetpack Compose (MVVM + unidirectional data flow); alertas vía Firebase Cloud Messaging.
 
@@ -131,8 +131,9 @@ Detalles que no se deben romper:
 - `GET /panel/csrf` entrega `{token, headerName, parameterName}` a React. El login de la SPA
   hace POST a `/login` con `_csrf` y considera éxito cuando la URL final es `/panel`.
 - `SpaController` devuelve `static/panel/index.html` como `Resource` para `/login`, `/panel`,
-  `/panel/`, `/panel/historial` y `/panel/alertas`; la raíz `/` redirige a `/panel`. No se
-  usa `forward:` porque MockMvc debe recibir el HTML y no hace falta una segunda pasada.
+  `/panel/`, `/panel/metricas`, `/panel/historial` y `/panel/alertas`; la raíz `/` redirige a
+  `/panel`. No se usa `forward:` porque MockMvc debe recibir el HTML y no hace falta una
+  segunda pasada.
 - La API del panel (`PanelApiController`) lee de `PanelDashboardService`,
   `PanelHistorialService`, `PanelAlertasService` y `PredictionService`; **no** llama a
   `/api/v1` ni duplica la regla ECA-Agua.
@@ -177,6 +178,33 @@ Decisiones que conviene no deshacer:
 - **Refresco cada 20 s** contra `/panel/api/datos`, en pausa si la pestaña está oculta. El
   botón "Actualizar" hace lo mismo y confirma con un toast. En React se usa un `ref` para
   evitar que el intervalo se recree en cada render.
+
+### Métricas
+
+`/panel/metricas` es un cuadro de mando de solo lectura que resume la ventana de 24 h. **No
+hay un endpoint nuevo ni una segunda consulta de agregación**: se compone con
+`GET /panel/api/datos` (KPIs, serie y estados) y `GET /panel/api/alertas` (últimas alertas).
+
+| Bloque | Qué muestra |
+|---|---|
+| KPIs | Muestras de 24 h, alertas, cumplimiento ECA-Agua y estaciones con datos |
+| Tendencia | pH de las últimas 24 h, una línea por estación, con el `LineChart` del tablero |
+| Dona | Distribución `DENTRO` / `ALERTA` / `SIN_DATOS` de las cuatro estaciones |
+| Alertas recientes | Últimas cinco alertas con fecha, pH, motivo y si están atendidas |
+| Muestras por estación | Volumen de 24 h y última lectura de cada nodo |
+
+Decisiones que conviene no deshacer:
+
+- **El cumplimiento se calcula con el veredicto persistido**, no reevaluando el pH en React:
+  `(muestras - alertas) / muestras`. Si no hay muestras se muestra `—`, no un 100 % falso.
+- **La dona cuenta estaciones, no muestras.** Es la foto actual de los cuatro nodos y no
+  pretende ponderar por volumen.
+- **La tabla no inventa alertas**: si `/panel/api/alertas` falla, el resto de la pantalla
+  sigue visible y se avisa de que no se pudieron cargar; nunca se pinta una lista vacía como
+  si no hubiera alertas.
+- **El periodo es fijo de 24 h** porque es la ventana que ya expone el tablero. Añadir 7 o 30
+  días exigiría un endpoint de agregación propio y una decisión de producto aparte.
+- **Se refresca cada 20 s** con el mismo patrón del tablero (pausa al ocultar la pestaña).
 
 ### Mapa de la laguna
 
@@ -325,7 +353,8 @@ teselas/scripts externos. `PanelMapaGoogleIntegrationTest` fija que la clave lle
 
 Tests del frontend (Vitest + Testing Library): `estado.test.ts` (etiquetas y clases),
 `client.test.ts` (CSRF, 401, reintento por 403, login), `components.test.tsx` (badge, mapa,
-paginación, gráfico) y `pages.test.tsx` (historial, alertas y tablero con datos simulados).
+paginación, gráfico) y `pages.test.tsx` (historial, alertas, tablero y métricas con datos
+simulados). **17 tests.**
 
 **Total del backend: 145 tests.** Cobertura JaCoCo tras la migración: **91.7 %** de
 instrucciones y **68.8 %** de ramas sobre 89 clases. Se reporta como indicador, no como meta.

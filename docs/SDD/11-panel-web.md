@@ -20,6 +20,7 @@ El build de producción se versiona para que la demo funcione sin Node.
 | `/logout` | POST | Sesión + CSRF | Cierra sesión e invalida `JSESSIONID` |
 | `/panel` | GET | Sesión | Shell React del tablero |
 | `/panel/` | GET | Sesión | Alias con barra final del tablero |
+| `/panel/metricas` | GET | Sesión | Shell React de métricas |
 | `/panel/historial` | GET | Sesión | Shell React del historial |
 | `/panel/alertas` | GET | Sesión | Shell React de alertas |
 | `/panel/assets/**`, `/panel/favicon.svg` | GET | Público | Recursos del build de Vite |
@@ -156,7 +157,31 @@ filtros.
 - **Una página fuera de rango se ajusta a la última.**
 - La tabla se desplaza en horizontal dentro de su tarjeta en móvil.
 
-## 11.7 Alertas
+## 11.7 Métricas
+
+`/panel/metricas` es un cuadro de mando de solo lectura sobre la ventana de 24 h.
+**No hay un endpoint nuevo**: se compone con `GET /panel/api/datos` y
+`GET /panel/api/alertas`.
+
+| Bloque | Origen |
+|---|---|
+| Muestras, alertas y estaciones con datos | Contadores del tablero |
+| Cumplimiento ECA-Agua | `(muestras - alertas) / muestras`, con el veredicto persistido |
+| Tendencia de pH | Serie de 24 h, una línea por estación |
+| Dona de estados | `DENTRO`, `ALERTA` y `SIN_DATOS` de las cuatro estaciones |
+| Alertas recientes | Primeras cinco filas de `/panel/api/alertas` |
+| Muestras por estación | Conteo de puntos de la serie de 24 h |
+
+- **React no reevalúa el pH**: el cumplimiento y los estados salen del veredicto que
+  guardó la ingesta. Sin muestras, el cumplimiento se muestra como `—`.
+- **Si falla la lista de alertas, la pantalla no se cae**: se conservan los KPIs y
+  se avisa de que la tabla no está disponible; no se pinta una lista vacía falsa.
+- **El periodo es fijo de 24 h**, porque es la ventana que ya expone el tablero.
+  Siete o treinta días exigirían un endpoint de agregación propio.
+- Se refresca cada 20 s con el patrón del tablero y se pausa si la pestaña está
+  oculta.
+
+## 11.8 Alertas
 
 `/panel/alertas` lista solo muestras **con alerta**; por defecto, pendientes.
 
@@ -176,7 +201,7 @@ filtros.
 - La API REST pública **no** expone la atención; el panel es hoy el único lugar
   donde se atiende una alerta.
 
-## 11.8 Mapa
+## 11.9 Mapa
 
 - Contorno **real** de la laguna desde OpenStreetMap (`way 26947746`, 194 puntos,
   simplificado a 140 con Douglas-Peucker) guardado en
@@ -197,7 +222,7 @@ filtros.
 - La clave es de navegador: debe restringirse por referente en Google Cloud y
   habilitar solo *Maps JavaScript API*.
 
-## 11.9 Sistema de diseño y accesibilidad
+## 11.10 Sistema de diseño y accesibilidad
 
 - `frontend/src/styles/tokens.css` es la fuente única de color y escala; el CSS
   de los componentes no escribe colores a mano.
@@ -205,6 +230,8 @@ filtros.
   (#178C7F), `--color-success`, `--color-warning`, `--color-danger`,
   `--color-info`; `--color-primary-text` existe porque el primario profundo
   sobre fondo oscuro daba 2.79:1 en el enlace activo (AA exige 4.5:1).
+- El encabezado de tabla usa `--color-text-muted-strong` (#526174) porque el gris
+  normal sobre la superficie muted se quedaba en 4.34:1, por debajo de AA.
 - Modo claro por defecto y oscuro persistido en `localStorage` (`laguna-tema`).
   Un script mínimo en `index.html` aplica el tema antes del CSS para evitar el
   destello blanco; React solo lo alterna y lo persiste.
@@ -222,7 +249,7 @@ filtros.
 - Los estados vacíos son honestos: lo que todavía no existe se muestra como
   «Pronto» deshabilitado, no como un enlace que lleva a un 404.
 
-## 11.10 Desarrollo y build
+## 11.11 Desarrollo y build
 
 ```powershell
 cd frontend

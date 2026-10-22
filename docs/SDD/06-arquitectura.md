@@ -118,7 +118,7 @@ frontend/
 ├── src/api/        cliente CSRF/fetch y tipos del contrato
 ├── src/components/ componentes reutilizables
 ├── src/hooks/      sesión, tema y toasts
-├── src/pages/      acceso, tablero, historial y alertas
+├── src/pages/      acceso, tablero, métricas, historial y alertas
 ├── src/styles/     tokens y CSS de la SPA
 └── src/test/       Vitest + Testing Library
 ```

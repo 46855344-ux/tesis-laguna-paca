@@ -12,8 +12,8 @@ import org.springframework.web.bind.annotation.ResponseBody;
 /**
  * Entrada de la SPA React.
  *
- * <p>Las rutas del navegador ({@code /login}, {@code /panel}, historial y
- * alertas) devuelven el {@code index.html} que Vite genera dentro de
+ * <p>Las rutas del navegador ({@code /login}, {@code /panel}, métricas, historial
+ * y alertas) devuelven el {@code index.html} que Vite genera dentro de
  * {@code static/panel}. El recurso viaja en el JAR, así que la demo no necesita
  * un servidor Node en ejecución.</p>
  *
@@ -26,7 +26,7 @@ public class SpaController {
 
     private final Resource indice = new ClassPathResource("static/panel/index.html");
 
-    @GetMapping({"/login", "/panel", "/panel/", "/panel/historial", "/panel/alertas"})
+    @GetMapping({"/login", "/panel", "/panel/", "/panel/metricas", "/panel/historial", "/panel/alertas"})
     @ResponseBody
     public ResponseEntity<Resource> entrada() {
         if (!indice.exists()) {

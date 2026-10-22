@@ -126,6 +126,10 @@ class PanelIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("id=\"root\"")));
 
+        mockMvc.perform(get("/panel/metricas").session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("id=\"root\"")));
+
         mockMvc.perform(get("/panel/api/sesion").session(session))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.usuario").value("admin"))

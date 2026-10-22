@@ -22,10 +22,10 @@ La pirámide es deliberadamente ancha en la base:
 | Suite | Comando | Tests | Estado |
 |---|---|---|---|
 | Backend | `mvn test` | **145** | Verde |
-| Frontend | `npm test` | **16** | Verde |
+| Frontend | `npm test` | **17** | Verde |
 | Firmware | `pio test -e native` | **38** | Verde |
 | IA | `python -m pytest` | **172** | Verde |
-| **Total** | | **371** | |
+| **Total** | | **372** | |
 
 Cobertura del backend (JaCoCo): **91.7 %** de instrucciones (5491/5989) y
 **68.8 %** de ramas (265/385). Se reporta como indicador, no como meta: la
@@ -33,7 +33,7 @@ cobertura sola no dice si una prueba comprueba lo correcto.
 
 Además, `PostgresMigrationIT` (1 test) valida las migraciones contra PostgreSQL
 real y **no** corre en `mvn test`: lo ejecuta el job `backend-postgres` del CI
-con `postgres:16-alpine`. Con él, el total sería **372**.
+con `postgres:16-alpine`. Con él, el total sería **373**.
 
 ## 17.3 Backend: 145 tests
 
@@ -76,14 +76,14 @@ con `postgres:16-alpine`. Con él, el total sería **372**.
   usan `jsdom` y dobles de `fetch`; no son datos de campo.
 - **No hay hardware**: los sensores del firmware son dobles.
 
-## 17.4 Frontend: 16 tests
+## 17.4 Frontend: 17 tests
 
 | Archivo | Tests | Qué fija |
 |---|---|---|
 | `estado.test.ts` | 2 | Etiquetas, clases y los tres estados ECA-Agua |
 | `client.test.ts` | 5 | CSRF en cada petición, 401, reintento por 403, login y detección por URL final |
 | `components.test.tsx` | 6 | Badge, mapa con enlaces, paginación y gráfico SVG |
-| `pages.test.tsx` | 3 | Historial con filtros, atención de alertas y tablero con datos simulados |
+| `pages.test.tsx` | 4 | Historial con filtros, atención de alertas, tablero y métricas con datos simulados |
 
 - Usan **Vitest + Testing Library + jsdom**, no un navegador real.
 - Los dobles de `fetch` devuelven JSON del contrato del panel; no se usan

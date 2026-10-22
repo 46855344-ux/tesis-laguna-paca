@@ -70,7 +70,7 @@ fija. Si un requisito no tiene prueba, se dice; no se inventa cobertura.
 | ST-GNN con R² > 0.90 a 6 h | `R² = 0.9289` vs persistencia 0.7403 | Cumplido con datos sintéticos |
 | Servicio de inferencia integrado | FastAPI + `PredictionService` | Cumplido |
 | Evaluación de predicciones | `PredictionEvaluator` | Cumplido |
-| Panel operativo | 66 tests de panel + 16 de frontend | Cumplido |
+| Panel operativo | 66 tests de panel + 17 de frontend | Cumplido |
 | Idempotencia de ingesta | `sample_id` + firmware | Cumplido |
 | Despliegue reproducible | Compose + CI | Configurado, no ejecutado |
 | Datos de campo | Cargador `--csv` probado; faltan mediciones reales | **Pendiente** |

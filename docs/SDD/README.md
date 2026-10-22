@@ -43,7 +43,7 @@ identificadores técnicos van en inglés.
 
 | Documento | Contenido |
 |---|---|
-| [11 · Panel web](11-panel-web.md) | Rutas, tablero, historial, alertas, mapa y diseño |
+| [11 · Panel web](11-panel-web.md) | Rutas, tablero, métricas, historial, alertas, mapa y diseño |
 | [12 · Firmware IoT](12-firmware-iot.md) | Pines, ciclo, payload, `sample_id` y transportes |
 | [13 · MQTT](13-mqtt.md) | Topic, QoS, configuración y broker |
 | [14 · Seguridad](14-seguridad.md) | Amenazas, JWT, sesión, CSRF y deuda |
@@ -54,7 +54,7 @@ identificadores técnicos van en inglés.
 
 | Documento | Contenido |
 |---|---|
-| [17 · Estrategia de pruebas](17-estrategia-de-pruebas.md) | Pirámide, 371 tests, cobertura y límites |
+| [17 · Estrategia de pruebas](17-estrategia-de-pruebas.md) | Pirámide, 372 tests, cobertura y límites |
 | [18 · Trazabilidad](18-trazabilidad.md) | RF/RNF → código → prueba |
 | [19 · Plan de sprints](19-plan-de-sprints.md) | Sprints, historias y definición de terminado |
 | [20 · Riesgos](20-riesgos.md) | R-01…R-17 con mitigación |
@@ -87,10 +87,10 @@ identificadores técnicos van en inglés.
 | Suite | Tests | Estado |
 |---|---|---|
 | Backend | 145 | Verde |
-| Frontend | 16 | Verde |
+| Frontend | 17 | Verde |
 | Firmware | 38 | Verde |
 | IA | 172 | Verde |
-| **Total** | **371** | |
+| **Total** | **372** | |
 
 Cobertura del backend: 91.7 % de instrucciones, 68.8 % de ramas. Criterio de la
 tesis: `R² = 0.9289` a 6 h con datos sintéticos (persistencia: 0.7403).

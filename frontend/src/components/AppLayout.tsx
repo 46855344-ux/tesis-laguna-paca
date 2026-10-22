@@ -10,7 +10,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
 import { useToast } from '../hooks/useToast';
 
-type Seccion = 'panel' | 'historial' | 'alertas';
+type Seccion = 'panel' | 'metricas' | 'historial' | 'alertas';
 
 interface AppLayoutProps {
   titulo: string;
@@ -158,6 +158,18 @@ export function AppLayout({ titulo, seccion, children }: AppLayoutProps) {
               >
                 <Icon name="panel" />
                 <span className="nav-item__texto">Panel</span>
+              </NavLink>
+            </li>
+            <li>
+              <NavLink
+                to="/panel/metricas"
+                className={({ isActive }) =>
+                  `nav-item${isActive ? ' nav-item--activo' : ''}`
+                }
+                aria-label="Métricas de la laguna"
+              >
+                <Icon name="metricas" />
+                <span className="nav-item__texto">Métricas</span>
               </NavLink>
             </li>
             <li>

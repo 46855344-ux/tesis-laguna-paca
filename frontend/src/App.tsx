@@ -11,6 +11,7 @@ import { AlertsPage } from './pages/AlertsPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { LoginPage } from './pages/LoginPage';
+import { MetricsPage } from './pages/MetricsPage';
 
 function RutaProtegida() {
   const { estado, error, recargarSesion } = useAuth();
@@ -50,6 +51,7 @@ const router = createBrowserRouter([
     element: <RutaProtegida />,
     children: [
       { path: '/panel', element: <DashboardPage /> },
+      { path: '/panel/metricas', element: <MetricsPage /> },
       { path: '/panel/historial', element: <HistoryPage /> },
       { path: '/panel/alertas', element: <AlertsPage /> }
     ]

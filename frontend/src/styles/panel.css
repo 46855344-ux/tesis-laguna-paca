@@ -1374,7 +1374,7 @@ body[data-menu="abierto"] .velo {
    La versalita queda para las etiquetas de sección, no para unidades. */
 .tabla thead th {
   background: var(--color-surface-muted);
-  color: var(--color-text-muted);
+  color: var(--color-text-muted-strong);
   font-size: var(--text-xs);
   font-weight: 600;
   white-space: nowrap;

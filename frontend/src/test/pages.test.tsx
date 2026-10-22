@@ -5,6 +5,7 @@ import type { AlertasVista, HistorialVista, Tablero } from '../api/types';
 import { HistoryPage } from '../pages/HistoryPage';
 import { AlertsPage } from '../pages/AlertsPage';
 import { DashboardPage } from '../pages/DashboardPage';
+import { MetricsPage } from '../pages/MetricsPage';
 import { ToastProvider } from '../hooks/useToast';
 import { ThemeProvider } from '../hooks/useTheme';
 
@@ -303,5 +304,43 @@ describe('páginas del panel', () => {
     expect(within(n2).getByText(/supera el límite superior/)).toBeInTheDocument();
     expect(screen.getByText('2 / 4')).toBeInTheDocument();
     expect(screen.getByText(/Todavía no hay predicciones/)).toBeInTheDocument();
+  });
+
+  it('las métricas resumen el estado, la tendencia y las alertas recientes', async () => {
+    const tableroConSerie: Tablero = {
+      ...TABLERO,
+      serie: [
+        {
+          estacion: 'N1',
+          instante: '2026-10-21T11:00:00Z',
+          ph: 7.2,
+          turbidez: 15.4,
+          temperatura: 18.5,
+          tds: 320
+        },
+        {
+          estacion: 'N2',
+          instante: '2026-10-21T11:55:00Z',
+          ph: 9.6,
+          turbidez: 15.4,
+          temperatura: 18.5,
+          tds: 320
+        }
+      ]
+    };
+    vi.mocked(api.tablero).mockResolvedValue(tableroConSerie);
+    vi.mocked(api.alertas).mockResolvedValue(ALERTAS);
+
+    render(conProveedores(<MetricsPage />));
+
+    expect(await screen.findByText('Métricas de la laguna')).toBeInTheDocument();
+    expect(screen.getAllByText('50 %').length).toBeGreaterThan(0);
+    expect(screen.getByText('2 / 4')).toBeInTheDocument();
+    expect(
+      screen.getByRole('img', { name: /Distribución de las 4 estaciones/ })
+    ).toBeInTheDocument();
+    expect(screen.getByText(/supera el límite superior/)).toBeInTheDocument();
+    expect(screen.getByText('Pendiente')).toBeInTheDocument();
+    expect(api.alertas).toHaveBeenCalledWith({ estado: 'todas', page: 0 });
   });
 });

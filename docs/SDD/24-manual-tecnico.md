@@ -52,7 +52,7 @@ $mvn = "C:\Users\USER\.m2\wrapper\dists\apache-maven-3.9.9\977a63e90f436cd6ade95
 ```powershell
 cd frontend
 npm install
-npm test          # 16 tests (Vitest + Testing Library)
+npm test          # 17 tests (Vitest + Testing Library)
 npm run dev       # Vite en http://localhost:5173/panel con proxy a 8080
 npm run build     # escribe en backend/src/main/resources/static/panel
 ```

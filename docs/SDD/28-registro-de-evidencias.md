@@ -278,8 +278,8 @@ $env:JAVA_HOME="D:\Intellij\IntelliJ IDEA 2025.2.1\jbr"
 | Suite | Tests | Resultado |
 |---|---|---|
 | Backend | **145** | `BUILD SUCCESS`, 0 fallos, 0 errores, 0 omitidos |
-| Frontend | **16** | 4 archivos, 16 tests verdes (Vitest + Testing Library) |
-| **Total del proyecto** | **371** | 145 backend + 16 frontend + 38 firmware + 172 IA |
+| Frontend | **17** | 4 archivos, 17 tests verdes (Vitest + Testing Library) |
+| **Total del proyecto** | **372** | 145 backend + 17 frontend + 38 firmware + 172 IA |
 
 Cobertura JaCoCo tras la migración (89 clases):
 
@@ -295,6 +295,7 @@ Con el perfil `demo` y H2 en memoria se comprobó por HTTP:
 - `GET /panel/api/datos` sin sesión → 401 JSON;
 - `GET /panel/assets/...` → 200;
 - `GET /panel/csrf` → token; login `admin/admin123` → `/panel`;
+- `/panel/metricas` → 200 con el shell React y sesión;
 - `/panel/api/sesion`, `/panel/api/datos`, `/panel/api/historial` y
   `/panel/api/alertas` → 200 con sesión;
 - `POST /logout` con CSRF → `/login?logout` y `/panel/api/sesion` → 401.

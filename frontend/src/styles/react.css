@@ -45,3 +45,315 @@
     align-items: stretch;
   }
 }
+
+/* ==========================================================================
+   Página de métricas
+   Reutiliza las tarjetas y tokens del panel; solo añade la composición del
+   cuadro de mando: indicadores, tendencia, dona, tabla y ranking.
+   ========================================================================== */
+
+.metricas-kpi {
+  margin-bottom: 0;
+}
+
+.kpi--con-icono {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.kpi__cuerpo {
+  display: grid;
+  align-content: start;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.kpi__icono {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--color-primary-soft);
+  color: var(--color-primary-text);
+}
+
+.kpi__icono--principal {
+  background: var(--color-primary-soft);
+  color: var(--color-primary-text);
+}
+
+.kpi__icono--peligro {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.kpi__icono--exito {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+
+.kpi__icono--aviso {
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+}
+
+.kpi__icono--info {
+  background: var(--color-info-soft);
+  color: var(--color-info);
+}
+
+.kpi__icono--neutra {
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+}
+
+.pildora-periodo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
+.metricas-fila {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  align-items: start;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.metricas-fila--tablas {
+  grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr);
+}
+
+.metricas-panel {
+  min-width: 0;
+}
+
+.metricas-panel--tabla {
+  display: flex;
+  flex-direction: column;
+}
+
+.metricas-tabla__cabecera {
+  align-items: flex-start;
+  padding: var(--space-5) var(--space-5) var(--space-2);
+}
+
+.metricas-tabla__cabecera .tarjeta__nota {
+  margin-top: var(--space-1);
+}
+
+.metricas-tabla__aviso {
+  padding: var(--space-3) var(--space-5) var(--space-5);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.metricas-tabla__vacia {
+  padding: var(--space-6) var(--space-4);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.tabla--metricas {
+  min-width: 680px;
+}
+
+.tabla--metricas th:last-child,
+.tabla--metricas td:last-child {
+  min-width: 120px;
+}
+
+/* --- Dona de estados ---------------------------------------------------- */
+.dona {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-5);
+  margin-top: var(--space-5);
+}
+
+.dona__lienzo {
+  width: 160px;
+  height: 160px;
+  flex: none;
+}
+
+.dona__fondo {
+  fill: none;
+  stroke: var(--color-surface-muted);
+  stroke-width: 16;
+}
+
+.dona__segmento {
+  fill: none;
+  stroke-width: 16;
+}
+
+.dona__segmento--exito {
+  stroke: var(--color-success);
+}
+
+.dona__segmento--peligro {
+  stroke: var(--color-danger);
+}
+
+.dona__segmento--neutra {
+  stroke: var(--color-text-muted);
+}
+
+.dona__total {
+  fill: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.dona__unidad {
+  fill: var(--color-text-muted);
+  font-family: var(--font-sans);
+  font-size: 11px;
+}
+
+.dona__leyenda {
+  display: grid;
+  flex: 1 1 180px;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dona__leyenda li {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.dona__leyenda strong {
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.dona__porcentaje {
+  min-width: 42px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.dona__punto {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full);
+}
+
+.dona__punto--exito {
+  background: var(--color-success);
+}
+
+.dona__punto--peligro {
+  background: var(--color-danger);
+}
+
+.dona__punto--neutra {
+  background: var(--color-text-muted);
+}
+
+/* --- Ranking de muestras por estación ----------------------------------- */
+.ranking {
+  display: grid;
+  gap: var(--space-4);
+  margin: var(--space-5) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ranking__item {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.ranking__cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.ranking__nombre {
+  font-weight: 600;
+}
+
+.ranking__barra {
+  height: 8px;
+  overflow: hidden;
+  border-radius: var(--radius-full);
+  background: var(--color-surface-muted);
+}
+
+.ranking__relleno {
+  display: block;
+  height: 100%;
+  min-width: 0;
+  border-radius: var(--radius-full);
+  background: linear-gradient(90deg, var(--chart-1), var(--chart-2));
+  transition: width var(--transition-base);
+}
+
+.ranking__pie {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.metricas-pie {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+@media (max-width: 1100px) {
+  .metricas-fila,
+  .metricas-fila--tablas {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .dona {
+    justify-content: center;
+  }
+
+  .dona__lienzo {
+    width: 140px;
+    height: 140px;
+  }
+
+  .metricas-tabla__cabecera {
+    flex-direction: column;
+  }
+
+  .metricas-pie {
+    text-align: left;
+  }
+}

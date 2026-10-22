@@ -41,7 +41,7 @@ mediciones y de las predicciones.
 | Ingesta MQTT QoS 1 | Implementado, deshabilitado por defecto | `TelemetryMqttHandler`, tests |
 | Regla ECA-Agua de pH | Implementado | `EcaWaterQualityRule`, 4 tests |
 | Histórico con filtros y paginación | Implementado | `TelemetryService`, `PanelHistorialIntegrationTest` |
-| Panel React (acceso, tablero, historial, alertas, mapa) | Implementado | 66 tests de panel + 16 de frontend |
+| Panel React (acceso, tablero, métricas, historial, alertas, mapa) | Implementado | 66 tests de panel + 17 de frontend |
 | Predicciones 1/3/6 h | Implementado | `PredictionService`, `PredictionIntegrationTest` |
 | Servicio FastAPI + artefacto | Implementado | `ia-model/lagunapaca_gnn/api.py`, 172 tests de IA |
 | Evaluación posterior ±30 min | Implementado | `PredictionEvaluator`, tests |

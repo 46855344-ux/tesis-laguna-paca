@@ -45,7 +45,7 @@ seguridad ni los contratos del backend.
 
 - La demo sigue arrancando con Spring Boot y **sin Node** porque el build está
   versionado en el JAR.
-- El frontend tiene pruebas propias con **Vitest + Testing Library** (16 tests);
+- El frontend tiene pruebas propias con **Vitest + Testing Library** (17 tests);
   el backend conserva las pruebas de integración del contrato JSON y de la
   seguridad (66 tests de panel, 145 en total).
 - Hay que ejecutar `npm run build` después de modificar React; CI lo hace antes

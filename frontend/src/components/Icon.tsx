@@ -3,6 +3,7 @@ import type { SVGProps } from 'react';
 export type IconName =
   | 'gota'
   | 'panel'
+  | 'metricas'
   | 'historial'
   | 'alertas'
   | 'estaciones'
@@ -41,6 +42,14 @@ const trazos: Record<IconName, React.ReactNode> = {
       <rect width="7" height="5" x="14" y="3" rx="1" />
       <rect width="7" height="9" x="14" y="12" rx="1" />
       <rect width="7" height="5" x="3" y="16" rx="1" />
+    </>
+  ),
+  metricas: (
+    <>
+      <path d="M3 3v18h18" />
+      <rect width="3" height="6" x="7" y="12" rx="1" />
+      <rect width="3" height="10" x="12" y="8" rx="1" />
+      <rect width="3" height="14" x="17" y="4" rx="1" />
     </>
   ),
   historial: (

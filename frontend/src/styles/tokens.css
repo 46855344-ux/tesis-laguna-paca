@@ -48,6 +48,9 @@
   --color-border-strong: #CBD5E1;
   --color-text: #0F172A;
   --color-text-muted: #64748B;
+  /* El encabezado de tabla va sobre --color-surface-muted; el gris normal se
+     queda en 4.34:1 y no llega a AA. Este tono sí supera 4.5:1. */
+  --color-text-muted-strong: #526174;
   --color-text-inverse: #FFFFFF;
   --color-overlay: rgb(15 23 42 / 45%);
   --color-ring: rgb(43 108 176 / 35%);
@@ -157,6 +160,7 @@
   --color-border-strong: #2A3A55;
   --color-text: #E2E8F0;
   --color-text-muted: #94A3B8;
+  --color-text-muted-strong: #CBD5E1;
   /* Blanco también en oscuro: el texto va sobre --color-primary sólido, y el
      oscuro sobre ese azul solo llegaría a 3.47:1. */
   --color-text-inverse: #FFFFFF;

@@ -8,8 +8,8 @@ avisa en un **panel web** y predice el pH a futuro con un **ST-GNN** (red espaci
 sobre el grafo de estaciones).
 
 > **Estado:** backend, frontend, firmware e IA funcionando de extremo a extremo, con
-> predicciones persistidas y evaluadas contra muestras posteriores. **371 pruebas** verdes
-> (145 backend, 16 frontend, 38 firmware, 172 IA). La app Android todavía no está
+> predicciones persistidas y evaluadas contra muestras posteriores. **372 pruebas** verdes
+> (145 backend, 17 frontend, 38 firmware, 172 IA). La app Android todavía no está
 > implementada. Los datos de entrenamiento del modelo son **sintéticos**: el resultado
 > demuestra la arquitectura, no el comportamiento real de la laguna. El despliegue con
 > Docker está configurado, pero **no se ejecutó** en esta máquina (no hay Docker).
@@ -76,7 +76,7 @@ solo pronostica. Si la IA está caída, la ingesta y las alertas siguen funciona
 | Módulo | Estado | Qué incluye |
 |---|---|---|
 | `backend/` | ✅ Completo (145 tests) | Ingesta HTTP y MQTT idempotente, alertas ECA-Agua, historial paginado, JWT, Flyway V1–V5, API JSON del panel, predicciones y su evaluación, Swagger UI |
-| `frontend/` | ✅ Completo (16 tests) | SPA React + TypeScript: acceso, tablero, mapa, historial, alertas, predicciones, tema y accesibilidad |
+| `frontend/` | ✅ Completo (17 tests) | SPA React + TypeScript: acceso, tablero, métricas, mapa, historial, alertas, predicciones, tema y accesibilidad |
 | `iot-firmware/` | ✅ Completo (38 tests) | Núcleo portable C++11, sensores, calibración, deep sleep, JWT cacheado, transporte HTTP y MQTT, `sample_id` |
 | `ia-model/` | ✅ Completo (172 tests) | Grafo, ventanas, ST-GNN, normalización, entrenamiento, carga de CSV de campo, artefacto versionado y servicio FastAPI |
 | `android-app/` | ⬜ Vacío | Pendiente: tema Material 3, login, tablero, alertas y FCM |
@@ -176,6 +176,7 @@ CSRF**; la API pública sigue usando **JWT sin estado**.
 |---|---|---|
 | Acceso | `/login` | Formulario de sesión (usuario `admin` / `admin123` en la demo) |
 | Tablero | `/panel` | Indicadores de 24 h, mapa de la laguna, tarjetas N1–N4, gráfico y predicciones |
+| Métricas | `/panel/metricas` | KPIs de 24 h, tendencia de pH, dona de estados, alertas recientes y volumen por estación |
 | Historial | `/panel/historial` | Muestras paginadas con filtros por estación, fecha, alerta y motivo |
 | Alertas | `/panel/alertas` | Muestras con alerta, pendientes por defecto; atender y reabrir con auditoría |
 
@@ -191,6 +192,11 @@ CSRF**; la API pública sigue usando **JWT sin estado**.
 
 `/panel/datos` se conserva como alias del tablero para no romper integraciones anteriores.
 Todos los endpoints del panel exigen sesión y **no aceptan JWT**; sin sesión responden 401.
+
+La pantalla **Métricas** reutiliza los endpoints existentes: no añade una segunda regla
+ECA-Agua ni inventa agregados. Los KPIs, la dona de estados y el volumen por estación salen
+del tablero de 24 h; la tabla de alertas recientes, de `/panel/api/alertas`. El veredicto
+`DENTRO` / `ALERTA` / `SIN_DATOS` es el que persistió la ingesta.
 
 ### Mapa
 
@@ -394,17 +400,17 @@ describe ese conjunto, no la laguna en general.
 | Módulo | Comando | Tests |
 |---|---|---|
 | Backend | `mvn test` (con `JAVA_HOME` en JDK 21) | **145** |
-| Frontend | `npm test` (desde `frontend/`) | **16** |
+| Frontend | `npm test` (desde `frontend/`) | **17** |
 | Firmware | `pio test -e native` | **38** |
 | IA | `.venv\Scripts\python.exe -m pytest` | **172** |
-| **Total** | | **371** |
+| **Total** | | **372** |
 
 - Cobertura del backend (JaCoCo): **91.7 %** de instrucciones y **68.8 %** de ramas.
 - No hay Docker ni Testcontainers: la persistencia se prueba con **H2**.
 - El backend incluye tests de integración con contexto completo (arranque, seguridad,
   panel, mapa y predicciones), no solo pruebas por capa.
 - El frontend usa **Vitest + Testing Library**: cliente CSRF/401, componentes, mapa y
-  las tres pantallas principales.
+  las cuatro pantallas principales (tablero, métricas, historial y alertas).
 - `train_stgnn.py` devuelve código de salida 1 si no se cumple el criterio, para encadenarlo
   al CI.
 - **No se ejecutaron** `docker compose build/up`, SonarQube, la CI en un runner ni
@@ -428,7 +434,7 @@ describe ese conjunto, no la laguna en general.
 │   └── openapi.yaml         contrato de la API
 ├── frontend/                SPA React + TypeScript (Vite)
 │   ├── src/                 api, componentes, hooks, páginas y estilos
-│   ├── src/test/            16 tests (Vitest + Testing Library)
+│   ├── src/test/            17 tests (Vitest + Testing Library)
 │   └── vite.config.ts       proxy de desarrollo y salida al JAR
 ├── iot-firmware/            ESP32 (PlatformIO)
 │   ├── lib/lagunapaca_core/ lógica portable + 38 tests nativos

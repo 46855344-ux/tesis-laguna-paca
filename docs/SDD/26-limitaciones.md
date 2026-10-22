@@ -150,7 +150,7 @@ Para no dejar una impresión solo negativa:
 4. El ST-GNN se entrena, se guarda como artefacto y se sirve por HTTP.
 5. El backend integra la IA sin acoplarse: si falla, el monitoreo continúa.
 6. Las predicciones se evalúan contra muestras posteriores y guardan el error; en la demo esas muestras las genera el simulador.
-7. 371 pruebas automatizadas pasan en esta máquina.
+7. 372 pruebas automatizadas pasan en esta máquina.
 8. El canal de carga de CSV de campo existe, valida el contrato y produce un artefacto `field`; lo que falta son las mediciones reales.
 
 ## 26.8 Cómo citar estas limitaciones
