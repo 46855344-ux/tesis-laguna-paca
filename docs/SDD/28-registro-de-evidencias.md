@@ -17,6 +17,9 @@ sin PostgreSQL instalado, sin SonarQube. Las migraciones se validaron con un
 Además de la suite por defecto, `PostgresMigrationIT` (1 test) se ejecuta con
 PostgreSQL real; con él, el total es **349**.
 
+> Este corte es del 20/10/2026, antes de migrar el panel a React. El cierre del
+> 21/10/2026, con el frontend y las cuatro suites, está en 28.8 y 28.9.
+
 ## 28.2 Comandos y resultados
 
 ### Backend
@@ -177,7 +180,7 @@ que las imágenes construyan ni que los healthchecks funcionen.
 | Calibración de sensores | Sin laboratorio | Valores nominales |
 | Datos de campo | Sin campaña de muestreo | Cargador `--csv` probado; sin mediciones reales |
 | Prueba de carga | Sin entorno representativo | No medida |
-| Auditoría de accesibilidad | Sin herramienta | Contrastes medidos a mano |
+| Auditoría de accesibilidad | Lighthouse ejecutado parcialmente; sin suite E2E | Contraste de tablas corregido a mano y verificado con Lighthouse antes del ajuste |
 | Prueba de penetración | Sin alcance | No realizada |
 
 ## 28.5 Archivos principales creados o modificados
@@ -313,3 +316,36 @@ fijan que el logout invalida la sesión y que exige CSRF.
 El build de React sí se generó y el backend lo sirvió desde el JAR. Los datos
 mostrados en la demo siguen siendo del simulador o de la base vacía; no se
 presentan como mediciones de campo.
+
+## 28.9 Cierre de S8 (21/10/2026)
+
+Se volvieron a ejecutar las cuatro suites sobre el árbol publicado y se comprobó
+el punto de entrada de la demo con el perfil `demo`:
+
+| Suite | Comando | Resultado |
+|---|---|---|
+| Backend | `mvn test` | **145 tests**, 0 fallos, 0 errores, 0 omitidos |
+| Frontend | `npm test` | **17 tests** en 4 archivos (Vitest + Testing Library) |
+| Firmware | `pio test -e native` | **38 tests**, todos `[PASSED]` |
+| IA | `pytest -q` | **172 passed**, 2 warnings, 222 s |
+| **Total** | | **372 tests** |
+
+El backend se ejecutó con el JBR de IntelliJ (Java 21) y Maven 3.9.9; el
+frontend con Node/Vitest; el firmware con PlatformIO 6.2.0 y MinGW-w64; la IA con
+Python 3.12.10 en `ia-model/.venv`.
+
+Comprobaciones de la demo:
+
+- `GET /panel/metricas` → **200** con sesión y el shell React;
+- la pantalla mostró **56 muestras**, **16 alertas** y **4/4 estaciones** con
+  datos, sin desbordamiento horizontal;
+- login `admin/admin123`, tablero, métricas, historial, alertas y cierre de
+  sesión están cubiertos por los tests de integración y por la verificación de
+  28.8;
+- los datos de la demo son del simulador y se pierden al reiniciar H2; no son
+  mediciones de campo.
+
+Con esto se cierra S8: la documentación, el build y el guion de demo son
+reproducibles. Permanecen fuera de S8 las limitaciones declaradas en 26 y 28.4
+(datos de campo, coordenadas medidas, calibración, Docker/CI/Sonar, E2E y app
+Android).

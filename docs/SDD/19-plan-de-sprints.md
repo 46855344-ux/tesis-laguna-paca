@@ -15,7 +15,7 @@ planificó.
 | S5 | Modelo | Grafo, ventanas, ST-GNN, entrenamiento | R² > 0.90 sintético | Hecho |
 | S6 | Servicio IA e integración | FastAPI, artefacto, predicciones, evaluación, carga de CSV de campo | 172 tests IA + 50 tests backend nuevos | Hecho |
 | S7 | Calidad y despliegue | Docker, Compose, CI, JaCoCo, Sonar config | `config` validado y V5 + IT en PostgreSQL 16.9; imágenes y CI no ejecutados | Parcial |
-| S8 | Documentación y defensa | `docs/SDD`, README, guion de demo | Documento completo y reproducible | En curso |
+| S8 | Documentación y defensa | `docs/SDD`, README, guion de demo | Documento completo y reproducible; limitaciones declaradas en 26 y 28.4 | Hecho |
 
 ## 19.1 Historias representativas
 
