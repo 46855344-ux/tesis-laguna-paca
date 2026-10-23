@@ -89,10 +89,13 @@ El firmware se compila y se prueba en el host con dobles. No se validó:
 - OTA;
 - resistencia de campo (humedad, temperatura, corrosión).
 
-### L-10 · Sin app Android
+### L-10 · App Android acotada
 
-`android-app/` está vacío. El contrato REST está listo, pero no hay cliente
-móvil, notificaciones push ni tema Material 3.
+`android-app/` tiene un **MVP** con login JWT, tablero de 24 h, estaciones y alertas,
+probado en el emulador `Pixel_9`. **No** incluye FCM, mapa de Google Maps, caché
+offline ni persistencia del token. FCM requiere `google-services.json` y el mapa
+una clave restringida por package/SHA-1; no se simulan. Tampoco hay tests
+instrumentados ni E2E de UI, solo 6 tests unitarios JVM.
 
 ### L-11 · Cargador de campo probado solo con *fixtures*
 
@@ -150,7 +153,7 @@ Para no dejar una impresión solo negativa:
 4. El ST-GNN se entrena, se guarda como artefacto y se sirve por HTTP.
 5. El backend integra la IA sin acoplarse: si falla, el monitoreo continúa.
 6. Las predicciones se evalúan contra muestras posteriores y guardan el error; en la demo esas muestras las genera el simulador.
-7. 372 pruebas automatizadas pasan en esta máquina.
+7. 378 pruebas automatizadas pasan en esta máquina (incluye 6 de Android).
 8. El canal de carga de CSV de campo existe, valida el contrato y produce un artefacto `field`; lo que falta son las mediciones reales.
 
 ## 26.8 Cómo citar estas limitaciones

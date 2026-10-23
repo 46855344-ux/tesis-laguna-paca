@@ -54,7 +54,7 @@ identificadores técnicos van en inglés.
 
 | Documento | Contenido |
 |---|---|
-| [17 · Estrategia de pruebas](17-estrategia-de-pruebas.md) | Pirámide, 372 tests, cobertura y límites |
+| [17 · Estrategia de pruebas](17-estrategia-de-pruebas.md) | Pirámide, 378 tests, cobertura y límites |
 | [18 · Trazabilidad](18-trazabilidad.md) | RF/RNF → código → prueba |
 | [19 · Plan de sprints](19-plan-de-sprints.md) | Sprints, historias y definición de terminado |
 | [20 · Riesgos](20-riesgos.md) | R-01…R-17 con mitigación |
@@ -90,11 +90,13 @@ identificadores técnicos van en inglés.
 | Frontend | 17 | Verde |
 | Firmware | 38 | Verde |
 | IA | 172 | Verde |
-| **Total** | **372** | |
+| Android | 6 | Verde |
+| **Total** | **378** | |
 
 Cobertura del backend: 91.7 % de instrucciones, 68.8 % de ramas. Criterio de la
 tesis: `R² = 0.9289` a 6 h con datos sintéticos (persistencia: 0.7403).
 
 **No ejecutado en esta máquina** (declarado en `26` y `28`): Docker Compose,
 SonarQube, migración V5 contra PostgreSQL real, CI en un runner y pruebas en
-hardware. Los datos de campo siguen pendientes.
+hardware. Los datos de campo siguen pendientes. La **app Android** tiene un MVP
+probado en emulador; FCM y mapa siguen pendientes.

@@ -8,7 +8,7 @@ tesis-laguna-paca/
 ├── frontend/           React 19 + TypeScript + Vite (SPA del panel)
 ├── ia-model/           Python 3.12 + PyTorch/PyG (modelo + FastAPI)
 ├── iot-firmware/       ESP32 C++/PlatformIO
-├── android-app/        Vacío (fuera de alcance)
+├── android-app/        Kotlin + Jetpack Compose (MVP: login, tablero y alertas)
 ├── deploy/             Configuración de Mosquitto
 ├── docs/SDD/           Esta documentación
 ├── compose.yaml        PostgreSQL + backend + IA/MQTT opcionales
@@ -22,6 +22,7 @@ tesis-laguna-paca/
 | Herramienta | Versión | Nota |
 |---|---|---|
 | JDK | 21 | El JDK 26 del sistema rompe Spring Boot 3.2; usar el JBR de IntelliJ |
+| JDK (Android) | 17 | Requiere `jlink`; usar `C:\Users\USER\.jdks\jbr-17.0.14` |
 | Maven | 3.9.9 | En la caché del wrapper |
 | PostgreSQL | 16 | Producción; H2 en tests |
 | Node.js | 22 | Solo para desarrollar y compilar la SPA |
@@ -81,6 +82,19 @@ cd iot-firmware
 & $pio run -e esp32dev-mqtt
 & $pio run -e esp32dev -t upload
 ```
+
+### Android
+
+```powershell
+cd android-app
+$env:JAVA_HOME="C:\Users\USER\.jdks\jbr-17.0.14"   # JDK 17 con jlink
+.\gradlew.bat testDebugUnitTest                     # 6 tests
+.\gradlew.bat assembleDebug
+adb install -r app\build\outputs\apk\debug\app-debug.apk
+```
+
+El emulador usa `http://10.0.2.2:8080`; el manifiesto de debug permite HTTP local.
+El de release exige HTTPS. La app consume `/api/v1` con JWT, no `/panel/api/**`.
 
 ## 24.4 Configuración
 

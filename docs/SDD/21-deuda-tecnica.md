@@ -13,7 +13,7 @@ entrega.
 | DT-06 | Sin rate limiting en `/auth/token` | Fuerza bruta | Media | Red controlada |
 | DT-07 | Un solo usuario sin roles | Sin separación de funciones | Media | Alcance académico |
 | DT-08 | Sin métricas ni trazas | Diagnóstico manual | Media | Volumen pequeño |
-| DT-09 | Sin notificaciones push/correo | Alerta solo visible en panel | Media | App Android fuera de alcance |
+| DT-09 | Sin notificaciones push/correo | Alerta solo visible en panel, app y API | Media | FCM requiere credenciales externas |
 | DT-10 | `HTTPClient` sin TLS en el nodo | Tráfico interceptable | Alta | Requiere hardware y CA |
 | DT-11 | Calibración nominal de sensores | Medidas no confiables | Alta | Requiere laboratorio |
 | DT-12 | Coordenadas provisionales | El grafo no es el real | Alta | Requiere campaña de campo |
@@ -22,7 +22,7 @@ entrega.
 | DT-15 | Sin OTA en el firmware | Actualización manual | Baja | Cambia particiones |
 | DT-16 | Sin CSP ni cabeceras de seguridad | Defensa en profundidad | Baja | No hay despliegue público |
 | DT-17 | `LIKE` del historial no escapa `%`/`_` | Búsqueda con comodines | Baja | No es inyección SQL; es UX |
-| DT-18 | Sin Android | Funcionalidad móvil ausente | Media | Fuera de alcance |
+| DT-18 | Android MVP sin FCM, mapa ni persistencia de sesión | Funcionalidad móvil parcial | Media | Se priorizó login, tablero y alertas; faltan credenciales y decisiones de producto |
 | DT-19 | `requirements.txt` incluye pytest/httpx en la imagen | Imagen algo más grande | Baja | Simplicidad; PyTorch domina el tamaño |
 | DT-20 | Sin SBOM ni firma de imágenes | Cadena de suministro | Baja | Etapa académica |
 | DT-21 | Sin pruebas E2E de navegador | Refresco de 20 s, cajón móvil y Google Maps solo se validan a mano | Media | Se priorizó Vitest + Testing Library; no hay navegador en CI |
@@ -41,4 +41,4 @@ entrega.
 2. DT-03/DT-10 (TLS) → antes de cualquier exposición.
 3. DT-12/DT-13 (datos de campo) → lo que la tesis necesita para ser ciencia.
 4. DT-04/DT-05 (calidad y secretos).
-5. DT-09/DT-18 (Android y notificaciones), si el alcance lo permite.
+5. DT-09/DT-18 (FCM, mapa y persistencia Android), si el alcance lo permite.

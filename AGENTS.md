@@ -8,8 +8,9 @@ Repositorio de tesis: **"Sistema de software e IoT con Redes Neuronales de Grafo
 - `frontend/` es una **SPA React 19 + TypeScript + Vite** (React Router): acceso, tablero, métricas, mapa, historial, alertas y predicciones. **17 tests** con Vitest + Testing Library. El build se escribe en `backend/src/main/resources/static/panel`.
 - `iot-firmware/` tiene el **núcleo portable** del nodo ESP32, transporte HTTP y MQTT QoS 1, Deep Sleep y `sample_id`; **38 tests nativos** y ambas variantes compilan.
 - `ia-model/` está **completo de extremo a extremo**: estaciones, grafo, ventanas, modelo ST-GNN (TCN + GCN + Attention), dataset sintético, normalización, entrenamiento, **carga de CSV de campo**, **artefacto versionado** (`artifacts/stgnn.pt`) y **servicio FastAPI** (`serve.py`). **172 tests con pytest.** El criterio de la tesis se cumple con datos sintéticos (`R² = 0.9289` a 6 h, contra `0.7403` de persistencia).
+- `android-app/` es un **MVP** en Kotlin + Jetpack Compose + Material 3: login con JWT, tablero de 24 h con las cuatro estaciones y pantalla de alertas. **6 tests unitarios**; se probó en el emulador `Pixel_9`. FCM, mapa y persistencia del token quedan pendientes. Total del proyecto: **378 tests**.
 - `docs/SDD/` es la documentación de diseño (versionada; índice en `docs/SDD/README.md`). El resto de `docs/` es material de referencia y **no se versiona**.
-- Docker/Compose, CI y SonarQube están **configurados pero no ejecutados** en esta máquina (no hay motor Docker ni servidor Sonar). `docker compose config` sí se validó y las migraciones V1–V5 se ejecutaron en PostgreSQL 16.9 embebido. `android-app/` sigue **vacío**.
+- Docker/Compose, CI y SonarQube están **configurados pero no ejecutados** en esta máquina (no hay motor Docker ni servidor Sonar). `docker compose config` sí se validó y las migraciones V1–V5 se ejecutaron en PostgreSQL 16.9 embebido.
 
 ## Mapa de componentes (stack planificado)
 
@@ -19,7 +20,7 @@ La fuente de verdad es `docs/Plantilla Plan Tesis Continental Sistemas_RONY.docx
 - `backend/` — Java 21 / Spring Boot 3.2; API REST con JWT, PostgreSQL 16 + Flyway, Neo4j AuraDB y **API JSON del panel**. Sirve el build de React desde el mismo JAR.
 - `frontend/` — React 19 + TypeScript + Vite; SPA del panel (acceso, tablero, métricas, mapa, historial y alertas). El build se copia a `backend/src/main/resources/static/panel`.
 - `ia-model/` — Python 3.12 / PyTorch Geometric; modelo ST-GNN sobre el grafo de estaciones de la laguna (adyacencia gaussiana + MST/KNN); se evalúa con R², RMSE y MAE.
-- `android-app/` — Kotlin / Jetpack Compose (MVVM + unidirectional data flow); alertas vía Firebase Cloud Messaging.
+- `android-app/` — Kotlin / Jetpack Compose (MVVM); login con JWT, tablero, estaciones y alertas. Usa la API pública `/api/v1`, no `/panel/api/**`. FCM y mapa todavía no están integrados.
 
 Metodología: Scrum (sprints de 2 semanas) para el software; CRISP-DM para el modelo.
 
@@ -358,6 +359,53 @@ simulados). **17 tests.**
 
 **Total del backend: 145 tests.** Cobertura JaCoCo tras la migración: **91.7 %** de
 instrucciones y **68.8 %** de ramas sobre 89 clases. Se reporta como indicador, no como meta.
+
+## App Android (`android-app/`) — comandos
+
+Toolchain: **JDK 17 con `jlink`**, Android SDK (plataforma 36) y el wrapper de Gradle 8.13.
+El JBR de IntelliJ 2025.2 (Java 21) **no** sirve para AGP porque no incluye `jlink`; usar
+`C:\Users\USER\.jdks\jbr-17.0.14`. El SDK se declara en `android-app/local.properties`
+(`sdk.dir=...`), que está ignorado por Git.
+
+| Objetivo | Comando (desde `android-app/`) |
+|---|---|
+| Tests unitarios | `.\gradlew.bat testDebugUnitTest` |
+| Compilar el APK debug | `.\gradlew.bat assembleDebug` |
+| Instalar en emulador/dispositivo | `adb install -r app\build\outputs\apk\debug\app-debug.apk` |
+
+```powershell
+$env:JAVA_HOME="C:\Users\USER\.jdks\jbr-17.0.14"
+cd android-app
+.\gradlew.bat testDebugUnitTest
+.\gradlew.bat assembleDebug
+```
+
+Estructura y decisiones:
+
+- `data/Models.kt` — `WaterSample`, `StationSummary` y `DashboardSummary`; la estación
+  siempre existe aunque no tenga muestras.
+- `data/DashboardMapper.kt` — agrupa por `node_id`, conserva `N1`…`N4`, filtra la ventana
+  de 24 h y calcula el cumplimiento. **No aplica la regla ECA-Agua**: usa `alert`.
+- `data/LagunaApi.kt` — `HttpURLConnection` + `org.json`, sin Retrofit ni Gson. Login contra
+  `POST /api/v1/auth/token`; telemetría contra `GET /api/v1/telemetry`. Un 401 se propaga
+  como `ApiException` y el ViewModel cierra la sesión.
+- `ui/MainViewModel.kt` — estado único (`AppState`), login, tablero, alertas y errores.
+  El JWT vive **solo en memoria**; no se guarda la contraseña ni el token.
+- `ui/LagunaPacaApp.kt` — pantallas Compose: acceso, tablero y alertas. Texto visible en
+  español; las cifras usan punto decimal para no depender del ICU del dispositivo.
+- `ui/theme/Theme.kt` — Material 3 claro/oscuro con la paleta del panel.
+- **Conexión**: el emulador llega a la PC con `10.0.2.2`; la URL es editable para un
+  teléfono físico (`http://<IP-PC>:8080`).
+- **HTTP local solo en debug** (`src/debug/AndroidManifest.xml`). El manifiesto principal
+  exige HTTPS; no se debe publicar con tráfico plano.
+- **No usa `/panel/api/**`**: esas rutas exigen sesión y CSRF y son del navegador. La app
+  consume `/api/v1` con JWT, igual que el ESP32.
+- **FCM y mapa no están integrados**. FCM necesita `google-services.json` y credenciales;
+  el mapa de Android necesita una clave restringida por package/SHA-1. No se simulan.
+- **6 tests unitarios**: 3 de `DashboardMapper` (ventana, estaciones, cumplimiento) y 3 de
+  normalización de URL. No hay tests instrumentados ni E2E de UI.
+- Se verificó en el emulador `Pixel_9` (API 37) contra el perfil `demo`: login, tablero con
+  56 muestras/16 alertas, alertas y cierre de sesión.
 
 ## Firmware IoT (`iot-firmware/`) — comandos
 

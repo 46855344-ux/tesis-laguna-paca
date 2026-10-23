@@ -4,7 +4,7 @@
 
 ## Contexto
 
-El backend sirve una API para el ESP32 (y futuro Android) y un panel para un
+El backend sirve una API para el ESP32 y la app Android, y un panel para un
 navegador. Los clientes tienen amenazas distintas.
 
 ## Decisión
@@ -31,4 +31,4 @@ Dos cadenas de filtros en `SecurityConfig`:
 - Cada superficie usa el mecanismo adecuado a su cliente.
 - El orden de las cadenas es crítico y está probado.
 - Hay un test que fija que el JWT no abre el panel y que la API conserva el 401.
-- La app Android usará JWT, como el ESP32.
+- La app Android usa JWT, como el ESP32.

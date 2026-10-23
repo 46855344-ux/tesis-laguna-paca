@@ -18,7 +18,8 @@ Además de la suite por defecto, `PostgresMigrationIT` (1 test) se ejecuta con
 PostgreSQL real; con él, el total es **349**.
 
 > Este corte es del 20/10/2026, antes de migrar el panel a React. El cierre del
-> 21/10/2026, con el frontend y las cuatro suites, está en 28.8 y 28.9.
+> 21/10/2026, con el frontend y las cuatro suites, está en 28.8 y 28.9. El total
+> vigente con la app Android (22/10/2026) está en 28.10: **378 tests**.
 
 ## 28.2 Comandos y resultados
 
@@ -349,3 +350,48 @@ Con esto se cierra S8: la documentación, el build y el guion de demo son
 reproducibles. Permanecen fuera de S8 las limitaciones declaradas en 26 y 28.4
 (datos de campo, coordenadas medidas, calibración, Docker/CI/Sonar, E2E y app
 Android).
+
+## 28.10 App Android MVP (22/10/2026)
+
+Se agregó `android-app/` con Kotlin + Jetpack Compose + Material 3 y se compiló
+contra el SDK 36. La toolchain fue **JDK 17 con `jlink`**
+(`C:\Users\USER\.jdks\jbr-17.0.14`) y Gradle 8.13; el JBR 21 de IntelliJ no
+incluye `jlink` y AGP lo necesita.
+
+```powershell
+cd android-app
+$env:JAVA_HOME="C:\Users\USER\.jdks\jbr-17.0.14"
+.\gradlew.bat testDebugUnitTest
+.\gradlew.bat assembleDebug
+adb install -r app\build\outputs\apk\debug\app-debug.apk
+```
+
+| Suite | Comando | Resultado |
+|---|---|---|
+| Android | `gradlew.bat testDebugUnitTest` | **6 tests**, 0 fallos, 0 errores |
+| Android | `gradlew.bat assembleDebug` | `BUILD SUCCESSFUL`; APK debug generado |
+| Backend | `mvn test` | **145 tests** (sin cambios) |
+| Frontend | `npm test` | **17 tests** (sin cambios) |
+| Firmware | `pio test -e native` | **38 tests** (sin cambios) |
+| IA | `pytest -q` | **172 passed** (sin cambios) |
+| **Total** | | **378 tests** |
+
+Verificación manual en el emulador `Pixel_9` (API 37), backend con perfil `demo`
+y H2:
+
+- login `admin/admin123` contra `http://10.0.2.2:8080`;
+- tablero con **56 muestras**, **16 alertas**, **4/4 estaciones** y pH **6.15**
+  persistido por el backend;
+- pestaña de alertas con el motivo `pH 6.15 está por debajo del límite inferior
+  ECA-Agua (6.5)`;
+- cierre de sesión y retorno al formulario de acceso.
+
+Lo que **no** se ejecutó:
+
+- FCM: falta `google-services.json` y un proyecto Firebase con credenciales.
+- Google Maps en Android: falta una clave restringida por package/SHA-1.
+- Pruebas instrumentadas (Compose) y E2E de UI; los 6 tests son unitarios JVM.
+- Instalación en un teléfono físico y build de release con HTTPS.
+- La app Android no está incluida todavía en `.github/workflows/ci.yml`.
+
+Los datos mostrados son del simulador o de H2; no son mediciones de campo.

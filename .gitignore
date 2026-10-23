@@ -23,7 +23,9 @@ frontend/.vite/
 *.aab
 build/
 .gradle/
+.kotlin/
 local.properties
+!android-app/gradle/wrapper/gradle-wrapper.jar
 
 # --- PlatformIO (iot-firmware) ---
 .pio/

@@ -39,7 +39,7 @@ cd ia-model
 .venv\Scripts\python.exe -m pytest -q
 ```
 
-**Qué decir:** «372 pruebas automatizadas; el backend tiene 91.7 % de cobertura
+**Qué decir:** «378 pruebas automatizadas; el backend tiene 91.7 % de cobertura
 de instrucciones».
 
 ## 22.3 Paso 2 · El modelo (2 min)
@@ -129,8 +129,14 @@ no abre el panel, y hay un test que lo fija».
 - `ia-model/lagunapaca_gnn/model.py` — TCN + GCN + atención.
 - `frontend/src/` — SPA React y cliente CSRF; el build está en
   `backend/src/main/resources/static/panel`.
+- `android-app/` — MVP Kotlin + Compose: login JWT, tablero y alertas (6 tests).
 - `docs/SDD/` — esta documentación.
 - `compose.yaml`, `.github/workflows/ci.yml`.
+
+**App Android (opcional, 2 min).** Con el emulador y el backend demo arrancados,
+abrir `android-app`, ejecutar `.\gradlew.bat installDebug` e iniciar sesión con
+`10.0.2.2:8080`. Mostrar el tablero y la pestaña de alertas. Aclarar que FCM y el
+mapa **no** están integrados.
 
 ## 22.9 Preguntas previsibles
 
@@ -143,7 +149,7 @@ no abre el panel, y hay un test que lo fija».
 | ¿Qué pasa si la IA falla? | La ingesta y las alertas no dependen de ella; solo se pierde la predicción |
 | ¿Los datos son reales? | No: son sintéticos y el sistema lo declara en la tabla, la API y el panel |
 | ¿La predicción cambia la alerta? | No: el veredicto es de la medición; la predicción es otra dimensión |
-| ¿Qué falta? | Datos de campo, coordenadas medidas, TLS, Docker/Sonar ejecutados, Android |
+| ¿Qué falta? | Datos de campo, coordenadas medidas, TLS, Docker/Sonar ejecutados, FCM y mapa Android |
 
 ## 22.10 Tiempo total
 

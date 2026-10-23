@@ -16,8 +16,9 @@ La pirámide es deliberadamente ancha en la base:
 - **De componentes**: React con Vitest + Testing Library y `jsdom`.
 - **De contrato**: el servicio FastAPI con `TestClient`.
 - **Nativas**: el núcleo del firmware en el host, con dobles de sensores.
+- **Unitarias JVM**: resumen del tablero y normalización de URL en Android.
 
-## 17.2 Totales verificados (21/10/2026)
+## 17.2 Totales verificados (22/10/2026)
 
 | Suite | Comando | Tests | Estado |
 |---|---|---|---|
@@ -25,7 +26,8 @@ La pirámide es deliberadamente ancha en la base:
 | Frontend | `npm test` | **17** | Verde |
 | Firmware | `pio test -e native` | **38** | Verde |
 | IA | `python -m pytest` | **172** | Verde |
-| **Total** | | **372** | |
+| Android | `gradlew.bat testDebugUnitTest` | **6** | Verde |
+| **Total** | | **378** | |
 
 Cobertura del backend (JaCoCo): **91.7 %** de instrucciones (5491/5989) y
 **68.8 %** de ramas (265/385). Se reporta como indicador, no como meta: la
@@ -33,7 +35,7 @@ cobertura sola no dice si una prueba comprueba lo correcto.
 
 Además, `PostgresMigrationIT` (1 test) valida las migraciones contra PostgreSQL
 real y **no** corre en `mvn test`: lo ejecuta el job `backend-postgres` del CI
-con `postgres:16-alpine`. Con él, el total sería **373**.
+con `postgres:16-alpine`. Con él, el total sería **379**.
 
 ## 17.3 Backend: 145 tests
 
@@ -75,6 +77,8 @@ con `postgres:16-alpine`. Con él, el total sería **373**.
   carga opcional de Google Maps se validan a mano. Las pruebas de componentes
   usan `jsdom` y dobles de `fetch`; no son datos de campo.
 - **No hay hardware**: los sensores del firmware son dobles.
+- **La app Android no tiene E2E ni pruebas instrumentadas**: se validó a mano en el
+  emulador `Pixel_9` contra el perfil `demo`; los 6 tests son unitarios JVM.
 
 ## 17.4 Frontend: 17 tests
 
@@ -117,6 +121,18 @@ con `postgres:16-alpine`. Con él, el total sería **373**.
   topología, gradientes, atención que suma 1), no valores mágicos.
 - Los CSV de `test_field_data.py` son *fixtures*: no son mediciones de la laguna.
   El cargador está probado; la validación científica sigue pendiente de campo.
+
+## 17.7 Android: 6 tests
+
+| Archivo | Tests | Qué fija |
+|---|---|---|
+| `DashboardMapperTest` | 3 | Ventana de 24 h, las cuatro estaciones, último dato y cumplimiento sin inventar 100 % |
+| `MainViewModelTest` | 3 | Esquema de URL, conservación de `https` y rechazo de dirección vacía |
+
+- Se ejecutan en la JVM (`testDebugUnitTest`), sin emulador.
+- **No** hay tests instrumentados de Compose ni E2E. El login, el tablero, las
+  alertas y el cierre de sesión se verificaron manualmente en el emulador.
+- No se usan datos de campo: la demo usa el simulador y H2.
 
 ## 17.7 Cómo ejecutar
 

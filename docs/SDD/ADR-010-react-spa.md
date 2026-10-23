@@ -53,4 +53,4 @@ seguridad ni los contratos del backend.
 - La SPA requiere JavaScript. El mapa y el gráfico siguen siendo SVG propios,
   así que la demo funciona sin internet; Google Maps es opcional.
 - El contrato de `openapi.yaml` no cambia: `/api/v1` sigue siendo la API del
-  ESP32 y del futuro Android. El panel no la reutiliza.
+  ESP32 y de la app Android. El panel no la reutiliza.

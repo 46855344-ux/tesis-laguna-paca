@@ -7,12 +7,14 @@ muestra contra los límites de la **ECA-Agua** (pH entre 6.5 y 9.0), guarda el h
 avisa en un **panel web** y predice el pH a futuro con un **ST-GNN** (red espacio-temporal
 sobre el grafo de estaciones).
 
-> **Estado:** backend, frontend, firmware e IA funcionando de extremo a extremo, con
-> predicciones persistidas y evaluadas contra muestras posteriores. **372 pruebas** verdes
-> (145 backend, 17 frontend, 38 firmware, 172 IA). La app Android todavía no está
-> implementada. Los datos de entrenamiento del modelo son **sintéticos**: el resultado
-> demuestra la arquitectura, no el comportamiento real de la laguna. El despliegue con
-> Docker está configurado, pero **no se ejecutó** en esta máquina (no hay Docker).
+> **Estado:** backend, frontend, firmware, IA y **app Android MVP** funcionando de extremo
+> a extremo, con predicciones persistidas y evaluadas contra muestras posteriores.
+> **378 pruebas** verdes (145 backend, 17 frontend, 38 firmware, 172 IA, 6 Android).
+> La app Android ya permite iniciar sesión, consultar el tablero y revisar alertas; faltan
+> el mapa y las notificaciones push. Los datos de entrenamiento del modelo son
+> **sintéticos**: el resultado demuestra la arquitectura, no el comportamiento real de la
+> laguna. El despliegue con Docker está configurado, pero **no se ejecutó** en esta máquina
+> (no hay Docker).
 
 ---
 
@@ -23,6 +25,7 @@ sobre el grafo de estaciones).
 - [Inicio rápido (demo sin PostgreSQL)](#inicio-rápido-demo-sin-postgresql)
 - [Panel web](#panel-web)
 - [API REST](#api-rest)
+- [App Android](#app-android)
 - [Firmware ESP32](#firmware-esp32)
 - [Modelo de IA (ST-GNN)](#modelo-de-ia-st-gnn)
 - [Pruebas](#pruebas)
@@ -59,6 +62,10 @@ El **backend es la única fuente de verdad** de las reglas de negocio: el firmwa
 mide y publica, el panel solo muestra el veredicto ya persistido y el servicio de IA
 solo pronostica. Si la IA está caída, la ingesta y las alertas siguen funcionando.
 
+La **app Android** consume la API pública `/api/v1` con JWT, igual que el ESP32; no usa
+`/panel/api/**` porque el panel está protegido por sesión y CSRF. El veredicto ECA-Agua
+también llega persistido: la app no reevalúa el pH.
+
 ### Stack
 
 | Capa | Tecnología |
@@ -67,7 +74,7 @@ solo pronostica. Si la IA está caída, la ingesta y las alertas siguen funciona
 | Backend | Java 21, Spring Boot 3.2, PostgreSQL 16, Flyway, JWT |
 | Frontend | React 19, TypeScript, Vite, React Router; build servido desde el JAR |
 | IA | Python 3.12, PyTorch (CPU), PyTorch Geometric, NumPy, FastAPI |
-| Móvil (pendiente) | Kotlin, Jetpack Compose, Firebase Cloud Messaging |
+| Móvil | Kotlin, Jetpack Compose, Material 3; Firebase Cloud Messaging pendiente |
 
 ---
 
@@ -79,7 +86,7 @@ solo pronostica. Si la IA está caída, la ingesta y las alertas siguen funciona
 | `frontend/` | ✅ Completo (17 tests) | SPA React + TypeScript: acceso, tablero, métricas, mapa, historial, alertas, predicciones, tema y accesibilidad |
 | `iot-firmware/` | ✅ Completo (38 tests) | Núcleo portable C++11, sensores, calibración, deep sleep, JWT cacheado, transporte HTTP y MQTT, `sample_id` |
 | `ia-model/` | ✅ Completo (172 tests) | Grafo, ventanas, ST-GNN, normalización, entrenamiento, carga de CSV de campo, artefacto versionado y servicio FastAPI |
-| `android-app/` | ⬜ Vacío | Pendiente: tema Material 3, login, tablero, alertas y FCM |
+| `android-app/` | 🟡 MVP (6 tests) | Login JWT, tablero de 24 h, estaciones y alertas en Kotlin + Compose + Material 3; FCM y mapa pendientes |
 | Docker/CI | ⚙️ Configurado, no ejecutado | `compose.yaml`, Dockerfiles, workflow de CI, JaCoCo y Sonar (sin Docker/Sonar en la máquina) |
 
 ---
@@ -213,7 +220,7 @@ del tablero de 24 h; la tabla de alertas recientes, de `/panel/api/alertas`. El 
 ### Diseño
 
 - Tokens en `frontend/src/styles/tokens.css` (fuente única de la paleta, compartida con el
-  futuro tema Material 3 de Android). El build los copia al JAR.
+  tema Material 3 de la app Android). El build los copia al JAR.
 - Modo oscuro persistido en `localStorage`, aplicado antes del CSS para evitar el destello.
 - Accesibilidad: contraste WCAG AA, foco visible, áreas táctiles de 44 px, navegación con
   teclado, `aria-live` en avisos y estados vacíos honestos.
@@ -304,6 +311,40 @@ con las credenciales del broker. El payload es el mismo del ESP32.
 | `IA_BASE_URL`, `IA_INTERNAL_TOKEN` | Servicio FastAPI (interno) |
 | `IA_CONNECT_TIMEOUT_MS`, `IA_READ_TIMEOUT_MS` | Timeouts de la IA (2 s / 15 s) |
 | `GOOGLE_MAPS_API_KEY` | Mapa de Google en el panel (opcional) |
+
+---
+
+## App Android
+
+MVP móvil en **Kotlin + Jetpack Compose + Material 3**. Consume la API pública con JWT,
+no las rutas del panel, y muestra el veredicto ECA-Agua persistido por el backend.
+
+| Pantalla | Qué hace |
+|---|---|
+| Acceso | URL del backend editable, usuario y contraseña; `POST /api/v1/auth/token` |
+| Tablero | Ventana de 24 h: muestras, alertas, cumplimiento, estaciones `N1`…`N4` y última lectura |
+| Alertas | `GET /api/v1/telemetry?alert=true`, con el motivo redactado por el backend |
+
+- El **JWT vive solo en memoria**; al cerrar la app hay que iniciar sesión otra vez. No se
+  guarda la contraseña.
+- En el emulador la URL por defecto es `http://10.0.2.2:8080`; en un teléfono físico se
+  usa la IP de la PC en la misma red.
+- El manifiesto de **release exige HTTPS**. Solo el manifiesto de **debug** permite HTTP
+  local para la demo.
+- **No** se recalcula el pH en Kotlin: se muestra `alert` y `alert_reasons` de la API.
+- **FCM y Google Maps no están incluidos**: requieren `google-services.json` y una clave
+  restringida para Android. No se simulan notificaciones ni mapas.
+
+```powershell
+cd android-app
+$env:JAVA_HOME="C:\Users\USER\.jdks\jbr-17.0.14"   # JDK 17 con jlink
+.\gradlew.bat testDebugUnitTest
+.\gradlew.bat assembleDebug
+adb install -r app\build\outputs\apk\debug\app-debug.apk
+```
+
+El APK queda en `android-app/app/build/outputs/apk/debug/app-debug.apk`. Los detalles de
+conexión y limitaciones están en [`android-app/README.md`](android-app/README.md).
 
 ---
 
@@ -403,7 +444,8 @@ describe ese conjunto, no la laguna en general.
 | Frontend | `npm test` (desde `frontend/`) | **17** |
 | Firmware | `pio test -e native` | **38** |
 | IA | `.venv\Scripts\python.exe -m pytest` | **172** |
-| **Total** | | **372** |
+| Android | `gradlew.bat testDebugUnitTest` (desde `android-app/`) | **6** |
+| **Total** | | **378** |
 
 - Cobertura del backend (JaCoCo): **91.7 %** de instrucciones y **68.8 %** de ramas.
 - No hay Docker ni Testcontainers: la persistencia se prueba con **H2**.
@@ -411,12 +453,15 @@ describe ese conjunto, no la laguna en general.
   panel, mapa y predicciones), no solo pruebas por capa.
 - El frontend usa **Vitest + Testing Library**: cliente CSRF/401, componentes, mapa y
   las cuatro pantallas principales (tablero, métricas, historial y alertas).
+- La app Android usa tests unitarios JVM para el resumen del tablero y la normalización de
+  la URL. **No hay pruebas instrumentadas ni E2E de UI**.
 - `train_stgnn.py` devuelve código de salida 1 si no se cumple el criterio, para encadenarlo
   al CI.
 - **No se ejecutaron** `docker compose build/up`, SonarQube, la CI en un runner ni
   pruebas en hardware. La V5 sí se validó en PostgreSQL 16.9 embebido y
   `docker compose config`. Además, `PostgresMigrationIT` (1 test) ejecuta las
   migraciones contra PostgreSQL real y corre en el job `backend-postgres` del CI.
+  La app Android se probó en el emulador `Pixel_9` (API 37) contra el perfil `demo`.
   Se declara en `docs/SDD/26-limitaciones.md`.
 
 ---
@@ -446,7 +491,10 @@ describe ese conjunto, no la laguna en general.
 │   ├── serve.py             uvicorn
 │   ├── Dockerfile
 │   └── train_stgnn.py       experimento del criterio de la tesis
-├── android-app/             (pendiente)
+├── android-app/             Kotlin + Jetpack Compose (MVP)
+│   ├── app/src/main/        login, tablero y alertas
+│   ├── app/src/test/        6 tests unitarios
+│   └── README.md            conexión, build y limitaciones
 ├── deploy/                  configuración de Mosquitto
 ├── docs/SDD/                documentación de diseño (versionada)
 ├── docs/                    tesis y libros de referencia (no versionado)
@@ -463,6 +511,8 @@ describe ese conjunto, no la laguna en general.
   veredicto persistido; reevaluar el pH en otro sitio crearía dos reglas que podrían divergir.
 - **Dos cadenas de seguridad:** panel con sesión + CSRF (navegador) y API con JWT sin estado
   (ESP32). Un JWT no abre el panel.
+- **La app Android usa `/api/v1` con JWT**, no `/panel/api/**`: el panel exige sesión y
+  CSRF, y no es un contrato para móviles. La app tampoco reevalúa el pH.
 - **El panel React consume `/panel/api/**`, no `/api/v1`** (evita un JWT en `localStorage`).
   Esos endpoints leen de los servicios de dominio, así que no duplican la regla ECA-Agua.
 - **Atender una alerta no cambia el veredicto.** Es otra dimensión, con auditoría aparte
@@ -497,9 +547,10 @@ en los ADR de `docs/SDD/`.
    falta el contenedor real y construir las imágenes.
 4. **TLS**: firmware con `WiFiClientSecure`, backend en HTTPS y MQTT en 8883.
 5. **SonarQube** ejecutado sobre un servidor real (configuración lista).
-6. **App Android**: tema Material 3 con la misma paleta, login, tablero con mapa, alertas
-   y notificaciones push (FCM).
-7. **Notificaciones**: hoy la alerta solo se ve en el panel y en la API.
+6. **App Android**: completar el mapa de estaciones y las notificaciones push (FCM), que
+   requieren una clave de Google Maps para Android y `google-services.json`. El MVP de
+   login, tablero y alertas ya funciona y está probado en el emulador.
+7. **Notificaciones**: hoy la alerta solo se ve en el panel, en la app y en la API.
 8. **Rotar la clave de Google** compartida durante el desarrollo y restringirla por referente.
 9. Capítulos de la tesis y despliegue en producción.
 

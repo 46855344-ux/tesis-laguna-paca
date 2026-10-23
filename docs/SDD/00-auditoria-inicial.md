@@ -3,7 +3,10 @@
 > **Nota de vigencia:** esta auditoría describe la línea base del 20/10/2026. El
 > panel Thymeleaf fue reemplazado el 21/10/2026 por una SPA React; la decisión
 > está en [ADR-010](ADR-010-react-spa.md) y la evidencia nueva en
-> [28.8](28-registro-de-evidencias.md).
+> [28.8](28-registro-de-evidencias.md). El 22/10/2026 se agregó un **MVP de app
+> Android** (login, tablero y alertas); la tabla de la sección 2 conserva la
+> línea base histórica y el estado vigente está en
+> [01](01-vision-y-alcance.md) y [17](17-estrategia-de-pruebas.md).
 
 **Fecha:** 2026-10-20
 **Commit de partida:** `bd10567` (rama `main`, árbol limpio)
@@ -66,7 +69,7 @@ No hay Docker ni SonarQube instalados en la máquina de desarrollo. No hay CI co
 | H-10 | Datos de entrenamiento **sintéticos** | El R² 0.9289 no es evidencia de campo | Alta (científica) |
 | H-11 | Clave de Google Maps expuesta en el chat (no en el repositorio) | Uso no autorizado con cargo a la cuenta | Alta (operativa) |
 | H-12 | Perfil `demo` con H2 y Flyway desactivado | Las migraciones no se prueban en H2 | Media |
-| H-13 | `android-app/` vacío | Funcionalidad móvil pendiente | Planificada |
+| H-13 | `android-app/` vacío | Funcionalidad móvil pendiente | Mitigado parcialmente: MVP con login, tablero y alertas |
 | H-14 | Sin política de retención ni respaldo documentada | Crecimiento y pérdida de datos | Media |
 | H-15 | `docs/` no versionado | La documentación de tesis no viaja con el código | Aceptada (decisión previa) |
 

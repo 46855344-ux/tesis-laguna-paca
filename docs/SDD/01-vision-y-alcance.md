@@ -42,18 +42,20 @@ mediciones y de las predicciones.
 | Regla ECA-Agua de pH | Implementado | `EcaWaterQualityRule`, 4 tests |
 | Histórico con filtros y paginación | Implementado | `TelemetryService`, `PanelHistorialIntegrationTest` |
 | Panel React (acceso, tablero, métricas, historial, alertas, mapa) | Implementado | 66 tests de panel + 17 de frontend |
+| App Android (login, tablero y alertas) | MVP implementado | `android-app/`, 6 tests unitarios |
 | Predicciones 1/3/6 h | Implementado | `PredictionService`, `PredictionIntegrationTest` |
 | Servicio FastAPI + artefacto | Implementado | `ia-model/lagunapaca_gnn/api.py`, 172 tests de IA |
 | Evaluación posterior ±30 min | Implementado | `PredictionEvaluator`, tests |
 | Idempotencia por `sample_id` | Implementado | V5, `TelemetryServiceTest`, firmware |
 | Docker Compose | Configurado, **no ejecutado** en esta máquina | `compose.yaml` |
-| App Android | Fuera de alcance de esta entrega | `android-app/` vacío |
 
 ## 1.5 Fuera de alcance
 
-- Aplicación Android (se mantiene como trabajo futuro; el contrato REST ya está
-  preparado para ella).
-- Notificaciones push o correo: hoy la alerta se ve en el panel y en la API.
+- Notificaciones push (FCM) y mapa de Google Maps dentro de la app Android: el MVP
+  actual permite login, tablero y alertas, pero esas dos integraciones requieren
+  credenciales externas.
+- Persistencia de la sesión y funcionamiento offline en Android: el JWT vive solo
+  en memoria.
 - Analítica de otras variables distintas del pH. El modelo puede extenderse,
   pero la regla ECA-Agua implementada es la de pH.
 - Certificación ambiental oficial: el sistema es una herramienta académica, no

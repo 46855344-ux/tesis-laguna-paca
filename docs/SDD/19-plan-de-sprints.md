@@ -16,6 +16,7 @@ planificó.
 | S6 | Servicio IA e integración | FastAPI, artefacto, predicciones, evaluación, carga de CSV de campo | 172 tests IA + 50 tests backend nuevos | Hecho |
 | S7 | Calidad y despliegue | Docker, Compose, CI, JaCoCo, Sonar config | `config` validado y V5 + IT en PostgreSQL 16.9; imágenes y CI no ejecutados | Parcial |
 | S8 | Documentación y defensa | `docs/SDD`, README, guion de demo | Documento completo y reproducible; limitaciones declaradas en 26 y 28.4 | Hecho |
+| S9 | App Android MVP | Login JWT, tablero de 24 h, estaciones, alertas y tema Material 3 | 6 tests unitarios y flujo verificado en emulador | Hecho |
 
 ## 19.1 Historias representativas
 
@@ -29,6 +30,7 @@ planificó.
 | Como jurado, quiero distinguir datos sintéticos de campo | 2 | S6 |
 | Como operador, quiero que el panel funcione sin internet | 3 | S3 |
 | Como autor, quiero desplegar con un comando | 5 | S7 |
+| Como operador, quiero ver el estado de la laguna en el móvil | 5 | S9 |
 
 ## 19.2 Definición de terminado
 
@@ -48,5 +50,5 @@ Una historia está terminada cuando:
   no puede validarse científicamente.
 - S7 no se puede cerrar en esta máquina por falta de Docker; se cierra cuando
   haya un entorno con Docker o un runner de CI.
-- La app Android no está en el plan de esta entrega; si se incluye, requiere al
-  menos dos sprints (contrato, MVVM, FCM, pruebas).
+- La app Android tiene un MVP (S9) probado en emulador. FCM y el mapa requieren
+  credenciales externas y no se consideran terminados.

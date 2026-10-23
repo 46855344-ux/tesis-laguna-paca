@@ -25,7 +25,7 @@ flowchart LR
     B -->|X-Internal-Token<br/>/health /predict| IA
     OP -->|sesión + CSRF| FE
     FE -->|/panel/api/**| B
-    M[Cliente API / futuro Android] -->|JWT| B
+    M[Cliente API / app Android] -->|JWT| B
 ```
 
 El backend es la **única fuente de verdad**: decide las alertas, persiste las

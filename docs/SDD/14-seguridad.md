@@ -113,6 +113,9 @@ repositorio.
 ## 14.8 Decisiones que no se deben deshacer
 
 - **No guardar el JWT en `localStorage`** para el panel.
+- **La app Android no persiste el JWT ni la contraseña**: la sesión vive solo en
+  memoria y se pierde al cerrar la app.
+- **La app Android usa `/api/v1` con JWT**, no `/panel/api/**`, que exige sesión y CSRF.
 - **No desactivar CSRF** en la cadena del panel.
 - **No exponer la atención de alertas en la API** sin decidir antes el contrato
   de la app Android.
