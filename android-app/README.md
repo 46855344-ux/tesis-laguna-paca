@@ -52,6 +52,13 @@ adb install -r app\build\outputs\apk\debug\app-debug.apk
 adb shell am start -n pe.edu.continental.lagunapaca.mobile/.MainActivity
 ```
 
+## Integración continua
+
+El job `android` de `.github/workflows/ci.yml` usa **Temurin 17** (incluye
+`jlink`), ejecuta `testDebugUnitTest` y `assembleDebug`, y publica el reporte de
+pruebas y el APK debug como artefactos. Se ejecuta en cada push a `main` y en
+cada pull request.
+
 ## Conexión
 
 | Entorno | URL |

@@ -74,9 +74,11 @@ métrica de Sonar.
 
 ### L-08 · CI no ejecutado
 
-`.github/workflows/ci.yml` define backend, IA y firmware. No se ejecutó en
-GitHub Actions porque el repositorio no está conectado a un runner en esta
-entrega. Los comandos que ejecuta sí se corrieron localmente.
+`.github/workflows/ci.yml` define backend, frontend, Android, PostgreSQL, IA y
+firmware. No se ejecutó en GitHub Actions durante la preparación porque el
+repositorio no estaba conectado a un runner en esa máquina. Los comandos que
+ejecuta sí se corrieron localmente. El job `android` usa Temurin 17, ejecuta
+`testDebugUnitTest` y `assembleDebug`, y publica el reporte y el APK.
 
 ### L-09 · Sin hardware ESP32
 

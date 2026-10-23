@@ -133,6 +133,8 @@ con `postgres:16-alpine`. Con él, el total sería **379**.
 - **No** hay tests instrumentados de Compose ni E2E. El login, el tablero, las
   alertas y el cierre de sesión se verificaron manualmente en el emulador.
 - No se usan datos de campo: la demo usa el simulador y H2.
+- El job `android` del CI ejecuta `testDebugUnitTest` y `assembleDebug` con
+  Temurin 17, y publica el reporte de pruebas y el APK debug como artefactos.
 
 ## 17.7 Cómo ejecutar
 

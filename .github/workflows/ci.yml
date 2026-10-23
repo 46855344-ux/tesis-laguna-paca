@@ -68,6 +68,40 @@ jobs:
         working-directory: frontend
         run: npm run build
 
+  android:
+    name: App Android (Kotlin + Compose)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # El JBR de escritorio no sirve en CI: se usa Temurin 17, que incluye jlink.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Probar y compilar el APK
+        working-directory: android-app
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --console=plain testDebugUnitTest assembleDebug
+
+      - name: Publicar reporte de pruebas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-test-results
+          path: android-app/app/build/test-results/testDebugUnitTest/
+          if-no-files-found: warn
+
+      - name: Publicar APK debug
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-debug-apk
+          path: android-app/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
   backend-postgres:
     name: Migraciones (PostgreSQL 16)
     runs-on: ubuntu-latest

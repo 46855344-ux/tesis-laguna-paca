@@ -392,6 +392,8 @@ Lo que **no** se ejecutó:
 - Google Maps en Android: falta una clave restringida por package/SHA-1.
 - Pruebas instrumentadas (Compose) y E2E de UI; los 6 tests son unitarios JVM.
 - Instalación en un teléfono físico y build de release con HTTPS.
-- La app Android no está incluida todavía en `.github/workflows/ci.yml`.
+- El job `android` ya está en `.github/workflows/ci.yml`: usa Temurin 17, ejecuta
+  `testDebugUnitTest` y `assembleDebug`, y publica el reporte y el APK. Se activa
+  con cada push a `main` y con cada pull request.
 
 Los datos mostrados son del simulador o de H2; no son mediciones de campo.

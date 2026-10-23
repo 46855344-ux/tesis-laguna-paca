@@ -404,6 +404,8 @@ Estructura y decisiones:
   el mapa de Android necesita una clave restringida por package/SHA-1. No se simulan.
 - **6 tests unitarios**: 3 de `DashboardMapper` (ventana, estaciones, cumplimiento) y 3 de
   normalización de URL. No hay tests instrumentados ni E2E de UI.
+- El job `android` del CI usa Temurin 17 (con `jlink`), ejecuta `testDebugUnitTest` y
+  `assembleDebug`, y publica el reporte y el APK como artefactos.
 - Se verificó en el emulador `Pixel_9` (API 37) contra el perfil `demo`: login, tablero con
   56 muestras/16 alertas, alertas y cierre de sesión.
 
