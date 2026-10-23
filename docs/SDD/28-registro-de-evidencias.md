@@ -171,12 +171,15 @@ que las imágenes construyan ni que los healthchecks funcionen.
 
 ## 28.4 Lo que **no** se ejecutó
 
+> Este corte refleja el 21/10/2026. La CI se ejecutó el 22/10/2026; el resultado
+> vigente está en 28.11 y reemplaza las filas de GitHub Actions y PostgreSQL.
+
 | Actividad | Motivo | Estado |
 |---|---|---|
 | `docker compose build/up` | No hay motor Docker | `config` validado; imágenes no construidas |
-| PostgreSQL en contenedor / producción | No hay motor Docker | Migraciones validadas en PostgreSQL 16.9 embebido (28.3) |
-| SonarQube | No hay servidor | Configurado; sin análisis |
-| GitHub Actions | Sin runner conectado | Workflow escrito (incluye job PostgreSQL); IT ejecutado en local |
+| PostgreSQL en contenedor / producción | No hay motor Docker local | **Parcial**: el job `backend-postgres` ejecutó V1–V5 contra `postgres:16-alpine` (28.11) |
+| SonarQube | No hay servidor | Configurado; sin análisis real (job omitido sin secretos) |
+| GitHub Actions | Sin runner conectado al 21/10 | **Superado**: ejecutado el 22/10/2026 (28.11) |
 | Prueba en placa ESP32 | Sin hardware | Firmware compila y tests nativos pasan |
 | Calibración de sensores | Sin laboratorio | Valores nominales |
 | Datos de campo | Sin campaña de muestreo | Cargador `--csv` probado; sin mediciones reales |
@@ -311,7 +314,8 @@ fijan que el logout invalida la sesión y que exige CSRF.
 ### Lo que no se ejecutó
 
 - Pruebas E2E con un navegador real (solo jsdom).
-- `docker compose build/up`, CI en un runner y SonarQube.
+- `docker compose build/up` y SonarQube real. La CI **sí se ejecutó después**:
+  ver 28.11.
 - Carga real de Google Maps (no hay clave configurada en esta máquina).
 
 El build de React sí se generó y el backend lo sirvió desde el JAR. Los datos
@@ -392,8 +396,31 @@ Lo que **no** se ejecutó:
 - Google Maps en Android: falta una clave restringida por package/SHA-1.
 - Pruebas instrumentadas (Compose) y E2E de UI; los 6 tests son unitarios JVM.
 - Instalación en un teléfono físico y build de release con HTTPS.
-- El job `android` ya está en `.github/workflows/ci.yml`: usa Temurin 17, ejecuta
-  `testDebugUnitTest` y `assembleDebug`, y publica el reporte y el APK. Se activa
-  con cada push a `main` y con cada pull request.
 
 Los datos mostrados son del simulador o de H2; no son mediciones de campo.
+
+## 28.11 CI en GitHub Actions (22/10/2026)
+
+Se publicó el commit `06acb41` y GitHub Actions ejecutó el workflow completo:
+
+**Run:** [`39881860494`](https://github.com/46855344-ux/tesis-laguna-paca/actions/runs/39881860494)
+
+| Job | Resultado |
+|---|---|
+| Backend (Java 21) | `success` |
+| Frontend (React + TypeScript) | `success` |
+| App Android (Kotlin + Compose) | `success`: 6 tests y APK debug |
+| Migraciones (PostgreSQL 16) | `success`: `PostgresMigrationIT` contra `postgres:16-alpine` |
+| Modelo y API de IA (Python 3.12) | `success`: 172 tests |
+| Firmware (PlatformIO nativo) | `success`: 38 tests |
+| SonarQube (opcional) | `success` con el paso omitido: no hay `SONAR_TOKEN` ni `SONAR_HOST_URL` |
+
+El job de Android usa **Temurin 17** (incluye `jlink`), marca `gradlew` como
+ejecutable, corre `testDebugUnitTest` y `assembleDebug`, y publica:
+
+- `android-test-results`: reporte JUnit de los 6 tests;
+- `android-debug-apk`: APK debug generado.
+
+Esto cierra el hueco de CI que se declaraba en 26 (L-08) y confirma que la
+migración V1–V5 funciona contra PostgreSQL 16 en contenedor. **No** se ejecutó
+SonarQube real ni `docker compose build/up`.

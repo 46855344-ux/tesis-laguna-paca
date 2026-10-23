@@ -97,6 +97,8 @@ Cobertura del backend: 91.7 % de instrucciones, 68.8 % de ramas. Criterio de la
 tesis: `R² = 0.9289` a 6 h con datos sintéticos (persistencia: 0.7403).
 
 **No ejecutado en esta máquina** (declarado en `26` y `28`): Docker Compose,
-SonarQube, migración V5 contra PostgreSQL real, CI en un runner y pruebas en
-hardware. Los datos de campo siguen pendientes. La **app Android** tiene un MVP
-probado en emulador; FCM y mapa siguen pendientes.
+SonarQube real y pruebas en hardware. La **CI sí se ejecutó** en GitHub Actions
+(run `39881860494`, 7 jobs verdes; Sonar omitido sin secretos), incluida la
+migración V5 contra `postgres:16-alpine` y el job de Android. Los datos de campo
+siguen pendientes. La **app Android** tiene un MVP probado en emulador; FCM y
+mapa siguen pendientes.

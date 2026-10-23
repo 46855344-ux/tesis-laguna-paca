@@ -43,18 +43,18 @@ horizontes de 12 o 24 h, ni otras variables distintas del pH.
 
 ### L-05 · PostgreSQL de producción no probado en contenedor
 
-No hay PostgreSQL instalado ni Docker. La migración V1–V5 **sí se ejecutó** en un
-PostgreSQL 16.9 embebido (Zonky) y se verificaron columnas, índice parcial,
-restricciones y los SQLSTATE 23505/23514 (ver `28-registro-de-evidencias.md`,
-28.3). Lo que falta es el arranque desde Spring Boot, el contenedor
-`postgres:16-alpine` y una configuración de producción (usuarios, extensiones,
-copias de seguridad).
+No hay PostgreSQL instalado ni Docker en la máquina de desarrollo. La migración
+V1–V5 **sí se ejecutó** en un PostgreSQL 16.9 embebido (Zonky) y en el servicio
+`postgres:16-alpine` del CI (run `39881860494`, 22/10/2026): se verificaron
+columnas, índice parcial, restricciones y los SQLSTATE 23505/23514 (ver
+`28-registro-de-evidencias.md`, 28.3 y 28.11). Lo que falta es el arranque
+completo desde Spring Boot contra el contenedor y una configuración de producción
+(usuarios, extensiones, copias de seguridad).
 
-**Riesgo:** una diferencia entre el PostgreSQL embebido y el contenedor podría
+**Riesgo:** una diferencia entre el PostgreSQL de prueba y el de producción podría
 aparecer en el primer despliegue. **Acción:** levantar el stack con Docker y
-repetir la migración allí antes de la defensa. El IT
-`PostgresMigrationIT` ya reproduce estas comprobaciones y el CI tiene un job
-`backend-postgres`; falta ejecutarlo en un runner y contra el contenedor real.
+repetir el arranque completo antes de la defensa. El IT `PostgresMigrationIT` ya
+corrió contra `postgres:16-alpine` en el job `backend-postgres` del CI.
 
 ### L-06 · Docker Compose no ejecutado
 
@@ -72,13 +72,14 @@ calibrado. **Acción:** `docker compose build` y `up` en una máquina con Docker
 servidor SonarQube, así que no hay análisis estático real. No se reporta ninguna
 métrica de Sonar.
 
-### L-08 · CI no ejecutado
+### L-08 · CI ejecutada; SonarQube no
 
 `.github/workflows/ci.yml` define backend, frontend, Android, PostgreSQL, IA y
-firmware. No se ejecutó en GitHub Actions durante la preparación porque el
-repositorio no estaba conectado a un runner en esa máquina. Los comandos que
-ejecuta sí se corrieron localmente. El job `android` usa Temurin 17, ejecuta
-`testDebugUnitTest` y `assembleDebug`, y publica el reporte y el APK.
+firmware. Se ejecutó en GitHub Actions el 22/10/2026 (run `39881860494`): los
+7 jobs terminaron en `success`; el de SonarQube se omitió por falta de secretos.
+El job `android` usa Temurin 17, ejecuta `testDebugUnitTest` y `assembleDebug`, y
+publicó el reporte y el APK como artefactos. Los comandos también se corrieron
+localmente.
 
 ### L-09 · Sin hardware ESP32
 

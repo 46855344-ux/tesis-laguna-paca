@@ -11,9 +11,9 @@
 | RNF-07 | Accesibilidad AA en el panel. | Contrastes medidos, foco visible, 44 px, `aria-*`, `prefers-reduced-motion`. | Parcial: contrastes medidos; sin auditoría automática |
 | RNF-08 | Fechas de pantalla en `America/Lima`; instantes persistidos como `Instant` UTC. | `ZoneId` en el panel; `TIMESTAMPTZ`; test de la medianoche de Lima. | Sí: `PanelHistorialIntegrationTest` |
 | RNF-09 | La API debe ser stateless y sin CSRF; el panel con sesión y CSRF. | Dos cadenas de filtros en `SecurityConfig`. | Sí: `PanelIntegrationTest`, `ApiIntegrationTest` |
-| RNF-10 | Despliegue reproducible con Docker Compose. | `backend/Dockerfile`, `ia-model/Dockerfile`, `compose.yaml`. | **No ejecutado**: no hay Docker en la máquina |
+| RNF-10 | Despliegue reproducible con Docker Compose. | `backend/Dockerfile`, `ia-model/Dockerfile`, `compose.yaml`, CI. | Parcial: CI ejecutada; `docker compose build/up` no (sin Docker local) |
 | RNF-11 | La telemetría debe sobrevivir a reintentos sin duplicados. | `sample_id` + índice único parcial (V5). | Sí: servicio, API y firmware |
-| RNF-12 | Los tests deben correr sin hardware ni servicios externos. | H2, `HttpServer` del JDK, `fetch` simulado, dobles de sensores. | Sí: 145 + 16 + 38 + 172 |
+| RNF-12 | Los tests deben correr sin hardware ni servicios externos. | H2, `HttpServer` del JDK, `fetch` simulado, dobles de sensores. | Sí: 145 + 17 + 38 + 172 + 6 |
 | RNF-13 | El panel debe refrescar sin recargar y pausar si la pestaña está oculta. | React consulta `/panel/api/datos` cada 20 s y escucha `visibilitychange`. | Manual (no hay test E2E de navegador) |
 | RNF-14 | El modelo no debe entrenarse al arrancar el servicio. | `registry.load_bundle`; sin artefacto → `/predict` 503. | Sí: `test_api.py` |
 | RNF-15 | El error de una predicción debe ser reproducible y auditable. | Se guardan `predicted_value`, `observed_value`, `error`, `evaluated_at`. | Sí: `PredictionEvaluatorTest` |

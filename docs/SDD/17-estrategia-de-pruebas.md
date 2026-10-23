@@ -135,6 +135,7 @@ con `postgres:16-alpine`. Con él, el total sería **379**.
 - No se usan datos de campo: la demo usa el simulador y H2.
 - El job `android` del CI ejecuta `testDebugUnitTest` y `assembleDebug` con
   Temurin 17, y publica el reporte de pruebas y el APK debug como artefactos.
+  Verificado en el run `39881860494`: 6 tests y APK correctos.
 
 ## 17.7 Cómo ejecutar
 

@@ -10,7 +10,7 @@ Repositorio de tesis: **"Sistema de software e IoT con Redes Neuronales de Grafo
 - `ia-model/` está **completo de extremo a extremo**: estaciones, grafo, ventanas, modelo ST-GNN (TCN + GCN + Attention), dataset sintético, normalización, entrenamiento, **carga de CSV de campo**, **artefacto versionado** (`artifacts/stgnn.pt`) y **servicio FastAPI** (`serve.py`). **172 tests con pytest.** El criterio de la tesis se cumple con datos sintéticos (`R² = 0.9289` a 6 h, contra `0.7403` de persistencia).
 - `android-app/` es un **MVP** en Kotlin + Jetpack Compose + Material 3: login con JWT, tablero de 24 h con las cuatro estaciones y pantalla de alertas. **6 tests unitarios**; se probó en el emulador `Pixel_9`. FCM, mapa y persistencia del token quedan pendientes. Total del proyecto: **378 tests**.
 - `docs/SDD/` es la documentación de diseño (versionada; índice en `docs/SDD/README.md`). El resto de `docs/` es material de referencia y **no se versiona**.
-- Docker/Compose, CI y SonarQube están **configurados pero no ejecutados** en esta máquina (no hay motor Docker ni servidor Sonar). `docker compose config` sí se validó y las migraciones V1–V5 se ejecutaron en PostgreSQL 16.9 embebido.
+- La **CI se ejecutó en GitHub Actions** el 22/10/2026 (run `39881860494`, commit `06acb41`): 7 jobs en `success`, con backend, frontend, Android, PostgreSQL, IA y firmware. SonarQube se omitió por falta de secretos. Docker/Compose y SonarQube siguen **configurados pero no ejecutados localmente** (no hay motor Docker ni servidor Sonar). `docker compose config` sí se validó y las migraciones V1–V5 se ejecutaron tanto en PostgreSQL 16.9 embebido como en el servicio `postgres:16-alpine` del CI.
 
 ## Mapa de componentes (stack planificado)
 

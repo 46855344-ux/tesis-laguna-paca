@@ -126,9 +126,11 @@ mvn spring-boot:run "-Dspring-boot.run.profiles=demo" "-Dspring-boot.run.useTest
   y las imágenes esperadas.
 - **Migraciones V1–V5** ejecutadas contra PostgreSQL 16.9 embebido: columnas,
   índice parcial, restricciones y SQLSTATE 23505/23514 comprobados (ver
-  `28-registro-de-evidencias.md`). El IT `PostgresMigrationIT` reproduce la
-  comprobación y el job `backend-postgres` del CI lo ejecuta contra
-  `postgres:16-alpine`.
+  `28-registro-de-evidencias.md`). El job `backend-postgres` del CI ejecutó
+  `PostgresMigrationIT` contra `postgres:16-alpine` en el run `39881860494`.
+- **CI completa** ejecutada en GitHub Actions (run `39881860494`): backend,
+  frontend, Android, PostgreSQL, IA y firmware en `success`; SonarQube omitido
+  por falta de secretos.
 - **No se ejecutó** `docker compose build` ni `up`: no hay motor Docker en la
   máquina. Por tanto no se afirma que las imágenes construyan; se entregan con la
   configuración revisada y esta limitación declarada.

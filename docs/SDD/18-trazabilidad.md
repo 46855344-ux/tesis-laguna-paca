@@ -50,7 +50,7 @@ fija. Si un requisito no tiene prueba, se dice; no se inventa cobertura.
 | RNF-07 | Contrastes y ARIA | Parcial (sin auditoría automática) |
 | RNF-08 | `America/Lima` + test | Sí |
 | RNF-09 | Dos cadenas de filtros | Sí |
-| RNF-10 | Compose + Dockerfiles + job PostgreSQL | Parcial: `config` e IT OK; imágenes y CI no ejecutados |
+| RNF-10 | Compose + Dockerfiles + CI + job PostgreSQL | Parcial: CI ejecutada y V1–V5 en `postgres:16-alpine`; imágenes no construidas |
 | RNF-11 | `sample_id` + índice | Sí |
 | RNF-12 | H2, `HttpServer`, dobles | Sí |
 | RNF-13 | `DashboardPage.tsx` | Manual |
@@ -72,7 +72,7 @@ fija. Si un requisito no tiene prueba, se dice; no se inventa cobertura.
 | Evaluación de predicciones | `PredictionEvaluator` | Cumplido |
 | Panel operativo | 66 tests de panel + 17 de frontend | Cumplido |
 | Idempotencia de ingesta | `sample_id` + firmware | Cumplido |
-| Despliegue reproducible | Compose + CI | Configurado, no ejecutado |
+| Despliegue reproducible | Compose + CI | Parcial: CI ejecutada; `docker compose build/up` pendiente |
 | Datos de campo | Cargador `--csv` probado; faltan mediciones reales | **Pendiente** |
 
 ## 18.4 Huecos declarados

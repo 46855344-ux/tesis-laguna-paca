@@ -57,7 +57,9 @@ adb shell am start -n pe.edu.continental.lagunapaca.mobile/.MainActivity
 El job `android` de `.github/workflows/ci.yml` usa **Temurin 17** (incluye
 `jlink`), ejecuta `testDebugUnitTest` y `assembleDebug`, y publica el reporte de
 pruebas y el APK debug como artefactos. Se ejecuta en cada push a `main` y en
-cada pull request.
+cada pull request. Verificado en el run
+[`39881860494`](https://github.com/46855344-ux/tesis-laguna-paca/actions/runs/39881860494):
+6 tests y APK generados correctamente.
 
 ## Conexión
 

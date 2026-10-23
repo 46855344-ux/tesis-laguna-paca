@@ -136,7 +136,8 @@ no abre el panel, y hay un test que lo fija».
 **App Android (opcional, 2 min).** Con el emulador y el backend demo arrancados,
 abrir `android-app`, ejecutar `.\gradlew.bat installDebug` e iniciar sesión con
 `10.0.2.2:8080`. Mostrar el tablero y la pestaña de alertas. Aclarar que FCM y el
-mapa **no** están integrados.
+mapa **no** están integrados. Si se pregunta por la CI, el job `android` corre
+los 6 tests y genera el APK en GitHub Actions (run `39881860494`).
 
 ## 22.9 Preguntas previsibles
 

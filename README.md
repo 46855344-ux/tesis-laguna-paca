@@ -87,7 +87,8 @@ también llega persistido: la app no reevalúa el pH.
 | `iot-firmware/` | ✅ Completo (38 tests) | Núcleo portable C++11, sensores, calibración, deep sleep, JWT cacheado, transporte HTTP y MQTT, `sample_id` |
 | `ia-model/` | ✅ Completo (172 tests) | Grafo, ventanas, ST-GNN, normalización, entrenamiento, carga de CSV de campo, artefacto versionado y servicio FastAPI |
 | `android-app/` | 🟡 MVP (6 tests) | Login JWT, tablero de 24 h, estaciones y alertas en Kotlin + Compose + Material 3; FCM y mapa pendientes |
-| Docker/CI | ⚙️ Configurado, no ejecutado | `compose.yaml`, Dockerfiles, workflow de CI, JaCoCo y Sonar (sin Docker/Sonar en la máquina) |
+| Docker | ⚙️ Configurado, no ejecutado | `compose.yaml` y Dockerfiles; `config` validado, imágenes no construidas (sin Docker en la máquina) |
+| CI | ✅ Ejecutada | GitHub Actions run `39881860494`: 7 jobs verdes; Sonar omitido sin secretos |
 
 ---
 
@@ -457,12 +458,13 @@ describe ese conjunto, no la laguna en general.
   la URL. **No hay pruebas instrumentadas ni E2E de UI**.
 - `train_stgnn.py` devuelve código de salida 1 si no se cumple el criterio, para encadenarlo
   al CI.
-- **No se ejecutaron** `docker compose build/up`, SonarQube, la CI en un runner ni
-  pruebas en hardware. La V5 sí se validó en PostgreSQL 16.9 embebido y
-  `docker compose config`. Además, `PostgresMigrationIT` (1 test) ejecuta las
-  migraciones contra PostgreSQL real y corre en el job `backend-postgres` del CI.
-  La app Android se probó en el emulador `Pixel_9` (API 37) contra el perfil `demo`.
-  Se declara en `docs/SDD/26-limitaciones.md`.
+- **No se ejecutaron** `docker compose build/up`, SonarQube real ni pruebas en hardware.
+  La V5 se validó en PostgreSQL 16.9 embebido, `docker compose config` y el servicio
+  `postgres:16-alpine` del CI. La CI se ejecutó en GitHub Actions (run
+  [`39881860494`](https://github.com/46855344-ux/tesis-laguna-paca/actions/runs/39881860494)):
+  los 7 jobs terminaron en `success`; Sonar se omitió por falta de secretos. La app
+  Android se probó en el emulador `Pixel_9` (API 37) contra el perfil `demo`. Se declara
+  en `docs/SDD/26-limitaciones.md`.
 
 ---
 

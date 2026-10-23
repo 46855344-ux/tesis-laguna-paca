@@ -14,7 +14,7 @@ planificó.
 | S4 | Firmware | Núcleo portable, HTTP/MQTT, Deep Sleep | 32 tests nativos + builds | Hecho |
 | S5 | Modelo | Grafo, ventanas, ST-GNN, entrenamiento | R² > 0.90 sintético | Hecho |
 | S6 | Servicio IA e integración | FastAPI, artefacto, predicciones, evaluación, carga de CSV de campo | 172 tests IA + 50 tests backend nuevos | Hecho |
-| S7 | Calidad y despliegue | Docker, Compose, CI, JaCoCo, Sonar config | `config` validado y V5 + IT en PostgreSQL 16.9; imágenes y CI no ejecutados | Parcial |
+| S7 | Calidad y despliegue | Docker, Compose, CI, JaCoCo, Sonar config | CI ejecutada y V5 + IT en `postgres:16-alpine`; imágenes Docker no construidas | Parcial |
 | S8 | Documentación y defensa | `docs/SDD`, README, guion de demo | Documento completo y reproducible; limitaciones declaradas en 26 y 28.4 | Hecho |
 | S9 | App Android MVP | Login JWT, tablero de 24 h, estaciones, alertas y tema Material 3 | 6 tests unitarios y flujo verificado en emulador | Hecho |
 
