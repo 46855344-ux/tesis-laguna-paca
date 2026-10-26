@@ -17,6 +17,7 @@ planificó.
 | S7 | Calidad y despliegue | Docker, Compose, CI, JaCoCo, Sonar config | CI ejecutada y V5 + IT en `postgres:16-alpine`; imágenes Docker no construidas | Parcial |
 | S8 | Documentación y defensa | `docs/SDD`, README, guion de demo | Documento completo y reproducible; limitaciones declaradas en 26 y 28.4 | Hecho |
 | S9 | App Android MVP | Login JWT, tablero de 24 h, estaciones, alertas y tema Material 3 | 6 tests unitarios y flujo verificado en emulador | Hecho |
+| S10 | Mapa Android sin Google | Pestaña Mapa con contorno GeoJSON embebido, proyección cos(latitud) y leyenda | `LagunaMapaTest` (4 tests) + build verde; emulador y CI pendientes | Hecho (25/10/2026) |
 
 ## 19.1 Historias representativas
 

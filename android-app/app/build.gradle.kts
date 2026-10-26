@@ -67,4 +67,7 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
 
     testImplementation("junit:junit:4.13.2")
+    // En tests de JVM, org.json del android.jar es solo un stub que lanza
+    // RuntimeException; esta copia real solo vive en el classpath de test.
+    testImplementation("org.json:json:20240303")
 }

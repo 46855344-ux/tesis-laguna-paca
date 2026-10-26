@@ -24,8 +24,9 @@ Escala: probabilidad e impacto `Baja` / `Media` / `Alta`.
 
 ## 20.1 Riesgos aceptados
 
-- **Android acotado**: hay MVP de login, tablero y alertas; FCM, mapa y modo
-  offline no se entregan y se declaran como pendientes.
+- **Android acotado**: hay MVP de login, tablero, alertas y mapa estático (Canvas
+  con contorno embebido); FCM, mapa interactivo y modo offline no se entregan y
+  se declaran como pendientes.
 - **Sin notificaciones push**: el panel y la app son los canales de alerta.
 - **Sin métricas Prometheus**: el volumen es pequeño y no hay operación real.
 - **Un solo usuario**: suficiente para una demo académica controlada.

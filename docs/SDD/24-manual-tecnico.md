@@ -88,7 +88,7 @@ cd iot-firmware
 ```powershell
 cd android-app
 $env:JAVA_HOME="C:\Users\USER\.jdks\jbr-17.0.14"   # JDK 17 con jlink
-.\gradlew.bat testDebugUnitTest                     # 6 tests
+.\gradlew.bat testDebugUnitTest                     # 10 tests
 .\gradlew.bat assembleDebug
 adb install -r app\build\outputs\apk\debug\app-debug.apk
 ```

@@ -9,9 +9,10 @@ sobre el grafo de estaciones).
 
 > **Estado:** backend, frontend, firmware, IA y **app Android MVP** funcionando de extremo
 > a extremo, con predicciones persistidas y evaluadas contra muestras posteriores.
-> **378 pruebas** verdes (145 backend, 17 frontend, 38 firmware, 172 IA, 6 Android).
-> La app Android ya permite iniciar sesión, consultar el tablero y revisar alertas; faltan
-> el mapa y las notificaciones push. Los datos de entrenamiento del modelo son
+> **382 pruebas** verdes (145 backend, 17 frontend, 38 firmware, 172 IA, 10 Android).
+> La app Android ya permite iniciar sesión, consultar el tablero, revisar alertas y abrir
+> el **mapa de la laguna** (contorno real embebido, sin Google Maps); falta FCM. Los datos
+> de entrenamiento del modelo son
 > **sintéticos**: el resultado demuestra la arquitectura, no el comportamiento real de la
 > laguna. El despliegue con Docker está configurado, pero **no se ejecutó** en esta máquina
 > (no hay Docker).
@@ -86,7 +87,7 @@ también llega persistido: la app no reevalúa el pH.
 | `frontend/` | ✅ Completo (17 tests) | SPA React + TypeScript: acceso, tablero, métricas, mapa, historial, alertas, predicciones, tema y accesibilidad |
 | `iot-firmware/` | ✅ Completo (38 tests) | Núcleo portable C++11, sensores, calibración, deep sleep, JWT cacheado, transporte HTTP y MQTT, `sample_id` |
 | `ia-model/` | ✅ Completo (172 tests) | Grafo, ventanas, ST-GNN, normalización, entrenamiento, carga de CSV de campo, artefacto versionado y servicio FastAPI |
-| `android-app/` | 🟡 MVP (6 tests) | Login JWT, tablero de 24 h, estaciones y alertas en Kotlin + Compose + Material 3; FCM y mapa pendientes |
+| `android-app/` | 🟡 MVP (10 tests) | Login JWT, tablero de 24 h, estaciones, alertas y mapa (contorno GeoJSON embebido sin Google) en Kotlin + Compose + Material 3; FCM pendiente |
 | Docker | ⚙️ Configurado, no ejecutado | `compose.yaml` y Dockerfiles; `config` validado, imágenes no construidas (sin Docker en la máquina) |
 | CI | ✅ Ejecutada | GitHub Actions run `39881860494`: 7 jobs verdes; Sonar omitido sin secretos |
 
@@ -494,8 +495,9 @@ describe ese conjunto, no la laguna en general.
 │   ├── Dockerfile
 │   └── train_stgnn.py       experimento del criterio de la tesis
 ├── android-app/             Kotlin + Jetpack Compose (MVP)
-│   ├── app/src/main/        login, tablero y alertas
-│   ├── app/src/test/        6 tests unitarios
+│   ├── app/src/main/        login, tablero, alertas y mapa
+│   ├── app/src/main/assets/ contorno GeoJSON embebido
+│   ├── app/src/test/        10 tests unitarios
 │   └── README.md            conexión, build y limitaciones
 ├── deploy/                  configuración de Mosquitto
 ├── docs/SDD/                documentación de diseño (versionada)

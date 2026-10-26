@@ -19,7 +19,9 @@ PostgreSQL real; con él, el total es **349**.
 
 > Este corte es del 20/10/2026, antes de migrar el panel a React. El cierre del
 > 21/10/2026, con el frontend y las cuatro suites, está en 28.8 y 28.9. El total
-> vigente con la app Android (22/10/2026) está en 28.10: **378 tests**.
+> vigente con la app Android (22/10/2026) está en 28.10: **378 tests**. Con el
+> mapa agregado a la app Android (25/10/2026) la verificación local quedó
+> registrada en 28.12: **382 tests**.
 
 ## 28.2 Comandos y resultados
 
@@ -424,3 +426,30 @@ ejecutable, corre `testDebugUnitTest` y `assembleDebug`, y publica:
 Esto cierra el hueco de CI que se declaraba en 26 (L-08) y confirma que la
 migración V1–V5 funciona contra PostgreSQL 16 en contenedor. **No** se ejecutó
 SonarQube real ni `docker compose build/up`.
+
+## 28.12 Mapa en la app Android sin Google (25/10/2026)
+
+Se agregó la pestaña **Mapa** a la app Android: el contorno real de la laguna
+viaja **embebido** en el APK (`app/src/main/assets/geo/laguna-paca.json`, copia
+del mismo GeoJSON del panel), se dibuja con `Canvas` de Compose en una proyección
+equirectangular corregida por `cos(latitud)` y las marcas `N1`…`N4` usan el
+color del **veredicto persistido** (`alert`), con leyenda y aviso de coordenadas
+provisionales. Sin Google Maps, sin teselas y sin llamadas de red.
+
+```powershell
+cd android-app
+$env:JAVA_HOME="C:\Users\USER\.jdks\jbr-17.0.14"
+.\gradlew.bat testDebugUnitTest     # VERDE: 10 tests (6 previos + 4 de LagunaMapa)
+.\gradlew.bat assembleDebug         # VERDE: APK debug de 9.7 MB
+```
+
+Añadidos: `data/LagunaMapa.kt` (parser + proyección, Kotlin puro), 4 tests
+(`LagunaMapaTest`), pestaña y composables de mapa en `ui/`, y
+`testImplementation("org.json:json:20240303")` porque los stubs del `android.jar`
+de las pruebas JVM lanzan `RuntimeException`.
+
+Lo que **no** se ejecutó en esta entrada:
+
+- Verificación en el emulador de la pantalla de mapa (código en verde con tests
+  y build; queda por ver en el `Pixel_9` y re-confirmar en el job `android` del CI).
+- FCM: sigue sin `google-services.json` ni credenciales.

@@ -94,11 +94,12 @@ El firmware se compila y se prueba en el host con dobles. No se validó:
 
 ### L-10 · App Android acotada
 
-`android-app/` tiene un **MVP** con login JWT, tablero de 24 h, estaciones y alertas,
-probado en el emulador `Pixel_9`. **No** incluye FCM, mapa de Google Maps, caché
-offline ni persistencia del token. FCM requiere `google-services.json` y el mapa
+`android-app/` tiene un **MVP** con login JWT, tablero de 24 h, estaciones, alertas
+y mapa (contorno GeoJSON embebido, sin Google Maps), probado en el emulador
+`Pixel_9`. **No** incluye FCM, mapa interactivo de Google, caché offline ni
+persistencia del token. FCM requiere `google-services.json`; el mapa interactivo
 una clave restringida por package/SHA-1; no se simulan. Tampoco hay tests
-instrumentados ni E2E de UI, solo 6 tests unitarios JVM.
+instrumentados ni E2E de UI, solo 10 tests unitarios JVM.
 
 ### L-11 · Cargador de campo probado solo con *fixtures*
 

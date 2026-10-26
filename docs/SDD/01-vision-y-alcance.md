@@ -42,7 +42,7 @@ mediciones y de las predicciones.
 | Regla ECA-Agua de pH | Implementado | `EcaWaterQualityRule`, 4 tests |
 | Histórico con filtros y paginación | Implementado | `TelemetryService`, `PanelHistorialIntegrationTest` |
 | Panel React (acceso, tablero, métricas, historial, alertas, mapa) | Implementado | 66 tests de panel + 17 de frontend |
-| App Android (login, tablero y alertas) | MVP implementado | `android-app/`, 6 tests unitarios |
+| App Android (login, tablero, alertas y mapa sin Google) | MVP implementado | `android-app/`, 10 tests unitarios |
 | Predicciones 1/3/6 h | Implementado | `PredictionService`, `PredictionIntegrationTest` |
 | Servicio FastAPI + artefacto | Implementado | `ia-model/lagunapaca_gnn/api.py`, 172 tests de IA |
 | Evaluación posterior ±30 min | Implementado | `PredictionEvaluator`, tests |

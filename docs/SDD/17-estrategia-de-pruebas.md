@@ -78,7 +78,7 @@ con `postgres:16-alpine`. Con él, el total sería **379**.
   usan `jsdom` y dobles de `fetch`; no son datos de campo.
 - **No hay hardware**: los sensores del firmware son dobles.
 - **La app Android no tiene E2E ni pruebas instrumentadas**: se validó a mano en el
-  emulador `Pixel_9` contra el perfil `demo`; los 6 tests son unitarios JVM.
+  emulador `Pixel_9` contra el perfil `demo`; los 10 tests son unitarios JVM.
 
 ## 17.4 Frontend: 17 tests
 
@@ -122,20 +122,24 @@ con `postgres:16-alpine`. Con él, el total sería **379**.
 - Los CSV de `test_field_data.py` son *fixtures*: no son mediciones de la laguna.
   El cargador está probado; la validación científica sigue pendiente de campo.
 
-## 17.7 Android: 6 tests
+## 17.7 Android: 10 tests
 
 | Archivo | Tests | Qué fija |
 |---|---|---|
 | `DashboardMapperTest` | 3 | Ventana de 24 h, las cuatro estaciones, último dato y cumplimiento sin inventar 100 % |
 | `MainViewModelTest` | 3 | Esquema de URL, conservación de `https` y rechazo de dirección vacía |
+| `LagunaMapaTest` | 4 | Parseo del GeoJSON embebido (pares `[lon, lat]` del contorno, campos separados de estación), coordenadas dentro del cuadro, norte arriba del sur y corrección `cos(latitud)` del eje este-oeste |
 
-- Se ejecutan en la JVM (`testDebugUnitTest`), sin emulador.
+- Se ejecutan en la JVM (`testDebugUnitTest`), sin emulador. Por eso el `org.json`
+  real se declara en `testImplementation`: el `android.jar` de los tests de JVM
+  trae stubs que lanzan `RuntimeException`.
 - **No** hay tests instrumentados de Compose ni E2E. El login, el tablero, las
   alertas y el cierre de sesión se verificaron manualmente en el emulador.
 - No se usan datos de campo: la demo usa el simulador y H2.
 - El job `android` del CI ejecuta `testDebugUnitTest` y `assembleDebug` con
   Temurin 17, y publica el reporte de pruebas y el APK debug como artefactos.
-  Verificado en el run `39881860494`: 6 tests y APK correctos.
+  Verificado en el run `39881860494`; con el mapa agregado, la verificación
+  local del 25/10/2026 dio 10 tests y APK en verde (pendiente re-confirmar en CI).
 
 ## 17.7 Cómo ejecutar
 

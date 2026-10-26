@@ -14,7 +14,11 @@ import pe.edu.continental.lagunapaca.mobile.data.AuthSession
 import pe.edu.continental.lagunapaca.mobile.data.DashboardMapper
 import pe.edu.continental.lagunapaca.mobile.data.DashboardSummary
 import pe.edu.continental.lagunapaca.mobile.data.LagunaApi
+import pe.edu.continental.lagunapaca.mobile.data.LagunaMapa
+import pe.edu.continental.lagunapaca.mobile.data.LagunaMapaPintado
 import pe.edu.continental.lagunapaca.mobile.data.WaterSample
+import pe.edu.continental.lagunapaca.mobile.data.proyectar
+import java.io.IOException
 import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
@@ -23,7 +27,8 @@ import java.time.temporal.ChronoUnit
 
 enum class MobileScreen {
     TABLERO,
-    ALERTAS
+    ALERTAS,
+    MAPA
 }
 
 data class DashboardState(
@@ -41,6 +46,13 @@ data class AlertsState(
     val lastUpdated: Instant? = null
 )
 
+data class MapaEstado(
+    val isLoading: Boolean = false,
+    val map: LagunaMapaPintado? = null,
+    val error: String? = null,
+    val lastUpdated: Instant? = null
+)
+
 data class AppState(
     val baseUrl: String = BuildConfig.DEFAULT_API_URL,
     val username: String = "",
@@ -50,7 +62,8 @@ data class AppState(
     val session: AuthSession? = null,
     val screen: MobileScreen = MobileScreen.TABLERO,
     val dashboard: DashboardState = DashboardState(),
-    val alerts: AlertsState = AlertsState()
+    val alerts: AlertsState = AlertsState(),
+    val mapa: MapaEstado = MapaEstado()
 ) {
     val isAuthenticated: Boolean get() = session != null
 }
@@ -70,6 +83,8 @@ class MainViewModel(
 
     private val _state = MutableStateFlow(AppState())
     val state: StateFlow<AppState> = _state.asStateFlow()
+
+    private var lectorDeMapa: (suspend () -> String)? = null
 
     fun actualizarUrl(valor: String) {
         _state.update { it.copy(baseUrl = valor, loginError = null) }
@@ -202,11 +217,51 @@ class MainViewModel(
         }
     }
 
+    /**
+     * El mapa es estático: la UI aporta cómo leer el GeoJSON embebido
+     * (necesita un Context de Android) y el ViewModel parsea, proyecta
+     * y guarda el resultado. Sin sesión ni llamadas al backend.
+     */
+    fun prepararMapa(leer: suspend () -> String) {
+        lectorDeMapa = leer
+        cargarMapa()
+    }
+
+    fun cargarMapa() {
+        val lector = lectorDeMapa ?: return
+        if (_state.value.mapa.isLoading) return
+
+        viewModelScope.launch {
+            _state.update {
+                it.copy(mapa = it.mapa.copy(isLoading = true, error = null))
+            }
+            try {
+                val texto = lector()
+                val pintado = LagunaMapa.desdeJson(texto).proyectar()
+                _state.update {
+                    it.copy(
+                        mapa = MapaEstado(
+                            isLoading = false,
+                            map = pintado,
+                            error = null,
+                            lastUpdated = Instant.now()
+                        )
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                manejarError(e, destino = MobileScreen.MAPA)
+            }
+        }
+    }
+
     fun seleccionarPantalla(pantalla: MobileScreen) {
         _state.update { it.copy(screen = pantalla) }
         when (pantalla) {
             MobileScreen.TABLERO -> if (_state.value.dashboard.summary == null) cargarTablero()
             MobileScreen.ALERTAS -> cargarAlertas()
+            MobileScreen.MAPA -> if (_state.value.dashboard.summary == null) cargarTablero()
         }
     }
 
@@ -214,6 +269,7 @@ class MainViewModel(
         when (_state.value.screen) {
             MobileScreen.TABLERO -> cargarTablero()
             MobileScreen.ALERTAS -> cargarAlertas()
+            MobileScreen.MAPA -> cargarMapa()
         }
     }
 
@@ -225,9 +281,11 @@ class MainViewModel(
                 screen = MobileScreen.TABLERO,
                 dashboard = DashboardState(),
                 alerts = AlertsState(),
+                mapa = MapaEstado(),
                 loginError = null
             )
         }
+        lectorDeMapa = null
     }
 
     private fun manejarError(e: Exception, destino: MobileScreen) {
@@ -254,6 +312,9 @@ class MainViewModel(
                 MobileScreen.ALERTAS -> it.copy(
                     alerts = it.alerts.copy(isLoading = false, error = mensaje)
                 )
+                MobileScreen.MAPA -> it.copy(
+                    mapa = it.mapa.copy(isLoading = false, error = mensaje)
+                )
             }
         }
     }
@@ -265,6 +326,7 @@ class MainViewModel(
 
     private fun mensajeAmigable(e: Exception): String = when (e) {
         is ApiException -> e.message
+        is IOException -> "No se pudo leer el mapa embebido."
         is UnknownHostException -> "No se encontró el servidor. Revisa la dirección y la conexión."
         is ConnectException -> "No se pudo conectar con el backend. ¿Está arrancado?"
         is SocketTimeoutException -> "El backend tardó demasiado en responder."

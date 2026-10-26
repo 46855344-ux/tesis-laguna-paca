@@ -1,7 +1,9 @@
 package pe.edu.continental.lagunapaca.mobile.ui
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -38,23 +40,32 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import pe.edu.continental.lagunapaca.mobile.BuildConfig
 import pe.edu.continental.lagunapaca.mobile.data.AlertReason
 import pe.edu.continental.lagunapaca.mobile.data.DashboardSummary
+import pe.edu.continental.lagunapaca.mobile.data.LagunaMapaPintado
 import pe.edu.continental.lagunapaca.mobile.data.StationStatus
 import pe.edu.continental.lagunapaca.mobile.data.StationSummary
 import pe.edu.continental.lagunapaca.mobile.data.WaterSample
+import pe.edu.continental.lagunapaca.mobile.data.leerGeoJsonDeAssets
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
@@ -267,6 +278,7 @@ private fun MainScaffold(state: AppState, viewModel: MainViewModel) {
     val cargando = when (state.screen) {
         MobileScreen.TABLERO -> state.dashboard.isLoading
         MobileScreen.ALERTAS -> state.alerts.isLoading
+        MobileScreen.MAPA -> state.mapa.isLoading
     }
 
     Scaffold(
@@ -284,6 +296,7 @@ private fun MainScaffold(state: AppState, viewModel: MainViewModel) {
                             text = when (state.screen) {
                                 MobileScreen.TABLERO -> "Tablero de monitoreo"
                                 MobileScreen.ALERTAS -> "Alertas ECA-Agua"
+                                MobileScreen.MAPA -> "Mapa de la laguna"
                             },
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -313,6 +326,7 @@ private fun MainScaffold(state: AppState, viewModel: MainViewModel) {
                 selectedTabIndex = when (state.screen) {
                     MobileScreen.TABLERO -> 0
                     MobileScreen.ALERTAS -> 1
+                    MobileScreen.MAPA -> 2
                 }
             ) {
                 Tab(
@@ -325,6 +339,11 @@ private fun MainScaffold(state: AppState, viewModel: MainViewModel) {
                     onClick = { viewModel.seleccionarPantalla(MobileScreen.ALERTAS) },
                     text = { Text("Alertas") }
                 )
+                Tab(
+                    selected = state.screen == MobileScreen.MAPA,
+                    onClick = { viewModel.seleccionarPantalla(MobileScreen.MAPA) },
+                    text = { Text("Mapa") }
+                )
             }
 
             when (state.screen) {
@@ -336,6 +355,16 @@ private fun MainScaffold(state: AppState, viewModel: MainViewModel) {
                     state = state,
                     onRetry = viewModel::cargarAlertas
                 )
+                MobileScreen.MAPA -> {
+                    val contexto = LocalContext.current
+                    MapaScreen(
+                        state = state,
+                        onRetry = viewModel::cargarMapa,
+                        cargar = {
+                            viewModel.prepararMapa { leerGeoJsonDeAssets(contexto) }
+                        }
+                    )
+                }
             }
         }
     }
@@ -629,6 +658,191 @@ private fun RecentSampleRow(sample: WaterSample) {
         }
     }
 }
+
+@Composable
+private fun MapaScreen(state: AppState, onRetry: () -> Unit, cargar: () -> Unit) {
+    val mapa = state.mapa
+    val estados = estadosPorNodo(state.dashboard.summary)
+
+    // El GeoJSON se lee una sola vez; volver a la pestaña no vuelve a leerlo.
+    LaunchedEffect(Unit) {
+        if (mapa.map == null && !mapa.isLoading && mapa.error == null) {
+            cargar()
+        }
+    }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Bottom
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = "Mapa de la laguna",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "Contorno real del lago · 4 estaciones",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                mapa.lastUpdated?.let { instante ->
+                    Text(
+                        text = "Actualizado ${formatoHora.format(instante)}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
+        mapa.error?.let { error ->
+            item { ErrorBanner(message = error, onRetry = onRetry) }
+        }
+
+        if (mapa.isLoading && mapa.map == null) {
+            item { LoadingCard() }
+        }
+
+        mapa.map?.let { pintado ->
+            item { MapaLaguna(pintado = pintado, estadosPorNodo = estados) }
+            item { LeyendaDeEstaciones(pintado = pintado, estadosPorNodo = estados) }
+            pintado.aviso?.let { aviso ->
+                item {
+                    EmptyCard(title = "Coordenadas provisionales", message = aviso)
+                }
+            }
+        }
+
+        item { Spacer(Modifier.height(16.dp)) }
+    }
+}
+
+@Composable
+private fun MapaLaguna(
+    pintado: LagunaMapaPintado,
+    estadosPorNodo: Map<String, StationStatus>
+) {
+    val colorAgua = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
+    val bordeAgua = MaterialTheme.colorScheme.primary
+    val marcaSinDatos = MaterialTheme.colorScheme.outline
+    val baseDeMarca = MaterialTheme.colorScheme.surface
+
+    val colores = HashMap<String, Color>()
+    pintado.estaciones.forEach { estacion ->
+        val estado = estadosPorNodo[estacion.id]
+        colores[estacion.id] = if (estado == null) marcaSinDatos else colorDeEstado(estado)
+    }
+
+    Card(shape = RoundedCornerShape(16.dp)) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(pintado.aspecto.toFloat())
+                .semantics {
+                    contentDescription =
+                        "Mapa de la Laguna de Paca con las cuatro estaciones de monitoreo."
+                }
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val trazo = Path()
+                pintado.contorno.forEachIndexed { indice, punto ->
+                    val x = (punto.x * size.width).toFloat()
+                    val y = (punto.y * size.height).toFloat()
+                    if (indice == 0) {
+                        trazo.moveTo(x, y)
+                    } else {
+                        trazo.lineTo(x, y)
+                    }
+                }
+                trazo.close()
+                drawPath(trazo, colorAgua)
+                drawPath(trazo, bordeAgua, style = Stroke(width = 2.dp.toPx()))
+                pintado.estaciones.forEach { estacion ->
+                    val centro = Offset(
+                        (estacion.x * size.width).toFloat(),
+                        (estacion.y * size.height).toFloat()
+                    )
+                    drawCircle(
+                        color = colores[estacion.id] ?: marcaSinDatos,
+                        radius = 9.dp.toPx(),
+                        center = centro
+                    )
+                    drawCircle(
+                        color = baseDeMarca,
+                        radius = 4.dp.toPx(),
+                        center = centro
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LeyendaDeEstaciones(
+    pintado: LagunaMapaPintado,
+    estadosPorNodo: Map<String, StationStatus>
+) {
+    Card(shape = RoundedCornerShape(16.dp)) {
+        Column(Modifier.padding(16.dp)) {
+            Text(
+                text = "Estaciones en el mapa",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(Modifier.height(8.dp))
+            pintado.estaciones.forEachIndexed { indice, estacion ->
+                if (indice > 0) Spacer(Modifier.height(6.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    val estado = estadosPorNodo[estacion.id]
+                    Box(
+                        modifier = Modifier
+                            .size(12.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (estado == null) {
+                                    MaterialTheme.colorScheme.outline
+                                } else {
+                                    colorDeEstado(estado)
+                                }
+                            )
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        text = "${estacion.id} · ${estacion.nombre}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        text = estado?.label ?: StationStatus.SIN_DATOS.label,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "El color es el veredicto persistido del backend; la app no recalcula el pH.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+/** Estado persistido de cada nodo; si el tablero no cargó, la marca sale gris. */
+private fun estadosPorNodo(summary: DashboardSummary?): Map<String, StationStatus> =
+    summary?.stations?.associate { estacion -> estacion.nodeId to estacion.status }
+        ?: emptyMap()
 
 @Composable
 private fun AlertsScreen(state: AppState, onRetry: () -> Unit) {

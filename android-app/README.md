@@ -12,6 +12,10 @@ monitoreo de la Laguna de Paca desde un teléfono o emulador Android.
   estaciones con datos y última lectura de `N1`…`N4`.
 - Listado de alertas ECA-Agua con el motivo redactado por el backend.
 - Tema Material 3 claro/oscuro y estados vacíos honestos.
+- Pestaña **Mapa**: contorno real de la laguna embebido en el APK
+  (`assets/geo/laguna-paca.json`, el mismo GeoJSON del panel), marcas de `N1`…`N4`
+  con el color del **veredicto persistido** y leyenda por estación.
+  Dibujado con `Canvas` de Compose: sin Google Maps, sin teselas y sin red.
 - La app **no recalcula el pH**: muestra el campo `alert` persistido.
 
 ## Requisitos
@@ -59,7 +63,8 @@ El job `android` de `.github/workflows/ci.yml` usa **Temurin 17** (incluye
 pruebas y el APK debug como artefactos. Se ejecuta en cada push a `main` y en
 cada pull request. Verificado en el run
 [`39881860494`](https://github.com/46855344-ux/tesis-laguna-paca/actions/runs/39881860494):
-6 tests y APK generados correctamente.
+tests y APK generados correctamente. La verificación local del **25/10/2026**
+(agregado el mapa) dio **10 tests** en verde y APK debug de 9.7 MB.
 
 ## Conexión
 
@@ -80,13 +85,14 @@ y CSRF y no es el contrato del cliente móvil.
 
 - No incluye **Firebase Cloud Messaging (FCM)**: falta `google-services.json`
   y credenciales del proyecto Firebase. No se simulan notificaciones.
-- No incluye mapa de Google Maps en Android; el tablero muestra las estaciones
-  como tarjetas. Añadirlo requiere una clave restringida para Android.
+- El mapa no usa Google Maps: dibuja el contorno embebido en `Canvas`. No hay
+  zoom/pan ni teselas; si se quisiera Google Maps haría falta una clave
+  restringida para Android por package/SHA-1.
 - El JWT vive **solo en memoria**: al cerrar la app hay que iniciar sesión de
   nuevo. No se guarda la contraseña.
 - No hay caché offline ni sincronización en segundo plano.
-- Los tests actuales son unitarios (mapeo del tablero); no hay pruebas
-  instrumentadas ni E2E de UI.
+- Los tests actuales son unitarios (mapeo del tablero, esquema de URL y mapa);
+  no hay pruebas instrumentadas ni E2E de UI.
 - Los datos que se ven en la demo son del simulador o de H2; no son mediciones
   de campo.
 
@@ -98,9 +104,12 @@ app/src/main/java/pe/edu/continental/lagunapaca/mobile/
 ├── data/
 │   ├── Models.kt           # muestra, estación y resumen
 │   ├── DashboardMapper.kt  # agrupación y ventana de 24 h
+│   ├── LagunaMapa.kt       # GeoJSON embebido + proyección cos(latitud)
 │   └── LagunaApi.kt        # HTTP + JSON con HttpURLConnection
 └── ui/
     ├── MainViewModel.kt    # estado, login y carga
-    ├── LagunaPacaApp.kt    # pantallas Compose
+    ├── LagunaPacaApp.kt    # pantallas Compose (tablero, alertas, mapa)
     └── theme/Theme.kt      # paleta Material 3
+
+app/src/main/assets/geo/laguna-paca.json   # contorno real (copia del panel)
 ```
