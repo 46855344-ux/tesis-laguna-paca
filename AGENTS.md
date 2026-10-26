@@ -426,7 +426,8 @@ Estructura y decisiones:
 - El job `android` del CI usa Temurin 17 (con `jlink`), ejecuta `testDebugUnitTest` y
   `assembleDebug`, y publica el reporte y el APK como artefactos.
 - Se verificó en el emulador `Pixel_9` (API 37) contra el perfil `demo`: login, tablero con
-  56 muestras/16 alertas, alertas y cierre de sesión.
+  56 muestras/16 alertas, alertas, cierre de sesión y, el 25/10/2026, la pestaña **Mapa**
+  (contorno real y marcas con el veredicto persistido).
 
 ## Firmware IoT (`iot-firmware/`) — comandos
 

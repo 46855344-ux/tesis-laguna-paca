@@ -450,6 +450,14 @@ de las pruebas JVM lanzan `RuntimeException`.
 
 Lo que **no** se ejecutó en esta entrada:
 
-- Verificación en el emulador de la pantalla de mapa (código en verde con tests
-  y build; queda por ver en el `Pixel_9` y re-confirmar en el job `android` del CI).
+- Re-confirmación en el job `android` del CI.
 - FCM: sigue sin `google-services.json` ni credenciales.
+
+Verificación en el emulador `Pixel_9` (25/10/2026, ~22:47): instalado el APK
+debug, sesión contra el backend demo (`http://10.0.2.2:8080`) y la pestaña
+**Mapa** renderizó el contorno real del lago con las marcas N1 (norte), N4
+(oeste), N2 (este) y N3 (sur) en rojo — coherentes con el tablero, donde las
+cuatro estaciones tenían «Alerta ECA-Agua» persistida — más la leyenda por
+estación. Nota del entorno: el emulador arrancó con un ANR de `System UI`
+propio de esta máquina (render por software); tocar «Wait» bastó y la app
+funcionó con normalidad.
