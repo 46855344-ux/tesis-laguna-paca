@@ -6,7 +6,7 @@ consume `lagunapaca_gnn.field_data.load_field_csv`. **No son mediciones reales.*
 | Archivo | Para qué sirve |
 |---|---|
 | `plantilla_campo.csv` | Solo la cabecera. Copiarla y rellenarla con las lecturas del nodo. |
-| `ejemplo_campo.csv` | 30 h × 4 estaciones con valores constantes. Sirve para probar el flujo (`train_stgnn.py --csv ...`) sin esperar una campaña. **No es una medición real.** |
+| `ejemplo_campo.csv` | 200 h × 4 estaciones con valores constantes. **No es una medición real.** Sirve para probar el flujo de extremo a extremo (`train_stgnn.py --csv ...`); al ser constante, la persistencia le gana al modelo, lo cual es esperable. |
 
 ## Reglas del CSV (no negociables)
 
