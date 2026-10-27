@@ -20,6 +20,8 @@ La fuente de verdad es `docs/Plantilla Plan Tesis Continental Sistemas_RONY.docx
 - `backend/` — Java 21 / Spring Boot 3.2; API REST con JWT, PostgreSQL 16 + Flyway, Neo4j AuraDB y **API JSON del panel**. Sirve el build de React desde el mismo JAR.
 - `frontend/` — React 19 + TypeScript + Vite; SPA del panel (acceso, tablero, métricas, mapa, historial y alertas). El build se copia a `backend/src/main/resources/static/panel`.
 - `ia-model/` — Python 3.12 / PyTorch Geometric; modelo ST-GNN sobre el grafo de estaciones de la laguna (adyacencia gaussiana + MST/KNN); se evalúa con R², RMSE y MAE.
+- `ia-model/datos/` — plantilla y ejemplo del CSV de campo; `CAMPO.md` con el
+  plan de muestreo, calibración de sensores y flujo de entrenamiento.
 - `android-app/` — Kotlin / Jetpack Compose (MVVM); login con JWT, tablero, estaciones, alertas y mapa (Canvas con GeoJSON embebido). Usa la API pública `/api/v1`, no `/panel/api/**`. FCM todavía no está integrado.
 
 Metodología: Scrum (sprints de 2 semanas) para el software; CRISP-DM para el modelo.

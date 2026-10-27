@@ -66,6 +66,7 @@ identificadores técnicos van en inglés.
 | [26 · Limitaciones](26-limitaciones.md) | Lo que el sistema **no** demuestra |
 | [27 · Glosario](27-glosario.md) | Términos técnicos y ambientales |
 | [28 · Registro de evidencias](28-registro-de-evidencias.md) | Comandos, resultados y lo no ejecutado |
+| [29 · Plan de datos de campo](29-plan-de-campo.md) | Plantilla CSV, plan de muestreo, calibración y flujo de entrenamiento |
 
 ### Decisiones de arquitectura (ADR)
 
