@@ -16,6 +16,11 @@ monitoreo de la Laguna de Paca desde un teléfono o emulador Android.
   (`assets/geo/laguna-paca.json`, el mismo GeoJSON del panel), marcas de `N1`…`N4`
   con el color del **veredicto persistido** y leyenda por estación.
   Dibujado con `Canvas` de Compose: sin Google Maps, sin teselas y sin red.
+- Pestaña **Predicciones**: elige 1, 3 o 6 h y genera una predicción de pH para
+  las cuatro estaciones (POST /api/v1/predictions). Consulta las últimas con el
+  botón Actualizar y muestra el estado pendiente/evaluado, el instante objetivo
+  y el valor observado cuando ya se evaluó. La app no inventa nada: todo viene
+  del backend.
 - La app **no recalcula el pH**: muestra el campo `alert` persistido.
 
 ## Requisitos
@@ -63,8 +68,8 @@ El job `android` de `.github/workflows/ci.yml` usa **Temurin 17** (incluye
 pruebas y el APK debug como artefactos. Se ejecuta en cada push a `main` y en
 cada pull request. Verificado en el run
 [`39881860494`](https://github.com/46855344-ux/tesis-laguna-paca/actions/runs/39881860494):
-tests y APK generados correctamente. La verificación local del **25/10/2026**
-(agregado el mapa) dio **10 tests** en verde y APK debug de 9.7 MB.
+14 tests y APK generados correctamente. La verificación local del **26/10/2026**
+(agregadas las predicciones) dio **14 tests** en verde y APK debug de 9.7 MB.
 
 ## Conexión
 
@@ -105,10 +110,11 @@ app/src/main/java/pe/edu/continental/lagunapaca/mobile/
 │   ├── Models.kt           # muestra, estación y resumen
 │   ├── DashboardMapper.kt  # agrupación y ventana de 24 h
 │   ├── LagunaMapa.kt       # GeoJSON embebido + proyección cos(latitud)
+│   ├── PredictionMapper.kt # parseo de /api/v1/predictions
 │   └── LagunaApi.kt        # HTTP + JSON con HttpURLConnection
 └── ui/
-    ├── MainViewModel.kt    # estado, login y carga
-    ├── LagunaPacaApp.kt    # pantallas Compose (tablero, alertas, mapa)
+    ├── MainViewModel.kt    # estado, login, tablero, alertas, mapa y predicciones
+    ├── LagunaPacaApp.kt    # pantallas Compose (tablero, alertas, mapa, predicciones)
     └── theme/Theme.kt      # paleta Material 3
 
 app/src/main/assets/geo/laguna-paca.json   # contorno real (copia del panel)

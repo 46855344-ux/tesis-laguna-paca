@@ -71,6 +71,39 @@ class LagunaApi {
         }
     }
 
+    /**
+     * Genera predicciones para las cuatro estaciones (una fila por nodo).
+     * Solo los horizontes entrenados (1, 3 y 6 h) pasan; un 409, 502 o 503
+     * llega como ApiException con el mensaje del backend.
+     */
+    suspend fun generarPredicciones(
+        baseUrl: String,
+        token: String,
+        horizonHours: Int
+    ): List<PhPrediction> {
+        val body = JSONObject().put("horizon_hours", horizonHours).toString()
+        val text = request(
+            url = URL("${baseUrl.trimEnd('/')}/api/v1/predictions"),
+            method = "POST",
+            token = token,
+            body = body
+        )
+        return PredictionMapper.desdeJson(text)
+    }
+
+    /** Últimas predicciones según el backend, sin paginar (hasta 12). */
+    suspend fun prediccionesRecientes(
+        baseUrl: String,
+        token: String
+    ): List<PhPrediction> {
+        val text = request(
+            url = URL("${baseUrl.trimEnd('/')}/api/v1/predictions/latest"),
+            method = "GET",
+            token = token
+        )
+        return PredictionMapper.desdeJson(text)
+    }
+
     private fun parseSample(json: JSONObject): WaterSample? {
         val nodeId = json.optString("node_id")
         val recordedAt = json.optString("recorded_at")

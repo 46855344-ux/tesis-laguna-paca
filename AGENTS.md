@@ -8,7 +8,7 @@ Repositorio de tesis: **"Sistema de software e IoT con Redes Neuronales de Grafo
 - `frontend/` es una **SPA React 19 + TypeScript + Vite** (React Router): acceso, tablero, métricas, mapa, historial, alertas y predicciones. **17 tests** con Vitest + Testing Library. El build se escribe en `backend/src/main/resources/static/panel`.
 - `iot-firmware/` tiene el **núcleo portable** del nodo ESP32, transporte HTTP y MQTT QoS 1, Deep Sleep y `sample_id`; **38 tests nativos** y ambas variantes compilan.
 - `ia-model/` está **completo de extremo a extremo**: estaciones, grafo, ventanas, modelo ST-GNN (TCN + GCN + Attention), dataset sintético, normalización, entrenamiento, **carga de CSV de campo**, **artefacto versionado** (`artifacts/stgnn.pt`) y **servicio FastAPI** (`serve.py`). **172 tests con pytest.** El criterio de la tesis se cumple con datos sintéticos (`R² = 0.9289` a 6 h, contra `0.7403` de persistencia).
-- `android-app/` es un **MVP** en Kotlin + Jetpack Compose + Material 3: login con JWT, tablero de 24 h con las cuatro estaciones, pantalla de alertas y **mapa con el contorno real de la laguna sin Google Maps**. **10 tests unitarios**; se probó en el emulador `Pixel_9`. FCM y persistencia del token quedan pendientes. Total del proyecto: **382 tests**.
+- `android-app/` es un **MVP** en Kotlin + Jetpack Compose + Material 3: login con JWT, tablero de 24 h con las cuatro estaciones, pantalla de alertas, **mapa con el contorno real de la laguna sin Google Maps** y **pantalla de predicciones** del ST-GNN (1, 3 y 6 h). **14 tests unitarios**; se probó en el emulador `Pixel_9`. FCM y persistencia del token quedan pendientes. Total del proyecto: **386 tests**.
 - `docs/SDD/` es la documentación de diseño (versionada; índice en `docs/SDD/README.md`). El resto de `docs/` es material de referencia y **no se versiona**.
 - La **CI se ejecutó en GitHub Actions** el 22/10/2026 (run `39881860494`, commit `06acb41`): 7 jobs en `success`, con backend, frontend, Android, PostgreSQL, IA y firmware. SonarQube se omitió por falta de secretos. Docker/Compose y SonarQube siguen **configurados pero no ejecutados localmente** (no hay motor Docker ni servidor Sonar). `docker compose config` sí se validó y las migraciones V1–V5 se ejecutaron tanto en PostgreSQL 16.9 embebido como en el servicio `postgres:16-alpine` del CI.
 
@@ -387,7 +387,8 @@ Estructura y decisiones:
 - `data/DashboardMapper.kt` — agrupa por `node_id`, conserva `N1`…`N4`, filtra la ventana
   de 24 h y calcula el cumplimiento. **No aplica la regla ECA-Agua**: usa `alert`.
 - `data/LagunaApi.kt` — `HttpURLConnection` + `org.json`, sin Retrofit ni Gson. Login contra
-  `POST /api/v1/auth/token`; telemetría contra `GET /api/v1/telemetry`. Un 401 se propaga
+  `POST /api/v1/auth/token`; telemetría contra `GET /api/v1/telemetry` y predicciones
+  contra `POST /api/v1/predictions` y `GET /api/v1/predictions/latest`. Un 401 se propaga
   como `ApiException` y el ViewModel cierra la sesión.
 - `data/LagunaMapa.kt` — mapa del tablero móvil: lee el GeoJSON **embebido** en
   `app/src/main/assets/geo/laguna-paca.json` (copia del que sirve el panel; la fuente de
@@ -395,15 +396,20 @@ Estructura y decisiones:
   proyecta a coordenadas normalizadas `[0, 1]`. Proyección equirectangular **corregida por
   cos(latitud en grados)**, caja que incluye el contorno y las estaciones, norte arriba.
   Parser y proyección son Kotlin puro sin Android para poder testearlos.
-- `ui/MainViewModel.kt` — estado único (`AppState`), login, tablero, alertas, mapa y errores.
-  El JWT vive **solo en memoria**; no se guarda la contraseña ni el token. Para el mapa, la
-  UI inyecta la lambda que lee assets (`prepararMapa { ... }`) y el ViewModel solo parsea,
-  proyecta y guarda: el ViewModel sigue sin tocar `Context`.
-- `ui/LagunaPacaApp.kt` — pantallas Compose: acceso, tablero, alertas y mapa. Texto visible en
-  español; las cifras usan punto decimal para no depender del ICU del dispositivo.
-  El mapa se dibuja con `Canvas` (contorno relleno con la primaria translúcida, marcas según
-  el **veredicto persistido** `alert`, leyenda por estación), con `aspectRatio` del GeoJSON y
-  `contentDescription` accesible. **Sin teselas ni Google Maps**: no pide nada a la red.
+- `data/PredictionMapper.kt` — parseo puro de las respuestas de `/api/v1/predictions`:
+  lote de predicciones (una fila por estación), estado `PENDING`/`EVALUATED`,
+  instantes `generated_at`/`target_at`/`evaluated_at` y valores nulos.
+- `ui/MainViewModel.kt` — estado único (`AppState`), login, tablero, alertas, mapa,
+  predicciones y errores. El JWT vive **solo en memoria**; no se guarda la contraseña ni
+  el token. Para el mapa, la UI inyecta la lambda que lee assets
+  (`prepararMapa { ... }`) y el ViewModel solo parsea, proyecta y guarda: el ViewModel
+  sigue sin tocar `Context`. Los horizontes válidos son 1, 3 y 6 h.
+- `ui/LagunaPacaApp.kt` — pantallas Compose: acceso, tablero, alertas, mapa y
+  predicciones. Texto visible en español; las cifras usan punto decimal para no depender
+  del ICU del dispositivo. El mapa se dibuja con `Canvas` (contorno relleno con la
+  primaria translúcida, marcas según el **veredicto persistido** `alert`, leyenda por
+  estación), con `aspectRatio` del GeoJSON y `contentDescription` accesible. **Sin
+  teselas ni Google Maps**: no pide nada a la red.
 - `ui/theme/Theme.kt` — Material 3 claro/oscuro con la paleta del panel.
 - **Conexión**: el emulador llega a la PC con `10.0.2.2`; la URL es editable para un
   teléfono físico (`http://<IP-PC>:8080`).
@@ -417,12 +423,14 @@ Estructura y decisiones:
   package/SHA-1.
 - **org.json en tests**: el `android.jar` de las pruebas JVM trae stubs que lanzan
   `RuntimeException`; `org.json:json` real se declara en `testImplementation` y no entra al APK.
-- **10 tests unitarios**: 3 de `DashboardMapper` (ventana, estaciones, cumplimiento), 3 de
-  normalización de URL y 4 de `LagunaMapa` (parseo GeoJSON con pares `[lon, lat]` del
-  contorno y campos separados de estación, todo dentro del cuadro, norte arriba del sur y
-  corrección `cos(latitud)` del eje este-oeste). No hay tests instrumentados ni E2E de UI.
-  Verificación local del 25/10/2026: `testDebugUnitTest` y `assembleDebug` en verde (10
-  tests, APK de 9.7 MB); pendiente re-confirmar en el CI.
+- **14 tests unitarios**: 3 de `DashboardMapper` (ventana, estaciones, cumplimiento),
+  3 de normalización de URL, 4 de `LagunaMapa` (parseo GeoJSON con pares `[lon, lat]`
+  del contorno y campos separados de estación, todo dentro del cuadro, norte arriba del
+  sur y corrección `cos(latitud)` del eje este-oeste) y 4 de `PredictionMapper`
+  (lote de predicciones, estado PENDING/EVALUATED, omisión de filas incompletas y
+  estado desconocido). No hay tests instrumentados ni E2E de UI.
+  Verificación local del 26/10/2026: `testDebugUnitTest` y `assembleDebug` en verde
+  (14 tests, APK de 9.7 MB); pendiente re-confirmar en el CI.
 - El job `android` del CI usa Temurin 17 (con `jlink`), ejecuta `testDebugUnitTest` y
   `assembleDebug`, y publica el reporte y el APK como artefactos.
 - Se verificó en el emulador `Pixel_9` (API 37) contra el perfil `demo`: login, tablero con

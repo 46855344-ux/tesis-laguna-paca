@@ -135,10 +135,11 @@ no abre el panel, y hay un test que lo fija».
 
 **App Android (opcional, 2 min).** Con el emulador y el backend demo arrancados,
 abrir `android-app`, ejecutar `.\gradlew.bat installDebug` e iniciar sesión con
-`10.0.2.2:8080`. Mostrar el tablero, la pestaña de alertas y la pestaña **Mapa**
-(contorno embebido, sin Google). Aclarar que FCM **no** está integrado. Si se
-pregunta por la CI, el job `android` corre los tests y genera el APK en GitHub
-Actions (última ejecución con evidencia: run `39881860494`).
+`10.0.2.2:8080`. Mostrar el tablero, la pestaña de alertas, la pestaña **Mapa**
+(contorno embebido, sin Google) y la pestaña **Predicciones** (elegir 6 h y
+pulsar Generar; la IA responde 4 filas, una por estación). Aclarar que FCM
+**no** está integrado. Si se pregunta por la CI, el job `android` corre los
+tests y genera el APK en GitHub Actions.
 
 ## 22.9 Preguntas previsibles
 

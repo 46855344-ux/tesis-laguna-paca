@@ -16,6 +16,7 @@ import pe.edu.continental.lagunapaca.mobile.data.DashboardSummary
 import pe.edu.continental.lagunapaca.mobile.data.LagunaApi
 import pe.edu.continental.lagunapaca.mobile.data.LagunaMapa
 import pe.edu.continental.lagunapaca.mobile.data.LagunaMapaPintado
+import pe.edu.continental.lagunapaca.mobile.data.PhPrediction
 import pe.edu.continental.lagunapaca.mobile.data.WaterSample
 import pe.edu.continental.lagunapaca.mobile.data.proyectar
 import java.io.IOException
@@ -28,7 +29,8 @@ import java.time.temporal.ChronoUnit
 enum class MobileScreen {
     TABLERO,
     ALERTAS,
-    MAPA
+    MAPA,
+    PREDICCIONES
 }
 
 data class DashboardState(
@@ -53,6 +55,18 @@ data class MapaEstado(
     val lastUpdated: Instant? = null
 )
 
+/** Horizontes que el artefacto actual tiene entrenados; otro valor responde 400. */
+val horizontesValidos = listOf(1, 3, 6)
+
+data class PrediccionesEstado(
+    val isLoading: Boolean = false,
+    val items: List<PhPrediction> = emptyList(),
+    /** Horizonte elegido para la próxima generación (por defecto 6 h). */
+    val horizonteHoras: Int = 6,
+    val error: String? = null,
+    val lastUpdated: Instant? = null
+)
+
 data class AppState(
     val baseUrl: String = BuildConfig.DEFAULT_API_URL,
     val username: String = "",
@@ -63,7 +77,8 @@ data class AppState(
     val screen: MobileScreen = MobileScreen.TABLERO,
     val dashboard: DashboardState = DashboardState(),
     val alerts: AlertsState = AlertsState(),
-    val mapa: MapaEstado = MapaEstado()
+    val mapa: MapaEstado = MapaEstado(),
+    val predicciones: PrediccionesEstado = PrediccionesEstado()
 ) {
     val isAuthenticated: Boolean get() = session != null
 }
@@ -130,7 +145,8 @@ class MainViewModel(
                         password = "",
                         screen = MobileScreen.TABLERO,
                         dashboard = DashboardState(isLoading = true),
-                        alerts = AlertsState()
+                        alerts = AlertsState(),
+                        predicciones = PrediccionesEstado()
                     )
                 }
                 cargarTablero()
@@ -256,12 +272,95 @@ class MainViewModel(
         }
     }
 
+    /** Cambia el horizonte de la próxima generación; no consulta nada. */
+    fun seleccionarHorizonte(horas: Int) {
+        if (horas !in horizontesValidos) return
+        _state.update {
+            it.copy(predicciones = it.predicciones.copy(horizonteHoras = horas))
+        }
+    }
+
+    /** Consulta GET /api/v1/predictions/latest; no inventa filas si no las hay. */
+    fun cargarPredicciones() {
+        val actual = _state.value
+        val sesion = actual.session ?: return
+        if (actual.predicciones.isLoading) return
+
+        viewModelScope.launch {
+            _state.update {
+                it.copy(predicciones = it.predicciones.copy(isLoading = true, error = null))
+            }
+            try {
+                val filas = api.prediccionesRecientes(
+                    baseUrl = actual.baseUrl,
+                    token = sesion.token
+                )
+                _state.update {
+                    it.copy(
+                        predicciones = PrediccionesEstado(
+                            isLoading = false,
+                            items = filas,
+                            horizonteHoras = filas.firstOrNull()?.horizonHours
+                                ?: it.predicciones.horizonteHoras,
+                            error = null,
+                            lastUpdated = Instant.now()
+                        )
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                manejarError(e, destino = MobileScreen.PREDICCIONES)
+            }
+        }
+    }
+
+    /**
+     * Genera una predicción nueva para las cuatro estaciones. El resultado
+     * del POST reemplaza la lista: son las cuatro filas del lote recién
+     * creado, con el mismo model_run_id.
+     */
+    fun generarPredicciones() {
+        val actual = _state.value
+        val sesion = actual.session ?: return
+        if (actual.predicciones.isLoading) return
+
+        viewModelScope.launch {
+            _state.update {
+                it.copy(predicciones = it.predicciones.copy(isLoading = true, error = null))
+            }
+            try {
+                val filas = api.generarPredicciones(
+                    baseUrl = actual.baseUrl,
+                    token = sesion.token,
+                    horizonHours = actual.predicciones.horizonteHoras
+                )
+                _state.update {
+                    it.copy(
+                        predicciones = PrediccionesEstado(
+                            isLoading = false,
+                            items = filas,
+                            horizonteHoras = it.predicciones.horizonteHoras,
+                            error = null,
+                            lastUpdated = Instant.now()
+                        )
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                manejarError(e, destino = MobileScreen.PREDICCIONES)
+            }
+        }
+    }
+
     fun seleccionarPantalla(pantalla: MobileScreen) {
         _state.update { it.copy(screen = pantalla) }
         when (pantalla) {
             MobileScreen.TABLERO -> if (_state.value.dashboard.summary == null) cargarTablero()
             MobileScreen.ALERTAS -> cargarAlertas()
             MobileScreen.MAPA -> if (_state.value.dashboard.summary == null) cargarTablero()
+            MobileScreen.PREDICCIONES -> cargarPredicciones()
         }
     }
 
@@ -270,6 +369,7 @@ class MainViewModel(
             MobileScreen.TABLERO -> cargarTablero()
             MobileScreen.ALERTAS -> cargarAlertas()
             MobileScreen.MAPA -> cargarMapa()
+            MobileScreen.PREDICCIONES -> cargarPredicciones()
         }
     }
 
@@ -282,6 +382,7 @@ class MainViewModel(
                 dashboard = DashboardState(),
                 alerts = AlertsState(),
                 mapa = MapaEstado(),
+                predicciones = PrediccionesEstado(),
                 loginError = null
             )
         }
@@ -297,6 +398,7 @@ class MainViewModel(
                     screen = MobileScreen.TABLERO,
                     dashboard = DashboardState(),
                     alerts = AlertsState(),
+                    predicciones = PrediccionesEstado(),
                     loginError = "La sesión venció. Vuelve a iniciar sesión."
                 )
             }
@@ -315,6 +417,9 @@ class MainViewModel(
                 MobileScreen.MAPA -> it.copy(
                     mapa = it.mapa.copy(isLoading = false, error = mensaje)
                 )
+                MobileScreen.PREDICCIONES -> it.copy(
+                    predicciones = it.predicciones.copy(isLoading = false, error = mensaje)
+                )
             }
         }
     }
@@ -324,12 +429,17 @@ class MainViewModel(
         else -> mensajeAmigable(e)
     }
 
-    private fun mensajeAmigable(e: Exception): String = when (e) {
-        is ApiException -> e.message
-        is IOException -> "No se pudo leer el mapa embebido."
-        is UnknownHostException -> "No se encontró el servidor. Revisa la dirección y la conexión."
-        is ConnectException -> "No se pudo conectar con el backend. ¿Está arrancado?"
-        is SocketTimeoutException -> "El backend tardó demasiado en responder."
+    // Los subtipos de IOException van primero: si no, el genérico
+    // los taparía (UnknownHostException también es IOException).
+    private fun mensajeAmigable(e: Exception): String = when {
+        e is ApiException -> e.message
+        e is UnknownHostException ->
+            "No se encontró el servidor. Revisa la dirección y la conexión."
+        e is ConnectException ->
+            "No se pudo conectar con el backend. ¿Está arrancado?"
+        e is SocketTimeoutException ->
+            "El backend tardó demasiado en responder."
+        e is IOException -> "Problema de red inesperado. Revisa la conexión."
         else -> e.message ?: "Ocurrió un error inesperado."
     }
 }

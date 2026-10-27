@@ -62,3 +62,28 @@ data class DashboardSummary(
             ((samplesInWindow - alertsInWindow) * 100.0 / samplesInWindow).toInt()
         }
 }
+
+/** Estado persistido de la predicción; la app no la evalúa por su cuenta. */
+enum class PredictionStatus(val label: String) {
+    PENDING("Pendiente"),
+    EVALUATED("Evaluada")
+}
+
+/** Predicción de pH tal como la publica la API /api/v1/predictions. */
+data class PhPrediction(
+    val id: Long,
+    val modelRunId: String,
+    val nodeId: String,
+    val variable: String,
+    val horizonHours: Int,
+    val generatedAt: Instant,
+    val targetAt: Instant,
+    val predictedValue: Double,
+    val modelVersion: String,
+    val dataSource: String,
+    val status: PredictionStatus,
+    val observedValue: Double?,
+    /** predicted_value - observed_value en unidades de pH; solo si ya evaluó. */
+    val errorDiff: Double?,
+    val evaluatedAt: Instant?
+)

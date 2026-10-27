@@ -18,6 +18,7 @@ planificó.
 | S8 | Documentación y defensa | `docs/SDD`, README, guion de demo | Documento completo y reproducible; limitaciones declaradas en 26 y 28.4 | Hecho |
 | S9 | App Android MVP | Login JWT, tablero de 24 h, estaciones, alertas y tema Material 3 | 6 tests unitarios y flujo verificado en emulador | Hecho |
 | S10 | Mapa Android sin Google | Pestaña Mapa con contorno GeoJSON embebido, proyección cos(latitud) y leyenda | `LagunaMapaTest` (4 tests) + build verde + verificado en emulador; CI pendiente | Hecho (25/10/2026) |
+| S11 | Predicciones en Android | Pestaña Predicciones: 1/3/6 h, POST /api/v1/predictions, consulta latest, estado PENDING/EVALUATED | `PredictionMapperTest` (4 tests) + 14 tests + APK en verde | Hecho (26/10/2026) |
 
 ## 19.1 Historias representativas
 

@@ -30,6 +30,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -62,6 +63,8 @@ import pe.edu.continental.lagunapaca.mobile.BuildConfig
 import pe.edu.continental.lagunapaca.mobile.data.AlertReason
 import pe.edu.continental.lagunapaca.mobile.data.DashboardSummary
 import pe.edu.continental.lagunapaca.mobile.data.LagunaMapaPintado
+import pe.edu.continental.lagunapaca.mobile.data.PhPrediction
+import pe.edu.continental.lagunapaca.mobile.data.PredictionStatus
 import pe.edu.continental.lagunapaca.mobile.data.StationStatus
 import pe.edu.continental.lagunapaca.mobile.data.StationSummary
 import pe.edu.continental.lagunapaca.mobile.data.WaterSample
@@ -279,6 +282,7 @@ private fun MainScaffold(state: AppState, viewModel: MainViewModel) {
         MobileScreen.TABLERO -> state.dashboard.isLoading
         MobileScreen.ALERTAS -> state.alerts.isLoading
         MobileScreen.MAPA -> state.mapa.isLoading
+        MobileScreen.PREDICCIONES -> state.predicciones.isLoading
     }
 
     Scaffold(
@@ -297,6 +301,7 @@ private fun MainScaffold(state: AppState, viewModel: MainViewModel) {
                                 MobileScreen.TABLERO -> "Tablero de monitoreo"
                                 MobileScreen.ALERTAS -> "Alertas ECA-Agua"
                                 MobileScreen.MAPA -> "Mapa de la laguna"
+                                MobileScreen.PREDICCIONES -> "Predicciones del ST-GNN"
                             },
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -327,6 +332,7 @@ private fun MainScaffold(state: AppState, viewModel: MainViewModel) {
                     MobileScreen.TABLERO -> 0
                     MobileScreen.ALERTAS -> 1
                     MobileScreen.MAPA -> 2
+                    MobileScreen.PREDICCIONES -> 3
                 }
             ) {
                 Tab(
@@ -343,6 +349,11 @@ private fun MainScaffold(state: AppState, viewModel: MainViewModel) {
                     selected = state.screen == MobileScreen.MAPA,
                     onClick = { viewModel.seleccionarPantalla(MobileScreen.MAPA) },
                     text = { Text("Mapa") }
+                )
+                Tab(
+                    selected = state.screen == MobileScreen.PREDICCIONES,
+                    onClick = { viewModel.seleccionarPantalla(MobileScreen.PREDICCIONES) },
+                    text = { Text("Predicciones") }
                 )
             }
 
@@ -365,6 +376,12 @@ private fun MainScaffold(state: AppState, viewModel: MainViewModel) {
                         }
                     )
                 }
+                MobileScreen.PREDICCIONES -> PrediccionesScreen(
+                    state = state,
+                    onRetry = viewModel::cargarPredicciones,
+                    onGenerar = viewModel::generarPredicciones,
+                    onHorizonte = viewModel::seleccionarHorizonte
+                )
             }
         }
     }
@@ -843,6 +860,204 @@ private fun LeyendaDeEstaciones(
 private fun estadosPorNodo(summary: DashboardSummary?): Map<String, StationStatus> =
     summary?.stations?.associate { estacion -> estacion.nodeId to estacion.status }
         ?: emptyMap()
+
+@Composable
+private fun PrediccionesScreen(
+    state: AppState,
+    onRetry: () -> Unit,
+    onGenerar: () -> Unit,
+    onHorizonte: (Int) -> Unit
+) {
+    val predicciones = state.predicciones
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Bottom
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = "Predicciones de pH",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "Modelo ST-GNN · 4 estaciones por lote",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                predicciones.lastUpdated?.let { instante ->
+                    Text(
+                        text = "Actualizado ${formatoHora.format(instante)}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
+        item {
+            Card(shape = RoundedCornerShape(16.dp)) {
+                Column(Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Generar una predicción",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "El backend llama a la IA y guarda una fila por estación; " +
+                            "se evalúa sola cuando llega la muestra real.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        horizontesValidos.forEach { horas ->
+                            FilterChip(
+                                selected = predicciones.horizonteHoras == horas,
+                                onClick = { onHorizonte(horas) },
+                                enabled = !predicciones.isLoading,
+                                label = { Text("$horas h") }
+                            )
+                        }
+                        Spacer(Modifier.weight(1f))
+                        Button(
+                            onClick = onGenerar,
+                            enabled = !predicciones.isLoading,
+                            modifier = Modifier.widthIn(min = 128.dp)
+                        ) {
+                            Text("Generar")
+                        }
+                    }
+                }
+            }
+        }
+
+        predicciones.error?.let { error ->
+            item { ErrorBanner(message = error, onRetry = onRetry) }
+        }
+
+        if (predicciones.isLoading && predicciones.items.isEmpty()) {
+            item { LoadingCard() }
+        }
+
+        if (!predicciones.isLoading && predicciones.error == null && predicciones.items.isEmpty()) {
+            item {
+                EmptyCard(
+                    title = "Sin predicciones",
+                    message = "Elige 1, 3 o 6 h y pulsa Generar. También puedes " +
+                        "consultar las últimas con el botón Actualizar."
+                )
+            }
+        }
+
+        items(predicciones.items, key = { it.id }) { prediccion ->
+            PrediccionCard(prediccion)
+        }
+
+        item {
+            Text(
+                text = "El valor previsto lo guarda el backend en la tabla prediction; " +
+                    "la app solo lo muestra y no reescribe nada.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        item { Spacer(Modifier.height(16.dp)) }
+    }
+}
+
+@Composable
+private fun PrediccionCard(prediccion: PhPrediction) {
+    val colorEstado = colorDeEstado(prediccion.status)
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp)
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = prediccion.nodeId,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(Modifier.weight(1f))
+                Text(
+                    text = "pH ${ph(prediccion.predictedValue)} · ${prediccion.horizonHours} h",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(colorEstado.copy(alpha = 0.12f))
+                    .padding(horizontal = 10.dp, vertical = 5.dp)
+            ) {
+                Text(
+                    text = prediccion.status.label,
+                    color = colorEstado,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "Objetivo: ${formatoFecha.format(prediccion.targetAt)} " +
+                    "(${hace(prediccion.targetAt)})",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            if (prediccion.status == PredictionStatus.EVALUATED) {
+                Text(
+                    text = "Observado: pH ${prediccion.observedValue?.let(::ph) ?: "—"}" +
+                        (prediccion.errorDiff?.let { desviacion -> " · desviación ${ph(desviacion)}" } ?: ""),
+                    style = MaterialTheme.typography.bodySmall
+                )
+            } else {
+                Text(
+                    text = "Se evaluará cuando llegue una muestra real dentro de 30 min " +
+                        "del instante objetivo.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = "Lote ${prediccion.modelRunId.take(8)} · " +
+                    "${origenDeDatos(prediccion.dataSource)} · ${prediccion.modelVersion}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+/** Color del estado: lo decide el backend, la app solo lo traduce a color. */
+@Composable
+private fun colorDeEstado(status: PredictionStatus): Color = when (status) {
+    PredictionStatus.PENDING -> MaterialTheme.colorScheme.primary
+    PredictionStatus.EVALUATED -> MaterialTheme.colorScheme.secondary
+}
+
+/** Traduce el origen de datos del modelo; no inventa valores. */
+private fun origenDeDatos(dataSource: String): String = when (dataSource) {
+    "synthetic" -> "entrenado con datos sintéticos"
+    "field" -> "entrenado con datos de campo"
+    else -> "origen $dataSource"
+}
 
 @Composable
 private fun AlertsScreen(state: AppState, onRetry: () -> Unit) {

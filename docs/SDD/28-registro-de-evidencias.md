@@ -461,3 +461,32 @@ cuatro estaciones tenían «Alerta ECA-Agua» persistida — más la leyenda por
 estación. Nota del entorno: el emulador arrancó con un ANR de `System UI`
 propio de esta máquina (render por software); tocar «Wait» bastó y la app
 funcionó con normalidad.
+
+## 28.13 Predicciones en la app Android (26/10/2026)
+
+Se agregó la pestaña **Predicciones** a la app Android: elige 1, 3 o 6 h,
+genera predicciones de pH para las cuatro estaciones (POST
+`/api/v1/predictions`) y consulta las últimas (GET
+`/api/v1/predictions/latest`). Muestra estado pendiente/evaluado, instante
+objetivo y el valor observado cuando la predicción ya se evaluó. La app no
+inventa nada: todo viene del backend.
+
+```powershell
+cd android-app
+$env:JAVA_HOME="C:\Users\USER\.jdks\jbr-17.0.14"
+.\gradlew.bat testDebugUnitTest     # VERDE: 14 tests (10 previos + 4 de PredictionMapper)
+.\gradlew.bat assembleDebug         # VERDE: APK debug de 9.7 MB
+```
+
+Añadidos: `data/PredictionMapper.kt` (parseo puro, Kotlin sin Android), 4 tests
+(`PredictionMapperTest`), pestaña y composables de predicciones en `ui/`, y
+`generarPredicciones`/`cargarPredicciones` en el ViewModel. La API expone
+`generarPredicciones` y `prediccionesRecientes`; el POST devuelve 4 filas con el
+mismo `model_run_id`.
+
+Lo que **no** se ejecutó en esta entrada:
+
+- Verificación en el emulador de la pantalla de predicciones (código en verde
+  con tests y build; queda por ver en el `Pixel_9` y re-confirmar en el job
+  `android` del CI).
+- FCM: sigue sin `google-services.json` ni credenciales.
