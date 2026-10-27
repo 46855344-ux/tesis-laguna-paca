@@ -487,6 +487,6 @@ mismo `model_run_id`.
 Lo que **no** se ejecutó en esta entrada:
 
 - Verificación en el emulador de la pantalla de predicciones (código en verde
-  con tests y build; queda por ver en el `Pixel_9` y re-confirmar en el job
-  `android` del CI).
+  con tests y build; queda por ver en el `Pixel_9`). La CI confirmó el build
+  en el run `40435128393` (8º run, 7 jobs en `success`, incluido `App Android`).
 - FCM: sigue sin `google-services.json` ni credenciales.
