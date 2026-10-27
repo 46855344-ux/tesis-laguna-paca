@@ -39,7 +39,7 @@ cd ia-model
 .venv\Scripts\python.exe -m pytest -q
 ```
 
-**Qué decir:** «378 pruebas automatizadas; el backend tiene 91.7 % de cobertura
+**Qué decir:** «386 pruebas automatizadas; el backend tiene 91.7 % de cobertura
 de instrucciones».
 
 ## 22.3 Paso 2 · El modelo (2 min)
@@ -129,7 +129,7 @@ no abre el panel, y hay un test que lo fija».
 - `ia-model/lagunapaca_gnn/model.py` — TCN + GCN + atención.
 - `frontend/src/` — SPA React y cliente CSRF; el build está en
   `backend/src/main/resources/static/panel`.
-- `android-app/` — MVP Kotlin + Compose: login JWT, tablero, alertas y mapa (10 tests).
+- `android-app/` — MVP Kotlin + Compose: login JWT, tablero, alertas, mapa y predicciones (14 tests).
 - `docs/SDD/` — esta documentación.
 - `compose.yaml`, `.github/workflows/ci.yml`.
 
@@ -152,7 +152,7 @@ tests y genera el APK en GitHub Actions.
 | ¿Qué pasa si la IA falla? | La ingesta y las alertas no dependen de ella; solo se pierde la predicción |
 | ¿Los datos son reales? | No: son sintéticos y el sistema lo declara en la tabla, la API y el panel |
 | ¿La predicción cambia la alerta? | No: el veredicto es de la medición; la predicción es otra dimensión |
-| ¿Qué falta? | Datos de campo, coordenadas medidas, TLS, Docker/Sonar ejecutados, FCM y mapa Android |
+| ¿Qué falta? | Datos de campo, coordenadas medidas, TLS, Docker/Sonar ejecutados, FCM y mapa interactivo Android |
 
 ## 22.10 Tiempo total
 

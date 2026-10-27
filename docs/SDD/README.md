@@ -92,7 +92,7 @@ identificadores técnicos van en inglés.
 | Firmware | 38 | Verde |
 | IA | 172 | Verde |
 | Android | 6 | Verde |
-| **Total** | **378** | |
+| **Total** | **386** | |
 
 Cobertura del backend: 91.7 % de instrucciones, 68.8 % de ramas. Criterio de la
 tesis: `R² = 0.9289` a 6 h con datos sintéticos (persistencia: 0.7403).

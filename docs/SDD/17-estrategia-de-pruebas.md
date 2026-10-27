@@ -18,7 +18,7 @@ La pirámide es deliberadamente ancha en la base:
 - **Nativas**: el núcleo del firmware en el host, con dobles de sensores.
 - **Unitarias JVM**: resumen del tablero y normalización de URL en Android.
 
-## 17.2 Totales verificados (22/10/2026)
+## 17.2 Totales verificados (26/10/2026)
 
 | Suite | Comando | Tests | Estado |
 |---|---|---|---|
@@ -26,8 +26,8 @@ La pirámide es deliberadamente ancha en la base:
 | Frontend | `npm test` | **17** | Verde |
 | Firmware | `pio test -e native` | **38** | Verde |
 | IA | `python -m pytest` | **172** | Verde |
-| Android | `gradlew.bat testDebugUnitTest` | **6** | Verde |
-| **Total** | | **378** | |
+| Android | `gradlew.bat testDebugUnitTest` | **14** | Verde |
+| **Total** | | **386** | |
 
 Cobertura del backend (JaCoCo): **91.7 %** de instrucciones (5491/5989) y
 **68.8 %** de ramas (265/385). Se reporta como indicador, no como meta: la
@@ -35,7 +35,7 @@ cobertura sola no dice si una prueba comprueba lo correcto.
 
 Además, `PostgresMigrationIT` (1 test) valida las migraciones contra PostgreSQL
 real y **no** corre en `mvn test`: lo ejecuta el job `backend-postgres` del CI
-con `postgres:16-alpine`. Con él, el total sería **379**.
+con `postgres:16-alpine`. Con él, el total sería **387**.
 
 ## 17.3 Backend: 145 tests
 

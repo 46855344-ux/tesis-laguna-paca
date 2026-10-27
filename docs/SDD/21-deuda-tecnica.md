@@ -22,7 +22,7 @@ entrega.
 | DT-15 | Sin OTA en el firmware | Actualización manual | Baja | Cambia particiones |
 | DT-16 | Sin CSP ni cabeceras de seguridad | Defensa en profundidad | Baja | No hay despliegue público |
 | DT-17 | `LIKE` del historial no escapa `%`/`_` | Búsqueda con comodines | Baja | No es inyección SQL; es UX |
-| DT-18 | Android MVP sin FCM, mapa ni persistencia de sesión | Funcionalidad móvil parcial | Media | Se priorizó login, tablero y alertas; faltan credenciales y decisiones de producto |
+| DT-18 | Android MVP sin FCM ni persistencia de sesión | Funcionalidad móvil parcial | Media | Login, tablero, alertas, mapa y predicciones listos; falta FCM, mapa interactivo y credenciales |
 | DT-19 | `requirements.txt` incluye pytest/httpx en la imagen | Imagen algo más grande | Baja | Simplicidad; PyTorch domina el tamaño |
 | DT-20 | Sin SBOM ni firma de imágenes | Cadena de suministro | Baja | Etapa académica |
 | DT-21 | Sin pruebas E2E de navegador | Refresco de 20 s, cajón móvil y Google Maps solo se validan a mano | Media | Se priorizó Vitest + Testing Library; no hay navegador en CI |

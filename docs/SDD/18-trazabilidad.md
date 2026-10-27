@@ -87,8 +87,9 @@ fija. Si un requisito no tiene prueba, se dice; no se inventa cobertura.
 6. **Datos de campo**: el cargador `field_data.py` y `--csv` están probados, pero
    el modelo se entrenó con datos sintéticos porque no hay campaña de muestreo.
 7. **Coordenadas**: `PROVISIONAL_STATIONS` derivadas de OSM, no medidas.
-8. **App Android**: MVP implementado (login, tablero y alertas); FCM, mapa y
-   persistencia del token siguen pendientes.
+8. **App Android**: MVP implementado (login, tablero, alertas, mapa sin Google y
+   predicciones 1/3/6 h); FCM, mapa interactivo de Google y persistencia del token
+   siguen pendientes.
 9. **Notificaciones**: solo panel, app y API; sin push ni correo.
 10. **Métricas de latencia**: no medidas contra PostgreSQL.
 

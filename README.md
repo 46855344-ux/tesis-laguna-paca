@@ -446,8 +446,8 @@ describe ese conjunto, no la laguna en general.
 | Frontend | `npm test` (desde `frontend/`) | **17** |
 | Firmware | `pio test -e native` | **38** |
 | IA | `.venv\Scripts\python.exe -m pytest` | **172** |
-| Android | `gradlew.bat testDebugUnitTest` (desde `android-app/`) | **6** |
-| **Total** | | **378** |
+| Android | `gradlew.bat testDebugUnitTest` (desde `android-app/`) | **14** |
+| **Total** | | **386** |
 
 - Cobertura del backend (JaCoCo): **91.7 %** de instrucciones y **68.8 %** de ramas.
 - No hay Docker ni Testcontainers: la persistencia se prueba con **H2**.

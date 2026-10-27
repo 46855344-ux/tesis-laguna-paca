@@ -51,9 +51,10 @@ mediciones y de las predicciones.
 
 ## 1.5 Fuera de alcance
 
-- Notificaciones push (FCM) y mapa de Google Maps dentro de la app Android: el MVP
-  actual permite login, tablero y alertas, pero esas dos integraciones requieren
-  credenciales externas.
+- Notificaciones push (FCM) y mapa interactivo de Google Maps dentro de la app
+  Android: el MVP actual permite login, tablero, alertas, mapa con contorno
+  embebido y predicciones, pero esas dos integraciones requieren credenciales
+  externas.
 - Persistencia de la sesión y funcionamiento offline en Android: el JWT vive solo
   en memoria.
 - Analítica de otras variables distintas del pH. El modelo puede extenderse,

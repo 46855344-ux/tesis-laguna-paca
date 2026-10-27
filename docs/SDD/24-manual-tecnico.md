@@ -8,7 +8,7 @@ tesis-laguna-paca/
 ├── frontend/           React 19 + TypeScript + Vite (SPA del panel)
 ├── ia-model/           Python 3.12 + PyTorch/PyG (modelo + FastAPI)
 ├── iot-firmware/       ESP32 C++/PlatformIO
-├── android-app/        Kotlin + Jetpack Compose (MVP: login, tablero y alertas)
+├── android-app/        Kotlin + Jetpack Compose (MVP: login, tablero, alertas, mapa y predicciones)
 ├── deploy/             Configuración de Mosquitto
 ├── docs/SDD/           Esta documentación
 ├── compose.yaml        PostgreSQL + backend + IA/MQTT opcionales

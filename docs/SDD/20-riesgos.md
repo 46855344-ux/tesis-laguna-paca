@@ -15,7 +15,7 @@ Escala: probabilidad e impacto `Baja` / `Media` / `Alta`.
 | R-09 | Un solo usuario sin roles | Media | Medio | Aceptable para tesis; documentar | Medio |
 | R-10 | La migración falla en el contenedor de producción | Baja | Medio | V1–V5 ejecutadas en PostgreSQL 16.9 embebido; falta probar el contenedor | Bajo |
 | R-11 | Deriva del modelo (dataset shift) | Media | Alto | Evaluación continua con `prediction.error`; reentrenar | Alto sin campo |
-| R-12 | Alcance creciente (Android, notificaciones) | Media | Medio | MVP Android acotado; FCM/mapa declarados fuera | Bajo |
+| R-12 | Alcance creciente (Android, notificaciones) | Media | Medio | MVP Android acotado; mapa estático y predicciones entregados, FCM/mapa interactivo fuera | Bajo |
 | R-13 | Pérdida de la base de datos | Baja | Alto | `pg_dump` diario; volumen nombrado | Bajo |
 | R-14 | Broker MQTT anónimo en producción | Media | Alto | `mosquitto_passwd` + TLS | Medio hasta configurar |
 | R-15 | Saturación de la IA (CPU) | Baja | Medio | Un lock de inferencia; timeout; límites de recursos | Bajo |
