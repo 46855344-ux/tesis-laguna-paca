@@ -17,7 +17,16 @@ namespace hardware {
  */
 class HttpTelemetryTransport : public laguna::TelemetryTransport {
 public:
-    HttpTelemetryTransport(const char* baseUrl, const char* username, const char* password);
+    /**
+     * @param baseUrl URL base del backend (con o sin esquema `https://`).
+     * @param username Usuario del backend (APP_USER).
+     * @param password Contraseña del backend (APP_PASSWORD).
+     * @param caCertPem Certificado CA en PEM (texto) para validar el servidor
+     *        cuando se usa HTTPS. Si es `nullptr` o vacío y la URL es HTTPS, se
+     *        usa modo inseguro con una advertencia (solo para desarrollo).
+     */
+    HttpTelemetryTransport(const char* baseUrl, const char* username,
+                          const char* password, const char* caCertPem = nullptr);
 
     bool send(const std::string& payload) override;
 
@@ -47,6 +56,7 @@ private:
     std::string tokenUrl_;
     std::string username_;
     std::string password_;
+    std::string caCertPem_;
 };
 
 }  // namespace hardware

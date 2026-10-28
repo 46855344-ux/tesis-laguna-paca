@@ -27,6 +27,7 @@
 #define BACKEND_BASE_URL "http://192.168.1.100:8080"
 #define BACKEND_USER "admin"
 #define BACKEND_PASSWORD "admin123"
+#define BACKEND_CA_CERT ""
 #define MQTT_BROKER_HOST "192.168.1.100"
 #define MQTT_USERNAME "nodo-laguna"
 #define MQTT_PASSWORD "MI_CLAVE_BROKER"
@@ -70,7 +71,7 @@ hardware::Ds18b20TemperatureSensor g_temperatureSensor(PIN_DS18B20);
 net::MqttTelemetryTransport g_transport(MQTT_BROKER_HOST, MQTT_BROKER_PORT, MQTT_USERNAME,
                                         MQTT_PASSWORD, MQTT_TOPIC, NODE_ID);
 #else
-hardware::HttpTelemetryTransport g_transport(BACKEND_BASE_URL, BACKEND_USER, BACKEND_PASSWORD);
+hardware::HttpTelemetryTransport g_transport(BACKEND_BASE_URL, BACKEND_USER, BACKEND_PASSWORD, BACKEND_CA_CERT);
 #endif
 
 // --- Calibraciones (ajustar con el laboratorio; ver config.h) ---------------

@@ -40,6 +40,13 @@ constexpr double TDS_DIVIDER_RATIO = 1.0;
 //   - con Arduino IDE: descomentar la linea siguiente
 // #define LAGUNA_TELEMETRY_MQTT
 
+// --- TLS (HTTPS) ---
+// El transporte HTTP detecta el esquema de BACKEND_BASE_URL: si empieza por
+// "https://" usa WiFiClientSecure. La CA (o el certificado autofirmado del
+// servidor) se define en secrets.h como BACKEND_CA_CERT (PEM). Si esta vacio
+// se usa modo inseguro con una advertencia por serie: valido para desarrollo,
+// NUNCA para produccion. El backend debe servir HTTPS (TLS 1.2+) en ese caso.
+
 /** Puerto del broker MQTT. */
 constexpr std::uint16_t MQTT_BROKER_PORT = 1883;
 

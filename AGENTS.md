@@ -474,7 +474,12 @@ Estructura y credenciales:
 - **El core debe seguir siendo C++11**: el framework Arduino del ESP32 compila con `gnu++11` (los tests nativos usan `gnu++17`). Una `struct` con inicializadores de miembro deja de ser agregado en C++11 y rompe `TelemetryNodeConfig{...}`; por eso esa estructura usa constructor explícito.
 - El nodo se autentica con `POST /api/v1/auth/token` y **cachea el JWT en memoria RTC** (`RTC_DATA_ATTR`) para no re-autenticar en cada despertar. Sin NTP, el vencimiento se lleva de forma monótona sumando el tiempo dormido.
 - **`sample_id`**: el nodo envía `N1-<bootId 8 hex>-<secuencia>` (`formatSampleId`, en `SampleIdentity.h`). El `bootId` se genera con `esp_random()` en cada arranque en frío y vive en RTC; la secuencia también vive en RTC y **solo avanza cuando el transporte confirma**. Así el reintento reutiliza el id y un corte de luz no choca con ids anteriores. `TelemetryNode::runOnce(const char* sampleId)` mantiene el payload histórico si el puntero es nulo.
-- `HTTPClient` es HTTP plano: en producción requiere TLS (`WiFiClientSecure` + huella/bundle de CA) y el backend en HTTPS.
+- **TLS (HTTPS)** ahora soportado en `HttpTelemetryTransport`:
+  - Si `BACKEND_BASE_URL` empieza por `https://`, se usa `WiFiClientSecure`.
+  - La CA (o el certificado autofirmado del servidor) va en `BACKEND_CA_CERT` (PEM) en `secrets.h`.
+  - Si `BACKEND_CA_CERT` está vacío, se usa modo inseguro con advertencia por serie (solo desarrollo).
+  - Para probar localmente: generar un certificado autofirmado para el backend, copiar el PEM a `BACKEND_CA_CERT`, cambiar `BACKEND_BASE_URL` a `https://...` y arrancar el backend con TLS (o un proxy nginx). El nodo valida el certificado antes de enviar.
+  - MQTT sigue en texto plano (puerto 1883); para TLS en MQTT hace falta `WiFiClientSecure` en `MqttTelemetryTransport` (pendiente).
 - Flash al **72.3 %** (947 261 B de 1 310 720 B) con `WiFi` + `HTTPClient` + `ArduinoJson`: si se agrega OTA, cambiar el esquema de particiones (`board_build.partitions`).
 - El `#warning` de `secrets.h` hace que PowerShell devuelva salida con código 1 aunque el build sea `SUCCESS` (gcc escribe el warning en stderr).
 - **Canal de telemetría**: HTTP POST es el default; MQTT se activa con `-DLAGUNA_TELEMETRY_MQTT` (entorno `esp32dev-mqtt`) o descomentando el `#define` en `include/config.h` (para Arduino IDE). Ambos implementan `laguna::TelemetryTransport`, así que el núcleo no cambia.

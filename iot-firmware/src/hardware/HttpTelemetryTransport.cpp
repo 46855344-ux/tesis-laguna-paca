@@ -3,6 +3,8 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <HTTPClient.h>
+#include <WiFi.h>
+#include <WiFiClientSecure.h>
 
 #include <cstring>
 
@@ -17,6 +19,31 @@ constexpr std::uint16_t kHttpTimeoutMillis = 5000;
 
 /** Los JWT HS256 con subject rondan los 200-300 caracteres. */
 constexpr std::size_t kMaxTokenLength = 512;
+
+/** Devuelve true si la URL usa HTTPS. */
+bool isHttps(const std::string& url) {
+    return url.rfind("https://", 0) == 0;
+}
+
+/**
+ * Configura un cliente WiFi para la URL dada. Si la URL es HTTPS se usa
+ * WiFiClientSecure: con CA cert si se proporciono, o modo inseguro (con
+ * advertencia) si no. Devuelve un puntero al cliente creado (memoria
+ * dinamica) que el llamador debe liberar.
+ */
+WiFiClient* makeClient(const std::string& url, const std::string& caCertPem) {
+    if (!isHttps(url)) {
+        return new WiFiClient();
+    }
+    auto* secure = new WiFiClientSecure();
+    if (!caCertPem.empty()) {
+        secure->setCACert(caCertPem.c_str());
+    } else {
+        Serial.println("[http] AVISO: HTTPS sin CA cert, modo inseguro (solo desarrollo)");
+        secure->setInsecure();
+    }
+    return secure;
+}
 
 /**
  * Cache del JWT en memoria RTC.
@@ -39,12 +66,14 @@ RTC_DATA_ATTR TokenCache g_tokenCache;
 
 HttpTelemetryTransport::HttpTelemetryTransport(const char* baseUrl,
                                                const char* username,
-                                               const char* password)
+                                               const char* password,
+                                               const char* caCertPem)
     : baseUrl_(baseUrl),
       telemetryUrl_(std::string(baseUrl) + "/api/v1/telemetry"),
       tokenUrl_(std::string(baseUrl) + "/api/v1/auth/token"),
       username_(username),
-      password_(password) {
+      password_(password),
+      caCertPem_(caCertPem == nullptr ? "" : caCertPem) {
 }
 
 void HttpTelemetryTransport::noteElapsedSeconds(std::uint32_t seconds) {
@@ -71,8 +100,10 @@ bool HttpTelemetryTransport::send(const std::string& payload) {
         return false;
     }
 
+    WiFiClient* client = makeClient(telemetryUrl_, caCertPem_);
     HTTPClient http;
-    if (!http.begin(String(telemetryUrl_.c_str()))) {
+    if (!http.begin(*client, String(telemetryUrl_.c_str()))) {
+        delete client;
         return false;
     }
     http.setTimeout(kHttpTimeoutMillis);
@@ -81,6 +112,7 @@ bool HttpTelemetryTransport::send(const std::string& payload) {
 
     const int status = http.POST(String(payload.c_str()));
     http.end();
+    delete client;
 
     if (status == 401) {
         // El token caduco antes de lo previsto: se invalida para el proximo ciclo.
@@ -97,8 +129,10 @@ bool HttpTelemetryTransport::ensureToken() {
 }
 
 bool HttpTelemetryTransport::authenticate() {
+    WiFiClient* client = makeClient(tokenUrl_, caCertPem_);
     HTTPClient http;
-    if (!http.begin(String(tokenUrl_.c_str()))) {
+    if (!http.begin(*client, String(tokenUrl_.c_str()))) {
+        delete client;
         return false;
     }
     http.setTimeout(kHttpTimeoutMillis);
@@ -109,12 +143,14 @@ bool HttpTelemetryTransport::authenticate() {
     const int status = http.POST(body);
     if (status != 200) {
         http.end();
+        delete client;
         Serial.printf("[http] autenticacion fallida (HTTP %d)\n", status);
         return false;
     }
 
     const String response = http.getString();
     http.end();
+    delete client;
 
     JsonDocument document;
     if (deserializeJson(document, response) != DeserializationError::Ok) {

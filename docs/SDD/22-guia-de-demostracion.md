@@ -152,7 +152,7 @@ tests y genera el APK en GitHub Actions.
 | ¿Qué pasa si la IA falla? | La ingesta y las alertas no dependen de ella; solo se pierde la predicción |
 | ¿Los datos son reales? | No: son sintéticos y el sistema lo declara en la tabla, la API y el panel |
 | ¿La predicción cambia la alerta? | No: el veredicto es de la medición; la predicción es otra dimensión |
-| ¿Qué falta? | Datos de campo, coordenadas medidas, TLS, Docker/Sonar ejecutados, FCM y mapa interactivo Android |
+| ¿Qué falta? | Datos de campo, coordenadas medidas, Docker/Sonar ejecutados, FCM y mapa interactivo Android |
 
 ## 22.10 Tiempo total
 
