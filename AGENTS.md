@@ -401,11 +401,12 @@ Estructura y decisiones:
 - `data/PredictionMapper.kt` — parseo puro de las respuestas de `/api/v1/predictions`:
   lote de predicciones (una fila por estación), estado `PENDING`/`EVALUATED`,
   instantes `generated_at`/`target_at`/`evaluated_at` y valores nulos.
-- `ui/MainViewModel.kt` — estado único (`AppState`), login, tablero, alertas, mapa,
-  predicciones y errores. El JWT vive **solo en memoria**; no se guarda la contraseña ni
-  el token. Para el mapa, la UI inyecta la lambda que lee assets
-  (`prepararMapa { ... }`) y el ViewModel solo parsea, proyecta y guarda: el ViewModel
-  sigue sin tocar `Context`. Los horizontes válidos son 1, 3 y 6 h.
+- `ui/SessionStore` (en `data/`): almacén de sesión compartido; única fuente de verdad de la autenticación.
+- `ui/LoginViewModel`, `DashboardViewModel`, `AlertsViewModel`, `MapaViewModel`,
+  `PrediccionesViewModel`: un ViewModel por pantalla (MVVM). Cada uno lee la sesión
+  de `SessionStore` y maneja su propio estado.
+- `ui/LagunaPacaApp`: observa `SessionStore.sesion`; si es null muestra `LoginScreen`,
+  si no muestra `MainScaffold` con pestañas y los ViewModels creados con `viewModel()`.
 - `ui/LagunaPacaApp.kt` — pantallas Compose: acceso, tablero, alertas, mapa y
   predicciones. Texto visible en español; las cifras usan punto decimal para no depender
   del ICU del dispositivo. El mapa se dibuja con `Canvas` (contorno relleno con la
