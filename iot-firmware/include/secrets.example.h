@@ -30,3 +30,9 @@
 #define MQTT_BROKER_HOST "192.168.1.100"
 #define MQTT_USERNAME "nodo-laguna"
 #define MQTT_PASSWORD "MI_CLAVE_BROKER"
+
+/**
+ * CA del broker MQTT en formato PEM. Vacio ("") = modo inseguro (solo dev).
+ * Para MQTTS usar puerto 8883 y proporcionar la CA.
+ */
+#define MQTT_CA_CERT ""

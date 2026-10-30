@@ -1,6 +1,8 @@
 #include "net/MqttTelemetryTransport.h"
 
 #include <Arduino.h>
+#include <MQTT.h>
+#include <WiFiClientSecure.h>
 
 #include "lagunapaca/MqttIdentity.h"
 
@@ -41,19 +43,42 @@ MqttTelemetryTransport::MqttTelemetryTransport(const char* host,
                                                const char* username,
                                                const char* password,
                                                const char* topic,
-                                               const char* nodeId)
-    : client_(kReadBufferSize, kWriteBufferSize),
+                                               const char* nodeId,
+                                               const char* caCertPem)
+    : secureSocket_(nullptr),
+      useTls_(false),
+      caCertPem_(caCertPem == nullptr ? "" : caCertPem),
+      client_(kReadBufferSize, kWriteBufferSize),
       host_(host == nullptr ? "" : host),
       port_(port),
       username_(username == nullptr ? "" : username),
       password_(password == nullptr ? "" : password),
       topic_(topic == nullptr ? "" : topic),
       nodeId_(nodeId == nullptr ? "" : nodeId) {
+    // TLS si el puerto es el estandar MQTTS (8883) o si se dio una CA.
+    useTls_ = (port == 8883) || !caCertPem_.empty();
+}
+
+MqttTelemetryTransport::~MqttTelemetryTransport() {
+    delete secureSocket_;
 }
 
 void MqttTelemetryTransport::begin() {
     clientId_ = laguna::buildMqttClientId(nodeId_.c_str(), ESP.getEfuseMac());
-    client_.begin(host_.c_str(), port_, socket_);
+    if (useTls_) {
+        if (secureSocket_ == nullptr) {
+            secureSocket_ = new WiFiClientSecure();
+        }
+        if (!caCertPem_.empty()) {
+            secureSocket_->setCACert(caCertPem_.c_str());
+        } else {
+            Serial.println("[mqtt] AVISO: TLS sin CA cert, modo inseguro (solo desarrollo)");
+            secureSocket_->setInsecure();
+        }
+        client_.begin(host_.c_str(), port_, *secureSocket_);
+    } else {
+        client_.begin(host_.c_str(), port_, socket_);
+    }
     client_.setOptions(kKeepAliveSeconds, kCleanSession, kTimeoutMillis);
 }
 
@@ -90,7 +115,11 @@ void MqttTelemetryTransport::disconnectQuietly() {
     if (client_.connected()) {
         client_.disconnect();
     }
-    socket_.stop();
+    if (useTls_ && secureSocket_ != nullptr) {
+        secureSocket_->stop();
+    } else {
+        socket_.stop();
+    }
 }
 
 }  // namespace net

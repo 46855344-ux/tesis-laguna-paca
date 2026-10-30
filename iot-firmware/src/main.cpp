@@ -31,6 +31,7 @@
 #define MQTT_BROKER_HOST "192.168.1.100"
 #define MQTT_USERNAME "nodo-laguna"
 #define MQTT_PASSWORD "MI_CLAVE_BROKER"
+#define MQTT_CA_CERT ""
 #endif
 
 #include "hardware/Ds18b20TemperatureSensor.h"
@@ -69,7 +70,7 @@ hardware::Ds18b20TemperatureSensor g_temperatureSensor(PIN_DS18B20);
 // Canal de telemetria: HTTP POST (por defecto) o MQTT, mismo contrato de payload.
 #if defined(LAGUNA_TELEMETRY_MQTT)
 net::MqttTelemetryTransport g_transport(MQTT_BROKER_HOST, MQTT_BROKER_PORT, MQTT_USERNAME,
-                                        MQTT_PASSWORD, MQTT_TOPIC, NODE_ID);
+                                        MQTT_PASSWORD, MQTT_TOPIC, NODE_ID, MQTT_CA_CERT);
 #else
 hardware::HttpTelemetryTransport g_transport(BACKEND_BASE_URL, BACKEND_USER, BACKEND_PASSWORD, BACKEND_CA_CERT);
 #endif

@@ -5,6 +5,7 @@
 
 #include <MQTT.h>
 #include <WiFiClient.h>
+#include <WiFiClientSecure.h>
 
 #include "lagunapaca/TelemetryPorts.h"
 
@@ -27,7 +28,8 @@ public:
                            const char* username,
                            const char* password,
                            const char* topic,
-                           const char* nodeId);
+                           const char* nodeId,
+                           const char* caCertPem = nullptr);
 
     /**
      * Calcula el client id a partir de la MAC de la placa y configura el broker.
@@ -42,6 +44,8 @@ public:
     /** Identificador con el que el nodo aparece en el broker. */
     const std::string& clientId() const { return clientId_; }
 
+    ~MqttTelemetryTransport();
+
 private:
     /** Abre la sesion MQTT; @return {@code true} si el broker respondio CONNACK. */
     bool connect();
@@ -50,6 +54,9 @@ private:
     void disconnectQuietly();
 
     WiFiClient socket_;
+    WiFiClientSecure* secureSocket_;
+    bool useTls_;
+    std::string caCertPem_;
     MQTTClient client_;
     std::string host_;
     std::uint16_t port_;
