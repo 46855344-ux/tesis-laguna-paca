@@ -69,7 +69,39 @@ enum class PredictionStatus(val label: String) {
     EVALUATED("Evaluada")
 }
 
-/** Predicción de pH tal como la publica la API /api/v1/predictions. */
+/** Estado del tablero. */
+data class DashboardState(
+    val isLoading: Boolean = false,
+    val summary: DashboardSummary? = null,
+    val recent: List<WaterSample> = emptyList(),
+    val error: String? = null,
+    val lastUpdated: Instant? = null
+)
+
+/** Estado de la lista de alertas. */
+data class AlertsState(
+    val isLoading: Boolean = false,
+    val items: List<WaterSample> = emptyList(),
+    val error: String? = null,
+    val lastUpdated: Instant? = null
+)
+
+/** Estado del mapa. */
+data class MapaEstado(
+    val isLoading: Boolean = false,
+    val map: LagunaMapaPintado? = null,
+    val error: String? = null,
+    val lastUpdated: Instant? = null
+)
+
+/** Estado de las predicciones. */
+data class PrediccionesEstado(
+    val isLoading: Boolean = false,
+    val items: List<PhPrediction> = emptyList(),
+    val horizonteHoras: Int = 6,
+    val error: String? = null,
+    val lastUpdated: Instant? = null
+)
 data class PhPrediction(
     val id: Long,
     val modelRunId: String,

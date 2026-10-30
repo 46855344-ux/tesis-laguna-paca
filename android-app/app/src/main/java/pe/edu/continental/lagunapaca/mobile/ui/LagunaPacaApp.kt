@@ -42,6 +42,12 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -61,7 +67,12 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import pe.edu.continental.lagunapaca.mobile.BuildConfig
 import pe.edu.continental.lagunapaca.mobile.data.AlertReason
+import pe.edu.continental.lagunapaca.mobile.data.DashboardState
 import pe.edu.continental.lagunapaca.mobile.data.DashboardSummary
+import pe.edu.continental.lagunapaca.mobile.data.SessionStore
+import pe.edu.continental.lagunapaca.mobile.data.AlertsState
+import pe.edu.continental.lagunapaca.mobile.data.MapaEstado
+import pe.edu.continental.lagunapaca.mobile.data.PrediccionesEstado
 import pe.edu.continental.lagunapaca.mobile.data.LagunaMapaPintado
 import pe.edu.continental.lagunapaca.mobile.data.PhPrediction
 import pe.edu.continental.lagunapaca.mobile.data.PredictionStatus
@@ -84,10 +95,11 @@ private val formatoHora = DateTimeFormatter
     .withZone(zonaLima)
 
 @Composable
-fun LagunaPacaApp(state: AppState, viewModel: MainViewModel) {
-    if (state.isAuthenticated) {
-        MainScaffold(state = state, viewModel = viewModel)
-    } else {
+fun LagunaPacaApp() {
+    val sesion by SessionStore.sesion.collectAsStateWithLifecycle()
+    if (sesion == null) {
+        val viewModel: LoginViewModel = viewModel()
+        val state by viewModel.state.collectAsStateWithLifecycle()
         LoginScreen(
             state = state,
             onUrl = viewModel::actualizarUrl,
@@ -95,12 +107,14 @@ fun LagunaPacaApp(state: AppState, viewModel: MainViewModel) {
             onPassword = viewModel::actualizarPassword,
             onLogin = viewModel::iniciarSesion
         )
+    } else {
+        MainScaffold()
     }
 }
 
 @Composable
 private fun LoginScreen(
-    state: AppState,
+    state: LoginState,
     onUrl: (String) -> Unit,
     onUser: (String) -> Unit,
     onPassword: (String) -> Unit,
@@ -277,12 +291,25 @@ private fun LoginScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun MainScaffold(state: AppState, viewModel: MainViewModel) {
-    val cargando = when (state.screen) {
-        MobileScreen.TABLERO -> state.dashboard.isLoading
-        MobileScreen.ALERTAS -> state.alerts.isLoading
-        MobileScreen.MAPA -> state.mapa.isLoading
-        MobileScreen.PREDICCIONES -> state.predicciones.isLoading
+private fun MainScaffold() {
+    val dashboardVm: DashboardViewModel = viewModel()
+    val alertsVm: AlertsViewModel = viewModel()
+    val mapaVm: MapaViewModel = viewModel()
+    val predVm: PrediccionesViewModel = viewModel()
+
+    val dashboardState by dashboardVm.state.collectAsStateWithLifecycle()
+    val alertsState by alertsVm.state.collectAsStateWithLifecycle()
+    val mapaState by mapaVm.state.collectAsStateWithLifecycle()
+    val predState by predVm.state.collectAsStateWithLifecycle()
+
+    val sesion = SessionStore.sesion.value
+    var tabSeleccionada by remember { mutableStateOf(0) }
+
+    val cargando = when (tabSeleccionada) {
+        0 -> dashboardState.isLoading
+        1 -> alertsState.isLoading
+        2 -> mapaState.isLoading
+        else -> predState.isLoading
     }
 
     Scaffold(
@@ -297,11 +324,11 @@ private fun MainScaffold(state: AppState, viewModel: MainViewModel) {
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
-                            text = when (state.screen) {
-                                MobileScreen.TABLERO -> "Tablero de monitoreo"
-                                MobileScreen.ALERTAS -> "Alertas ECA-Agua"
-                                MobileScreen.MAPA -> "Mapa de la laguna"
-                                MobileScreen.PREDICCIONES -> "Predicciones del ST-GNN"
+                            text = when (tabSeleccionada) {
+                                0 -> "Tablero de monitoreo"
+                                1 -> "Alertas ECA-Agua"
+                                2 -> "Mapa de la laguna"
+                                else -> "Predicciones del ST-GNN"
                             },
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -310,12 +337,19 @@ private fun MainScaffold(state: AppState, viewModel: MainViewModel) {
                 },
                 actions = {
                     TextButton(
-                        onClick = viewModel::refrescar,
+                        onClick = {
+                            when (tabSeleccionada) {
+                                0 -> dashboardVm.refrescar()
+                                1 -> alertsVm.refrescar()
+                                2 -> mapaVm.refrescar()
+                                else -> predVm.refrescar()
+                            }
+                        },
                         enabled = !cargando
                     ) {
                         Text("Actualizar")
                     }
-                    TextButton(onClick = viewModel::cerrarSesion) {
+                    TextButton(onClick = { SessionStore.cerrarSesion() }) {
                         Text("Salir")
                     }
                 }
@@ -327,60 +361,50 @@ private fun MainScaffold(state: AppState, viewModel: MainViewModel) {
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            TabRow(
-                selectedTabIndex = when (state.screen) {
-                    MobileScreen.TABLERO -> 0
-                    MobileScreen.ALERTAS -> 1
-                    MobileScreen.MAPA -> 2
-                    MobileScreen.PREDICCIONES -> 3
-                }
-            ) {
-                Tab(
-                    selected = state.screen == MobileScreen.TABLERO,
-                    onClick = { viewModel.seleccionarPantalla(MobileScreen.TABLERO) },
-                    text = { Text("Tablero") }
-                )
-                Tab(
-                    selected = state.screen == MobileScreen.ALERTAS,
-                    onClick = { viewModel.seleccionarPantalla(MobileScreen.ALERTAS) },
-                    text = { Text("Alertas") }
-                )
-                Tab(
-                    selected = state.screen == MobileScreen.MAPA,
-                    onClick = { viewModel.seleccionarPantalla(MobileScreen.MAPA) },
-                    text = { Text("Mapa") }
-                )
-                Tab(
-                    selected = state.screen == MobileScreen.PREDICCIONES,
-                    onClick = { viewModel.seleccionarPantalla(MobileScreen.PREDICCIONES) },
-                    text = { Text("Predicciones") }
-                )
+            TabRow(selectedTabIndex = tabSeleccionada) {
+                Tab(selected = tabSeleccionada == 0, onClick = {
+                    tabSeleccionada = 0
+                    if (dashboardState.summary == null) dashboardVm.cargar()
+                }, text = { Text("Tablero") })
+                Tab(selected = tabSeleccionada == 1, onClick = {
+                    tabSeleccionada = 1
+                    alertsVm.cargar()
+                }, text = { Text("Alertas") })
+                Tab(selected = tabSeleccionada == 2, onClick = {
+                    tabSeleccionada = 2
+                    if (dashboardState.summary == null) dashboardVm.cargar()
+                }, text = { Text("Mapa") })
+                Tab(selected = tabSeleccionada == 3, onClick = {
+                    tabSeleccionada = 3
+                    predVm.cargar()
+                }, text = { Text("Predicciones") })
             }
 
-            when (state.screen) {
-                MobileScreen.TABLERO -> DashboardScreen(
-                    state = state,
-                    onRetry = viewModel::cargarTablero
+            when (tabSeleccionada) {
+                0 -> DashboardScreen(
+                    state = dashboardState,
+                    onRetry = dashboardVm::cargar
                 )
-                MobileScreen.ALERTAS -> AlertsScreen(
-                    state = state,
-                    onRetry = viewModel::cargarAlertas
+                1 -> AlertsScreen(
+                    state = alertsState,
+                    onRetry = alertsVm::cargar
                 )
-                MobileScreen.MAPA -> {
+                2 -> {
                     val contexto = LocalContext.current
                     MapaScreen(
-                        state = state,
-                        onRetry = viewModel::cargarMapa,
+                        state = mapaState,
+                        onRetry = mapaVm::cargar,
                         cargar = {
-                            viewModel.prepararMapa { leerGeoJsonDeAssets(contexto) }
-                        }
+                            mapaVm.prepararMapa { leerGeoJsonDeAssets(contexto) }
+                        },
+                        dashboardSummary = dashboardState.summary
                     )
                 }
-                MobileScreen.PREDICCIONES -> PrediccionesScreen(
-                    state = state,
-                    onRetry = viewModel::cargarPredicciones,
-                    onGenerar = viewModel::generarPredicciones,
-                    onHorizonte = viewModel::seleccionarHorizonte
+                else -> PrediccionesScreen(
+                    state = predState,
+                    onRetry = predVm::cargar,
+                    onGenerar = predVm::generar,
+                    onHorizonte = predVm::seleccionarHorizonte
                 )
             }
         }
@@ -388,8 +412,8 @@ private fun MainScaffold(state: AppState, viewModel: MainViewModel) {
 }
 
 @Composable
-private fun DashboardScreen(state: AppState, onRetry: () -> Unit) {
-    val dashboard = state.dashboard
+private fun DashboardScreen(state: DashboardState, onRetry: () -> Unit) {
+    val dashboard = state
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
@@ -677,9 +701,14 @@ private fun RecentSampleRow(sample: WaterSample) {
 }
 
 @Composable
-private fun MapaScreen(state: AppState, onRetry: () -> Unit, cargar: () -> Unit) {
-    val mapa = state.mapa
-    val estados = estadosPorNodo(state.dashboard.summary)
+private fun MapaScreen(
+    state: MapaEstado,
+    onRetry: () -> Unit,
+    cargar: () -> Unit,
+    dashboardSummary: DashboardSummary? = null
+) {
+    val mapa = state
+    val estados = estadosPorNodo(dashboardSummary)
 
     // El GeoJSON se lee una sola vez; volver a la pestaña no vuelve a leerlo.
     LaunchedEffect(Unit) {
@@ -863,12 +892,12 @@ private fun estadosPorNodo(summary: DashboardSummary?): Map<String, StationStatu
 
 @Composable
 private fun PrediccionesScreen(
-    state: AppState,
+    state: PrediccionesEstado,
     onRetry: () -> Unit,
     onGenerar: () -> Unit,
     onHorizonte: (Int) -> Unit
 ) {
-    val predicciones = state.predicciones
+    val predicciones = state
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
@@ -1060,8 +1089,8 @@ private fun origenDeDatos(dataSource: String): String = when (dataSource) {
 }
 
 @Composable
-private fun AlertsScreen(state: AppState, onRetry: () -> Unit) {
-    val alerts = state.alerts
+private fun AlertsScreen(state: AlertsState, onRetry: () -> Unit) {
+    val alerts = state
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
