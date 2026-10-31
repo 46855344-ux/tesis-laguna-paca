@@ -11,7 +11,7 @@ Escala: probabilidad e impacto `Baja` / `Media` / `Alta`.
 | R-05 | Pérdida de datos por cortes de luz en el nodo | Media | Medio | `bootId` aleatorio + secuencia en RTC | Bajo |
 | R-06 | Clave de Google expuesta | Alta | Medio | Rotarla y restringir por referente | Medio hasta rotar |
 | R-07 | Docker no validado en la máquina | Alta | Medio | YAML validado; build en CI; declarar limitación | Medio |
-| R-08 | Sin TLS en backend/MQTT | Alta | Alto en producción | Reverse proxy y 8883; no exponer a internet | Alto en producción |
+| R-08 | Sin TLS en backend/broker | Alta | Alto en producción | El nodo ya soporta HTTPS/MQTTS; reverse proxy y 8883; no exponer a internet | Alto en producción |
 | R-09 | Un solo usuario sin roles | Media | Medio | Aceptable para tesis; documentar | Medio |
 | R-10 | La migración falla en el contenedor de producción | Baja | Medio | V1–V5 ejecutadas en PostgreSQL 16.9 embebido; falta probar el contenedor | Bajo |
 | R-11 | Deriva del modelo (dataset shift) | Media | Alto | Evaluación continua con `prediction.error`; reentrenar | Alto sin campo |

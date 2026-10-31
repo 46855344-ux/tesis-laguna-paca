@@ -88,7 +88,8 @@ El firmware se compila y se prueba en el host con dobles. No se validó:
 - calibración real de pH, turbidez, TDS y temperatura;
 - consumo y autonomía;
 - comportamiento del ADC con el WiFi encendido en la placa;
-- TLS;
+- TLS contra un backend HTTPS o un broker MQTTS reales (código y compilación
+  listos; el handshake no se ejecutó);
 - OTA;
 - resistencia de campo (humedad, temperatura, corrosión).
 
@@ -112,7 +113,8 @@ campo. Esta limitación se cierra con la primera campaña de muestreo.
 
 ## 26.3 Limitaciones de seguridad
 
-- **Sin TLS** en backend ni MQTT: no apto para internet.
+- **TLS del nodo soportado** (HTTPS y MQTTS con CA), pero **backend y broker
+  siguen sin TLS** en el despliegue de referencia: no apto para internet tal cual.
 - **Un solo usuario** sin roles.
 - **Sin rate limiting** en el login.
 - **Sin escaneo de secretos** automatizado.

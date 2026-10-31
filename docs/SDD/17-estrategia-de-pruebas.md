@@ -76,7 +76,8 @@ con `postgres:16-alpine`. Con él, el total sería **387**.
 - **No hay E2E con navegador real**: el refresco de 20 s, el cajón móvil y la
   carga opcional de Google Maps se validan a mano. Las pruebas de componentes
   usan `jsdom` y dobles de `fetch`; no son datos de campo.
-- **No hay hardware**: los sensores del firmware son dobles.
+- **No hay hardware**: los sensores del firmware son dobles y el handshake TLS
+  depende de Arduino y de la red, así que tampoco se ejecuta.
 - **La app Android no tiene E2E ni pruebas instrumentadas**: se validó a mano en el
   emulador `Pixel_9` contra el perfil `demo`; los 10 tests son unitarios JVM.
 

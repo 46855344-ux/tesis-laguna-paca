@@ -58,7 +58,7 @@ fija. Si un requisito no tiene prueba, se dice; no se inventa cobertura.
 | RNF-15 | Campos de evaluación | Sí |
 | RNF-16 | `data_source` | Sí |
 | RNF-17 | JaCoCo 91.7 % de instrucciones | Sí |
-| RNF-18 | Flash 72.3 % / 59.8 % | Sí |
+| RNF-18 | Flash 72.3 % / 69.5 % | Sí |
 | RNF-19 | Perfil `demo` | Sí (tests de contexto) |
 | RNF-20 | Texto en español | Revisión manual |
 
@@ -82,7 +82,9 @@ fija. Si un requisito no tiene prueba, se dice; no se inventa cobertura.
 2. **Docker Compose**: `config` validado; imágenes no construidas ni stack
    levantado.
 3. **SonarQube**: configuración lista, análisis no ejecutado.
-4. **TLS**: no implementado.
+4. **TLS**: el nodo soporta HTTPS y MQTTS (`WiFiClientSecure` con CA); falta el
+   certificado y el reverse proxy del backend, el listener 8883 del broker y la
+   prueba contra un servidor real.
 5. **Hardware**: firmware compilado y probado en host, no en placa.
 6. **Datos de campo**: el cargador `field_data.py` y `--csv` están probados, pero
    el modelo se entrenó con datos sintéticos porque no hay campaña de muestreo.

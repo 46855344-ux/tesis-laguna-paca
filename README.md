@@ -85,7 +85,7 @@ también llega persistido: la app no reevalúa el pH.
 |---|---|---|
 | `backend/` | ✅ Completo (145 tests) | Ingesta HTTP y MQTT idempotente, alertas ECA-Agua, historial paginado, JWT, Flyway V1–V5, API JSON del panel, predicciones y su evaluación, Swagger UI |
 | `frontend/` | ✅ Completo (17 tests) | SPA React + TypeScript: acceso, tablero, métricas, mapa, historial, alertas, predicciones, tema y accesibilidad |
-| `iot-firmware/` | ✅ Completo (38 tests) | Núcleo portable C++11, sensores, calibración, deep sleep, JWT cacheado, transporte HTTP y MQTT, `sample_id` |
+| `iot-firmware/` | ✅ Completo (38 tests) | Núcleo portable C++11, sensores, calibración, deep sleep, JWT cacheado, transporte HTTP y MQTT con TLS opcional, `sample_id` |
 | `ia-model/` | ✅ Completo (172 tests) | Grafo, ventanas, ST-GNN, normalización, entrenamiento, carga de CSV de campo, artefacto versionado y servicio FastAPI |
 | `android-app/` | 🟡 MVP (14 tests) | Login JWT, tablero de 24 h, estaciones, alertas, mapa (contorno GeoJSON embebido sin Google) y predicciones del ST-GNN (1/3/6 h) en Kotlin + Compose + Material 3; FCM pendiente |
 | Docker | ⚙️ Configurado, no ejecutado | `compose.yaml` y Dockerfiles; `config` validado, imágenes no construidas (sin Docker en la máquina) |
@@ -370,13 +370,14 @@ Nodos con **PH-4502C** (pH), **TSW-20M** (turbidez), **DS18B20** (temperatura) y
 $env:PATH="C:\Users\USER\AppData\Local\Programs\mingw64\bin;$env:PATH"
 pio test -e native        # 38 tests de la lógica, sin hardware
 pio run -e esp32dev       # firmware con transporte HTTP (72.3 % de flash)
-pio run -e esp32dev-mqtt  # firmware con transporte MQTT (59.8 % de flash)
+pio run -e esp32dev-mqtt  # firmware con transporte MQTT (69.5 % de flash)
 pio run -e esp32dev -t upload
 ```
 
 > Los valores de calibración de `include/config.h` son **nominales**: hay que medirlos en
-> laboratorio. `HTTPClient` es HTTP plano; en producción requiere TLS (`WiFiClientSecure`)
-> y el backend en HTTPS.
+> laboratorio. Los dos transportes soportan TLS con `WiFiClientSecure` (HTTPS con
+> `BACKEND_CA_CERT`, MQTTS en 8883 con `MQTT_CA_CERT`); sin CA caen en modo inseguro y lo
+> advierten. Falta el certificado real y el reverse proxy del backend.
 
 ---
 
@@ -549,7 +550,8 @@ en los ADR de `docs/SDD/`.
 3. **Validar el despliegue**: `docker compose build/up` y el workflow de CI en un
    runner. La V5 ya se validó en PostgreSQL 16.9 embebido y `compose config`;
    falta el contenedor real y construir las imágenes.
-4. **TLS**: firmware con `WiFiClientSecure`, backend en HTTPS y MQTT en 8883.
+4. **TLS en el despliegue**: el nodo ya soporta HTTPS y MQTTS; faltan el certificado, el
+   reverse proxy del backend y el listener 8883 del broker, además de probarlo en la placa.
 5. **SonarQube** ejecutado sobre un servidor real (configuración lista).
 6. **App Android**: completar el mapa de estaciones y las notificaciones push (FCM), que
    requieren una clave de Google Maps para Android y `google-services.json`. El MVP de

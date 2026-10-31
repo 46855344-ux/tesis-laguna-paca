@@ -87,8 +87,8 @@ luz y el backend habría descartado mediciones reales como duplicadas.
 
 | Vía | Entorno | Autenticación | Flash |
 |---|---|---|---|
-| HTTP POST | `esp32dev` (por defecto) | JWT cacheado en RTC | 72.3 % (947 KB) |
-| MQTT QoS 1 | `esp32dev-mqtt` (`-DLAGUNA_TELEMETRY_MQTT`) | Credenciales del broker | 59.8 % (784 KB) |
+| HTTP POST | `esp32dev` (por defecto) | JWT cacheado en RTC | 72.3 % (947 181 B) |
+| MQTT QoS 1 | `esp32dev-mqtt` (`-DLAGUNA_TELEMETRY_MQTT`) | Credenciales del broker | 69.5 % (911 413 B) |
 
 Ambos implementan `laguna::TelemetryTransport`; el núcleo no cambia. La vía MQTT
 usa `256dpi/MQTT` porque PubSubClient solo publica con QoS 0. El cliente MQTT se
@@ -97,6 +97,25 @@ bytes (el mínimo que MQTT 3.1.1 obliga a aceptar).
 
 El JWT se cachea en memoria RTC y su vencimiento se lleva de forma monótona
 sumando el tiempo dormido, porque el nodo no tiene NTP.
+
+### TLS en los dos transportes
+
+Ambos transportes usan `WiFiClientSecure` cuando corresponde. El modo se decide
+por configuración, no por compilación, así que el mismo binario sirve para
+desarrollo en claro y para producción cifrada:
+
+| Transporte | Se activa TLS cuando… | CA | Sin CA |
+|---|---|---|---|
+| HTTP | `BACKEND_BASE_URL` empieza por `https://` | `BACKEND_CA_CERT` (PEM) | `setInsecure()` + aviso por serie |
+| MQTT | el puerto es 8883 **o** `MQTT_CA_CERT` no está vacío | `MQTT_CA_CERT` (PEM) | `setInsecure()` + aviso por serie |
+
+`setInsecure()` no valida el certificado del servidor: evita el error de
+handshake en desarrollo, pero deja el canal expuesto a un intermediario. La
+plantilla `secrets.example.h` deja las dos variables vacías a propósito.
+
+El certificado se valida contra la CA antes de enviar el payload; si el
+handshake falla, `send()` devuelve `false` y el nodo **no avanza** la secuencia
+de `sample_id`, de modo que el reintento reutiliza el mismo identificador.
 
 ## 12.7 Calibración: advertencia
 
@@ -119,8 +138,10 @@ Ambas variantes compilan: `pio run -e esp32dev -e esp32dev-mqtt`.
 
 ## 12.9 Limitaciones
 
-- `HTTPClient` es HTTP plano. En producción requiere TLS (`WiFiClientSecure` con
-  huella o bundle de CA) y backend en HTTPS.
+- **TLS compilado, no probado contra un servidor real**: ambos transportes
+  usan `WiFiClientSecure`, pero no se validó el handshake contra un backend
+  HTTPS ni un broker MQTTS porque no hay hardware en esta máquina. La CA del
+  despliegue real tampoco está definida.
 - Sin OTA: si se agrega, hay que cambiar el esquema de particiones.
 - Sin medición de consumo: la autonomía solar está sin validar.
 - Sin reloj: la hora la pone el servidor; el nodo no puede fechar la muestra.

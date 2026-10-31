@@ -5,7 +5,7 @@
 | Activo | Amenaza | Mitigación |
 |---|---|---|
 | Credenciales del panel | Fuerza bruta, reutilización | BCrypt, un solo usuario, red controlada |
-| JWT de la API | Robo y uso desde otro cliente | TTL de 2 h, HTTPS pendiente, no se guarda en el navegador |
+| JWT de la API | Robo y uso desde otro cliente | TTL de 2 h, el nodo ya soporta HTTPS, no se guarda en el navegador |
 | Formularios del panel | CSRF | Token CSRF de Spring Security |
 | Sesión del panel | XSS | React escapa por defecto; no se usa `dangerouslySetInnerHTML` |
 | Datos de telemetría | Inyección SQL | JPA/Criteria API con parámetros |
@@ -101,7 +101,7 @@ repositorio.
 
 | Falta | Riesgo | Prioridad |
 |---|---|---|
-| HTTPS/TLS en backend y broker | Token y contraseñas en claro en la red | Alta para producción |
+| HTTPS/TLS del backend y del broker en el despliegue | El nodo ya soporta HTTPS/MQTTS; falta el certificado y el reverse proxy | Alta para producción |
 | Rotación de la clave de Google | Uso no autorizado | Inmediata |
 | Rate limiting en `/auth/token` | Fuerza bruta | Media |
 | Más de un usuario y roles | Sin separación de funciones | Media |

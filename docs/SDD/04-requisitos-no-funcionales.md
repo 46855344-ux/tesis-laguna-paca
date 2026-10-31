@@ -19,7 +19,7 @@
 | RNF-15 | El error de una predicción debe ser reproducible y auditable. | Se guardan `predicted_value`, `observed_value`, `error`, `evaluated_at`. | Sí: `PredictionEvaluatorTest` |
 | RNF-16 | El sistema debe declarar el origen de los datos del modelo. | `data_source` en el artefacto, la tabla y la API. | Sí |
 | RNF-17 | Cobertura de pruebas del backend como indicador, no como meta. | JaCoCo: 91.7 % de instrucciones, 68.8 % de ramas. | Sí: `mvn test` |
-| RNF-18 | El firmware debe caber en la partición por defecto del ESP32. | 72.3 % (HTTP) y 59.8 % (MQTT) de 1310 KB. | Sí: build |
+| RNF-18 | El firmware debe caber en la partición por defecto del ESP32. | 72.3 % (HTTP) y 69.5 % (MQTT) de 1310 KB. | Sí: build |
 | RNF-19 | El sistema debe ser operable con un solo comando en demo. | Perfil `demo` con H2 en memoria. | Sí: documentado y probado en tests de contexto |
 | RNF-20 | El código y la documentación visible deben estar en español (es-PE). | Revisión; identificadores técnicos en inglés. | Revisión manual |
 

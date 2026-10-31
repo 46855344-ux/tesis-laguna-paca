@@ -78,6 +78,27 @@ persistence_location /mosquitto/data/
 3. usar TLS (8883) con certificados;
 4. restringir el topic por usuario si hay varios conjuntos de nodos.
 
+## 13.5.1 MQTTS en el nodo
+
+El firmware ya soporta MQTTS: si el puerto es **8883** o `MQTT_CA_CERT` no está
+vacío, `MqttTelemetryTransport` conecta con `WiFiClientSecure` y valida el
+certificado del broker contra esa CA (PEM). Con la CA vacía cae en
+`setInsecure()` y lo advierte por serie; es solo para desarrollo.
+
+En el broker hace falta el listener TLS:
+
+```
+listener 8883
+cafile   /mosquitto/certs/ca.crt
+certfile /mosquitto/certs/server.crt
+keyfile  /mosquitto/certs/server.key
+allow_anonymous false
+```
+
+y en `secrets.h` del nodo: `MQTT_BROKER_PORT 8883` y `MQTT_CA_CERT` con el PEM de
+`ca.crt`. El backend no cambia: se configura con `MQTT_BROKER_URL` apuntando al
+puerto TLS. **No ejecutado**: no hay broker con TLS en esta máquina.
+
 ## 13.6 Diferencias con HTTP
 
 | Aspecto | HTTP | MQTT |
@@ -85,8 +106,8 @@ persistence_location /mosquitto/data/
 | Autenticación | JWT del backend | Credenciales del broker |
 | Confirmación | Código 201/200 | PUBACK |
 | Reintento | El nodo decide | El broker puede reentregar |
-| Firewall | Puerto 8080 | Puerto 1883/8883 |
-| Flash del nodo | Mayor (`HTTPClient` + TLS) | Menor |
+| Firewall | Puerto 8080/8443 | Puerto 1883/8883 |
+| Flash del nodo | 72.3 % (`HTTPClient` + TLS + JWT cacheado) | 69.5 % (TLS incluido) |
 | Depuración | `curl`, Swagger | `mosquitto_sub` |
 
 ## 13.7 Pruebas

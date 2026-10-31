@@ -54,8 +54,8 @@ Resultado: **38 tests**, todos `[PASSED]`.
 
 | Entorno | Resultado | RAM | Flash |
 |---|---|---|---|
-| `esp32dev` | SUCCESS | 14.5 % (47 588 B) | 72.3 % (947 261 B de 1 310 720 B) |
-| `esp32dev-mqtt` | SUCCESS | 14.0 % (45 824 B) | 59.8 % (784 321 B) |
+| `esp32dev` | SUCCESS | 14.5 % (47 616 B) | 72.3 % (947 181 B de 1 310 720 B) |
+| `esp32dev-mqtt` | SUCCESS | 14.3 % (46 812 B) | 69.5 % (911 413 B) |
 
 Nota: PowerShell devuelve código 1 por el `#warning` de `secrets.h` en stderr,
 aunque el build sea `SUCCESS`. Es esperado.
@@ -490,3 +490,43 @@ Lo que **no** se ejecutó en esta entrada:
   con tests y build; queda por ver en el `Pixel_9`). La CI confirmó el build
   en el run `40435128393` (8º run, 7 jobs en `success`, incluido `App Android`).
 - FCM: sigue sin `google-services.json` ni credenciales.
+
+## 28.14 TLS en los dos transportes del nodo (29–31/10/2026)
+
+Se agregó TLS a los dos transportes sobre `WiFiClientSecure`, decidido por
+configuración y no por bandera de compilación:
+
+| Transporte | Se activa TLS | CA | Sin CA |
+|---|---|---|---|
+| HTTP (`84f4d4c`) | URL `https://` | `BACKEND_CA_CERT` | `setInsecure()` + aviso |
+| MQTT (`4d41560`) | puerto 8883 o CA no vacía | `MQTT_CA_CERT` | `setInsecure()` + aviso |
+
+`secrets.example.h` documenta las dos variables con valor vacío por defecto. El
+cliente MQTT libera el socket seguro en el destructor y lo cierra tras cada
+publicación; el HTTP crea y libera el cliente por petición, también en el login.
+
+Verificación local (31/10/2026):
+
+```powershell
+cd iot-firmware
+$env:PATH="C:\Users\USER\AppData\Local\Programs\mingw64\bin;$env:PATH"
+& "C:\Users\USER\AppData\Local\Programs\Python\Python312\Scripts\pio.exe" test -e native
+& "C:\Users\USER\AppData\Local\Programs\Python\Python312\Scripts\pio.exe" run -e esp32dev
+& "C:\Users\USER\AppData\Local\Programs\Python\Python312\Scripts\pio.exe" run -e esp32dev-mqtt
+```
+
+| Suite | Resultado |
+|---|---|
+| `pio test -e native` | **38 tests**, todos `[PASSED]` |
+| `pio run -e esp32dev` | `SUCCESS`, RAM 14.5 % (47 616 B), flash 72.3 % (947 181 B) |
+| `pio run -e esp32dev-mqtt` | `SUCCESS`, RAM 14.3 % (46 812 B), flash 69.5 % (911 413 B) |
+
+El flash de la variante MQTT subió de 59.8 % a 69.5 % porque ahora enlaza
+`WiFiClientSecure`; la vía HTTP cambió solo 80 B. Los tests nativos no cubren el
+handshake TLS (dependen de Arduino y de la red).
+
+Lo que **no** se ejecutó:
+
+- Conexión real contra un backend HTTPS ni contra un broker MQTTS.
+- Carga del certificado autofirmado en `secrets.h` y prueba en la placa.
+- Reverse proxy con TLS delante del backend y listener 8883 del broker.

@@ -108,7 +108,9 @@ mvn spring-boot:run "-Dspring-boot.run.profiles=demo" "-Dspring-boot.run.useTest
 ## 15.8 Producción: lo que falta
 
 1. **TLS**: reverse proxy (Caddy/Nginx/Traefik) delante del backend; HTTPS
-   también para MQTT (8883).
+   también para MQTT (8883). El nodo ya está preparado: usa `WiFiClientSecure`
+   con la CA de `BACKEND_CA_CERT` / `MQTT_CA_CERT` en cuanto la URL o el puerto
+   son seguros.
 2. **No publicar** `5432` ni `1883` al host; hoy están publicados por comodidad
    de desarrollo.
 3. Gestión de secretos (Docker secrets, Vault o el gestor del proveedor).

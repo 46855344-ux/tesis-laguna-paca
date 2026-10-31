@@ -483,13 +483,13 @@ Estructura y credenciales:
     `WiFiClientSecure`; si está vacío, modo inseguro con advertencia.
   - Para probar: generar certificado autofirmado, copiar el PEM a la variable
     correspondiente, cambiar URL/puerto y arrancar el backend/broker con TLS.
-- Flash al **72.3 %** (947 261 B de 1 310 720 B) con `WiFi` + `HTTPClient` + `ArduinoJson`: si se agrega OTA, cambiar el esquema de particiones (`board_build.partitions`).
+- Flash al **72.3 %** (947 181 B de 1 310 720 B) con `WiFi` + `HTTPClient` + `WiFiClientSecure` + `ArduinoJson`: si se agrega OTA, cambiar el esquema de particiones (`board_build.partitions`).
 - El `#warning` de `secrets.h` hace que PowerShell devuelva salida con código 1 aunque el build sea `SUCCESS` (gcc escribe el warning en stderr).
 - **Canal de telemetría**: HTTP POST es el default; MQTT se activa con `-DLAGUNA_TELEMETRY_MQTT` (entorno `esp32dev-mqtt`) o descomentando el `#define` en `include/config.h` (para Arduino IDE). Ambos implementan `laguna::TelemetryTransport`, así que el núcleo no cambia.
 - La vía MQTT usa `256dpi/MQTT` (arduino-mqtt) con **QoS 1**, coherente con `MQTT_QOS=1` del backend: el nodo solo da la muestra por entregada cuando llega el PUBACK. PubSubClient **no** sirve para esto porque solo publica con QoS 0.
 - Tópico MQTT: `laguna-paca/telemetry`, debe coincidir con `app.mqtt.topic`. El canal MQTT **no usa JWT**: se autentica con las credenciales del broker (nuevas variables `MQTT_BROKER_HOST`, `MQTT_USERNAME`, `MQTT_PASSWORD` en `secrets.h`).
 - El client id MQTT se construye con `buildMqttClientId()` (núcleo, testeado): `lp-<8 hex de la MAC>-<nodeId>`, recortado a **23 bytes** porque MQTT 3.1.1 solo obliga al broker a aceptar ese largo. La MAC va antes del node id para que el recorte nunca sacrifique la unicidad.
-- Presupuesto de flash: **HTTP 72.3 %** (947 261 B) vs **MQTT 59.8 %** (784 321 B). La vía HTTP arrastra `HTTPClient` + `WiFiClientSecure` + bundle de CA. `build_src_filter` excluye de cada entorno el transporte que no usa.
+- Presupuesto de flash: **HTTP 72.3 %** (947 181 B) vs **MQTT 69.5 %** (911 413 B). Ambas variantes arrastran `WiFiClientSecure` desde que hay TLS; la vía HTTP sigue pesando más por `HTTPClient` y el cacheo del JWT. `build_src_filter` excluye de cada entorno el transporte que no usa.
 - **38 tests nativos** (32 previos + 6 de `sample_id` y del payload con id). Los tests del nodo cubren también que una muestra inválida **no** se envíe con id.
 
 ## Modelo de IA (`ia-model/`) — comandos

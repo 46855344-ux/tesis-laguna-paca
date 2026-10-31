@@ -7,14 +7,14 @@ entrega.
 |---|---|---|---|---|
 | DT-01 | Validación del PostgreSQL de producción (contenedor y arranque desde Spring Boot) | Una diferencia con el PostgreSQL embebido podría aparecer al desplegar | Media | La V1–V5 ya se ejecutó en PostgreSQL 16.9 embebido; falta el contenedor |
 | DT-02 | `docker compose build/up` no ejecutado | Las imágenes podrían no construir | Alta | No hay Docker |
-| DT-03 | TLS en backend y MQTT | Credenciales y datos en claro | Alta | Requiere certificados y proxy |
+| DT-03 | TLS en backend y broker (el nodo ya lo soporta) | Credenciales y datos en claro | Alta | Requiere certificados y proxy |
 | DT-04 | SonarQube no ejecutado | Sin análisis estático real | Media | No hay servidor |
 | DT-05 | Sin escaneo de secretos en CI | Fuga futura | Media | Se priorizó el pipeline básico |
 | DT-06 | Sin rate limiting en `/auth/token` | Fuerza bruta | Media | Red controlada |
 | DT-07 | Un solo usuario sin roles | Sin separación de funciones | Media | Alcance académico |
 | DT-08 | Sin métricas ni trazas | Diagnóstico manual | Media | Volumen pequeño |
 | DT-09 | Sin notificaciones push/correo | Alerta solo visible en panel, app y API | Media | FCM requiere credenciales externas |
-| DT-10 | `HTTPClient` sin TLS en el nodo | Tráfico interceptable | Alta | Requiere hardware y CA |
+| DT-10 | TLS del nodo sin prueba en hardware | Handshake no validado contra servidor real | Media | Compila y los tests nativos pasan; no hay placa ni servidor TLS |
 | DT-11 | Calibración nominal de sensores | Medidas no confiables | Alta | Requiere laboratorio |
 | DT-12 | Coordenadas provisionales | El grafo no es el real | Alta | Requiere campaña de campo |
 | DT-13 | Modelo entrenado con sintético | No valida la laguna | Alta | Cargador `--csv` listo; faltan datos de campo |
@@ -38,7 +38,7 @@ entrega.
 ## 21.2 Orden sugerido para pagar
 
 1. DT-01/DT-02 (contenedor PostgreSQL + `compose build/up`) → valida el despliegue real.
-2. DT-03/DT-10 (TLS) → antes de cualquier exposición.
+2. DT-03/DT-10 (TLS de backend/broker y validación en placa) → antes de cualquier exposición.
 3. DT-12/DT-13 (datos de campo) → lo que la tesis necesita para ser ciencia.
 4. DT-04/DT-05 (calidad y secretos).
 5. DT-09/DT-18 (FCM, mapa y persistencia Android), si el alcance lo permite.
