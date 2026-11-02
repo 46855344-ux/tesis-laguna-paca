@@ -178,6 +178,12 @@ jobs:
         working-directory: iot-firmware
         run: pio test -e native
 
+      # El glue de Arduino (WiFi, TLS, transportes) solo se valida compilando.
+      # `secrets.h` no está en el repo: main.cpp usa credenciales de ejemplo.
+      - name: Compilar las dos variantes
+        working-directory: iot-firmware
+        run: pio run -e esp32dev -e esp32dev-mqtt
+
   sonar:
     name: SonarQube (opcional)
     runs-on: ubuntu-latest
