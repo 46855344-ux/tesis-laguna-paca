@@ -397,7 +397,8 @@ private fun MainScaffold() {
                         cargar = {
                             mapaVm.prepararMapa { leerGeoJsonDeAssets(contexto) }
                         },
-                        dashboardSummary = dashboardState.summary
+                        dashboardSummary = dashboardState.summary,
+                        onRefrescarEstados = dashboardVm::refrescar
                     )
                 }
                 else -> PrediccionesScreen(
@@ -705,15 +706,33 @@ private fun MapaScreen(
     state: MapaEstado,
     onRetry: () -> Unit,
     cargar: () -> Unit,
-    dashboardSummary: DashboardSummary? = null
+    dashboardSummary: DashboardSummary? = null,
+    onRefrescarEstados: () -> Unit = {}
 ) {
     val mapa = state
     val estados = estadosPorNodo(dashboardSummary)
+
+    // Con clave, internet y Play Services se usa Google Maps; si falta algo,
+    // el contorno GeoJSON embebido (sin red) es el camino por defecto.
+    val apiKey = BuildConfig.MAPS_API_KEY
+    val hayInternet = recuerdaHayInternet()
+    val hayPlayServices = recuerdaPlayServices()
+    val usarGoogle = apiKey.isNotBlank() && hayInternet && hayPlayServices
 
     // El GeoJSON se lee una sola vez; volver a la pestaña no vuelve a leerlo.
     LaunchedEffect(Unit) {
         if (mapa.map == null && !mapa.isLoading && mapa.error == null) {
             cargar()
+        }
+    }
+
+    // Mientras la pestaña está visible, los colores de las estaciones se
+    // refrescan cada 20 s igual que el tablero web. Al cambiar de pestaña se
+    // cancela solo.
+    LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(20_000)
+            onRefrescarEstados()
         }
     }
 
@@ -734,7 +753,11 @@ private fun MapaScreen(
                         fontWeight = FontWeight.SemiBold
                     )
                     Text(
-                        text = "Contorno real del lago · 4 estaciones",
+                        text = if (usarGoogle) {
+                            "Google Maps · contorno real · 4 estaciones"
+                        } else {
+                            "Contorno real del lago · 4 estaciones"
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -758,7 +781,27 @@ private fun MapaScreen(
         }
 
         mapa.map?.let { pintado ->
-            item { MapaLaguna(pintado = pintado, estadosPorNodo = estados) }
+            item {
+                val colores = coloresDeEstaciones(pintado, estados)
+                if (usarGoogle) {
+                    MapaGoogle(pintado = pintado, coloresPorNodo = colores)
+                } else {
+                    MapaLaguna(pintado = pintado, coloresPorNodo = colores)
+                }
+            }
+            if (apiKey.isNotBlank() && !usarGoogle) {
+                item {
+                    Text(
+                        text = if (!hayInternet) {
+                            "Sin conexión a internet: se muestra el contorno local de la laguna."
+                        } else {
+                            "Google Play Services no está disponible: se muestra el contorno local."
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
             item { LeyendaDeEstaciones(pintado = pintado, estadosPorNodo = estados) }
             pintado.aviso?.let { aviso ->
                 item {
@@ -771,21 +814,28 @@ private fun MapaScreen(
     }
 }
 
+/** Color del veredicto persistido, compartido por el mapa local y el de Google. */
+@Composable
+private fun coloresDeEstaciones(
+    pintado: LagunaMapaPintado,
+    estadosPorNodo: Map<String, StationStatus>
+): Map<String, Color> {
+    val sinDatos = MaterialTheme.colorScheme.outline
+    return pintado.estaciones.associate { estacion ->
+        val estado = estadosPorNodo[estacion.id]
+        estacion.id to if (estado == null) sinDatos else colorDeEstado(estado)
+    }
+}
+
 @Composable
 private fun MapaLaguna(
     pintado: LagunaMapaPintado,
-    estadosPorNodo: Map<String, StationStatus>
+    coloresPorNodo: Map<String, Color>
 ) {
     val colorAgua = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
     val bordeAgua = MaterialTheme.colorScheme.primary
     val marcaSinDatos = MaterialTheme.colorScheme.outline
     val baseDeMarca = MaterialTheme.colorScheme.surface
-
-    val colores = HashMap<String, Color>()
-    pintado.estaciones.forEach { estacion ->
-        val estado = estadosPorNodo[estacion.id]
-        colores[estacion.id] = if (estado == null) marcaSinDatos else colorDeEstado(estado)
-    }
 
     Card(shape = RoundedCornerShape(16.dp)) {
         Box(
@@ -817,7 +867,7 @@ private fun MapaLaguna(
                         (estacion.y * size.height).toFloat()
                     )
                     drawCircle(
-                        color = colores[estacion.id] ?: marcaSinDatos,
+                        color = coloresPorNodo[estacion.id] ?: marcaSinDatos,
                         radius = 9.dp.toPx(),
                         center = centro
                     )

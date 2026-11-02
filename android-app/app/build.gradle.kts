@@ -1,7 +1,22 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
+}
+
+/**
+ * Clave del SDK de Android de Google Maps.
+ *
+ * Se lee de `local.properties` (ignorado por git) o de la variable de entorno
+ * `MAPS_API_KEY`. Si falta, el mapa de Google no se usa y la app cae al
+ * contorno embebido; por eso el CI puede compilar sin secretos.
+ */
+val mapsApiKey: String = run {
+    val local = Properties()
+    rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { local.load(it) }
+    (local.getProperty("MAPS_API_KEY") ?: System.getenv("MAPS_API_KEY") ?: "").trim()
 }
 
 android {
@@ -17,6 +32,8 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "DEFAULT_API_URL", "\"http://10.0.2.2:8080\"")
+        buildConfigField("String", "MAPS_API_KEY", "\"$mapsApiKey\"")
+        manifestPlaceholders["mapsApiKey"] = mapsApiKey
     }
 
     buildFeatures {
@@ -63,6 +80,10 @@ dependencies {
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
+
+    // Google Maps opcional: solo se compone con clave, internet y Play Services.
+    // Sin clave, la app usa el contorno GeoJSON embebido (sin dependencia de red).
+    implementation("com.google.maps.android:maps-compose:6.4.1")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 

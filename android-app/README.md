@@ -12,10 +12,11 @@ monitoreo de la Laguna de Paca desde un teléfono o emulador Android.
   estaciones con datos y última lectura de `N1`…`N4`.
 - Listado de alertas ECA-Agua con el motivo redactado por el backend.
 - Tema Material 3 claro/oscuro y estados vacíos honestos.
-- Pestaña **Mapa**: contorno real de la laguna embebido en el APK
-  (`assets/geo/laguna-paca.json`, el mismo GeoJSON del panel), marcas de `N1`…`N4`
-  con el color del **veredicto persistido** y leyenda por estación.
-  Dibujado con `Canvas` de Compose: sin Google Maps, sin teselas y sin red.
+- Pestaña **Mapa**: con **Google Maps** si hay clave, internet y Play Services;
+  si no, el contorno real embebido en el APK (`assets/geo/laguna-paca.json`, el
+  mismo GeoJSON del panel) dibujado con `Canvas`. En ambos casos las marcas
+  `N1`…`N4` usan el color del **veredicto persistido** y hay leyenda por estación.
+  Los colores se refrescan cada 20 s mientras la pestaña está visible.
 - Pestaña **Predicciones**: elige 1, 3 o 6 h y genera una predicción de pH para
   las cuatro estaciones (POST /api/v1/predictions). Consulta las últimas con el
   botón Actualizar y muestra el estado pendiente/evaluado, el instante objetivo
@@ -61,6 +62,33 @@ adb install -r app\build\outputs\apk\debug\app-debug.apk
 adb shell am start -n pe.edu.continental.lagunapaca.mobile/.MainActivity
 ```
 
+## Google Maps (opcional)
+
+La app funciona sin Google Maps. Para activarlo:
+
+1. En Google Cloud, habilita **Maps SDK for Android** (es distinto de *Maps
+   JavaScript API*, el de la web) y crea una clave.
+2. Restringe la clave a **Aplicaciones Android** con:
+   - package `pe.edu.continental.lagunapaca.mobile`;
+   - SHA-1 del keystore de debug:
+     `keytool -list -v -keystore "$env:USERPROFILE\.android\debug.keystore" -alias androiddebugkey -storepass android -keypass android`.
+3. Añade la clave a `android-app/local.properties` (ignorado por git):
+
+   ```properties
+   MAPS_API_KEY=AIza...
+   ```
+
+   También se acepta la variable de entorno `MAPS_API_KEY` al compilar.
+4. Recompila y reinstala:
+
+   ```powershell
+   .\gradlew.bat assembleDebug
+   adb install -r app\build\outputs\apk\debug\app-debug.apk
+   ```
+
+Sin clave, sin internet validado o sin Play Services, la app usa el contorno
+embebido y lo indica; el APK del CI compila igual porque la clave puede faltar.
+
 ## Integración continua
 
 El job `android` de `.github/workflows/ci.yml` usa **Temurin 17** (incluye
@@ -68,8 +96,8 @@ El job `android` de `.github/workflows/ci.yml` usa **Temurin 17** (incluye
 pruebas y el APK debug como artefactos. Se ejecuta en cada push a `main` y en
 cada pull request. Verificado en el run
 [`39881860494`](https://github.com/46855344-ux/tesis-laguna-paca/actions/runs/39881860494):
-14 tests y APK generados correctamente. La verificación local del **26/10/2026**
-(agregadas las predicciones) dio **14 tests** en verde y APK debug de 9.7 MB.
+14 tests y APK generados correctamente. La verificación local del **01/11/2026**
+(agregado el mapa de Google) dio **15 tests** en verde y APK debug de 12.4 MB.
 
 ## Conexión
 
@@ -90,14 +118,15 @@ y CSRF y no es el contrato del cliente móvil.
 
 - No incluye **Firebase Cloud Messaging (FCM)**: falta `google-services.json`
   y credenciales del proyecto Firebase. No se simulan notificaciones.
-- El mapa no usa Google Maps: dibuja el contorno embebido en `Canvas`. No hay
-  zoom/pan ni teselas; si se quisiera Google Maps haría falta una clave
-  restringida para Android por package/SHA-1.
+- **Google Maps es opcional**: necesita `MAPS_API_KEY`, internet y Play Services.
+  Sin ellos se dibuja el contorno embebido. La clave debe restringirse por
+  package/SHA-1; no se versiona.
 - El JWT vive **solo en memoria**: al cerrar la app hay que iniciar sesión de
   nuevo. No se guarda la contraseña.
 - No hay caché offline ni sincronización en segundo plano.
-- Los tests actuales son unitarios (mapeo del tablero, esquema de URL y mapa);
-  no hay pruebas instrumentadas ni E2E de UI.
+- Los tests actuales son unitarios (mapeo del tablero, esquema de URL, mapa y
+  predicciones): **15**. No hay pruebas instrumentadas ni E2E de UI; el render
+  de Google Maps se valida a mano en el emulador.
 - Los datos que se ven en la demo son del simulador o de H2; no son mediciones
   de campo.
 
@@ -113,8 +142,13 @@ app/src/main/java/pe/edu/continental/lagunapaca/mobile/
 │   ├── PredictionMapper.kt # parseo de /api/v1/predictions
 │   └── LagunaApi.kt        # HTTP + JSON con HttpURLConnection
 └── ui/
-    ├── MainViewModel.kt    # estado, login, tablero, alertas, mapa y predicciones
-    ├── LagunaPacaApp.kt    # pantallas Compose (tablero, alertas, mapa, predicciones)
+    ├── LoginViewModel.kt   # acceso
+    ├── DashboardViewModel.kt
+    ├── AlertsViewModel.kt
+    ├── MapaViewModel.kt    # lee el GeoJSON y proyecta
+    ├── PrediccionesViewModel.kt
+    ├── LagunaPacaApp.kt    # pantallas Compose
+    ├── MapaGoogle.kt       # Google Maps opcional + detección de red/Play
     └── theme/Theme.kt      # paleta Material 3
 
 app/src/main/assets/geo/laguna-paca.json   # contorno real (copia del panel)

@@ -101,4 +101,20 @@ class LagunaMapaTest {
         assertEquals(cos(Math.toRadians(0.015)), proporcion(ecuador), 1e-9)
         assertEquals(cos(Math.toRadians(57.015)), proporcion(andino), 1e-9)
     }
+
+    @Test
+    fun `la proyeccion conserva las coordenadas geograficas para Google Maps`() {
+        val mapa = LagunaMapa.desdeJson(cajaDePrueba)
+        val pintado = mapa.proyectar()
+
+        // El Canvas usa x,y normalizados, pero el SDK de Google necesita los
+        // grados originales: si se perdieran, el mapa caería en (0,0).
+        assertEquals(mapa.estaciones.map { it.id }, pintado.estaciones.map { it.id })
+        pintado.estaciones.forEachIndexed { indice, estacion ->
+            assertEquals(mapa.estaciones[indice].lat, estacion.lat, 1e-9)
+            assertEquals(mapa.estaciones[indice].lon, estacion.lon, 1e-9)
+        }
+        assertEquals(mapa.contorno.size, pintado.contornoGeografico.size)
+        assertEquals(-75.52, pintado.contornoGeografico.first().lon, 1e-9)
+    }
 }

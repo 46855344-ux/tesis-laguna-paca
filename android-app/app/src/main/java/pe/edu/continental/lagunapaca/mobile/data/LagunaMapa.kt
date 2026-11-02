@@ -74,7 +74,15 @@ data class EstacionGeografica(val id: String, val nombre: String, val lat: Doubl
 data class PuntoPantalla(val x: Double, val y: Double)
 
 /** Estación ya proyectada, lista para el Canvas del mapa. */
-data class EstacionPintada(val id: String, val nombre: String, val x: Double, val y: Double)
+data class EstacionPintada(
+    val id: String,
+    val nombre: String,
+    val x: Double,
+    val y: Double,
+    /** Coordenadas geográficas originales; las usa el mapa de Google. */
+    val lat: Double = 0.0,
+    val lon: Double = 0.0
+)
 
 /** Mapa listo para dibujar: el Canvas solo multiplica por su tamaño. */
 data class LagunaMapaPintado(
@@ -83,7 +91,9 @@ data class LagunaMapaPintado(
     /** Proporción ancho/alto de la caja; el Canvas la respeta con aspectRatio. */
     val aspecto: Double,
     val contorno: List<PuntoPantalla>,
-    val estaciones: List<EstacionPintada>
+    val estaciones: List<EstacionPintada>,
+    /** Mismo contorno en grados, para el polígono del mapa de Google. */
+    val contornoGeografico: List<PuntoGeografico> = emptyList()
 )
 
 /**
@@ -134,8 +144,11 @@ fun LagunaMapa.proyectar(): LagunaMapaPintado {
                 id = estacion.id,
                 nombre = estacion.nombre,
                 x = x(estacion.lon),
-                y = y(estacion.lat)
+                y = y(estacion.lat),
+                lat = estacion.lat,
+                lon = estacion.lon
             )
-        }
+        },
+        contornoGeografico = contorno
     )
 }
