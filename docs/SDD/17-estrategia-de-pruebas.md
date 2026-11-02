@@ -26,8 +26,8 @@ La pirámide es deliberadamente ancha en la base:
 | Frontend | `npm test` | **17** | Verde |
 | Firmware | `pio test -e native` | **38** | Verde |
 | IA | `python -m pytest` | **172** | Verde |
-| Android | `gradlew.bat testDebugUnitTest` | **14** | Verde |
-| **Total** | | **386** | |
+| Android | `gradlew.bat testDebugUnitTest` | **15** | Verde |
+| **Total** | | **387** | |
 
 Cobertura del backend (JaCoCo): **91.7 %** de instrucciones (5491/5989) y
 **68.8 %** de ramas (265/385). Se reporta como indicador, no como meta: la
@@ -35,7 +35,7 @@ cobertura sola no dice si una prueba comprueba lo correcto.
 
 Además, `PostgresMigrationIT` (1 test) valida las migraciones contra PostgreSQL
 real y **no** corre en `mvn test`: lo ejecuta el job `backend-postgres` del CI
-con `postgres:16-alpine`. Con él, el total sería **387**.
+con `postgres:16-alpine`. Con él, el total sería **388**.
 
 ## 17.3 Backend: 145 tests
 
@@ -79,7 +79,7 @@ con `postgres:16-alpine`. Con él, el total sería **387**.
 - **No hay hardware**: los sensores del firmware son dobles y el handshake TLS
   depende de Arduino y de la red, así que tampoco se ejecuta.
 - **La app Android no tiene E2E ni pruebas instrumentadas**: se validó a mano en el
-  emulador `Pixel_9` contra el perfil `demo`; los 10 tests son unitarios JVM.
+  emulador `Pixel_9` contra el perfil `demo`; los 15 tests son unitarios JVM.
 
 ## 17.4 Frontend: 17 tests
 
@@ -123,13 +123,13 @@ con `postgres:16-alpine`. Con él, el total sería **387**.
 - Los CSV de `test_field_data.py` son *fixtures*: no son mediciones de la laguna.
   El cargador está probado; la validación científica sigue pendiente de campo.
 
-## 17.7 Android: 14 tests
+## 17.7 Android: 15 tests
 
 | Archivo | Tests | Qué fija |
 |---|---|---|
 | `DashboardMapperTest` | 3 | Ventana de 24 h, las cuatro estaciones, último dato y cumplimiento sin inventar 100 % |
 | `MainViewModelTest` | 3 | Esquema de URL, conservación de `https` y rechazo de dirección vacía |
-| `LagunaMapaTest` | 4 | Parseo del GeoJSON embebido (pares `[lon, lat]` del contorno, campos separados de estación), coordenadas dentro del cuadro, norte arriba del sur y corrección `cos(latitud)` del eje este-oeste |
+| `LagunaMapaTest` | 5 | Parseo del GeoJSON embebido (pares `[lon, lat]` del contorno, campos separados de estación), coordenadas dentro del cuadro, norte arriba del sur, corrección `cos(latitud)` del eje este-oeste y conservación de lat/lon para Google Maps |
 | `PredictionMapperTest` | 4 | Lote de predicciones (una fila por estación), estado PENDING/EVALUATED, instante objetivo, omisión de filas incompletas y estado desconocido |
 
 - Se ejecutan en la JVM (`testDebugUnitTest`), sin emulador. Por eso el `org.json`
@@ -137,11 +137,14 @@ con `postgres:16-alpine`. Con él, el total sería **387**.
   trae stubs que lanzan `RuntimeException`.
 - **No** hay tests instrumentados de Compose ni E2E. El login, el tablero, las
   alertas, el mapa y las predicciones se verificaron manualmente en el emulador.
+  El mapa de Google depende de Play Services y de la red, así que no es testeable
+  en JVM: lo que sí se prueba es que la proyección no pierda las coordenadas.
 - No se usan datos de campo: la demo usa el simulador y H2.
 - El job `android` del CI ejecuta `testDebugUnitTest` y `assembleDebug` con
   Temurin 17, y publica el reporte de pruebas y el APK debug como artefactos.
   Verificado en el run `39881860494`; con las predicciones agregadas, la
-  verificación local del 26/10/2026 dio 14 tests y APK en verde.
+  verificación local del 26/10/2026 dio 14 tests y APK en verde. El mapa de Google
+  elevó el total a **15 tests** y 12.4 MB de APK el 01/11/2026.
 
 ## 17.7 Cómo ejecutar
 

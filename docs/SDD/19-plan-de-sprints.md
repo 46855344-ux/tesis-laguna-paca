@@ -20,6 +20,7 @@ planificó.
 | S10 | Mapa Android sin Google | Pestaña Mapa con contorno GeoJSON embebido, proyección cos(latitud) y leyenda | `LagunaMapaTest` (4 tests) + build verde + verificado en emulador; CI pendiente | Hecho (25/10/2026) |
 | S11 | Predicciones en Android | Pestaña Predicciones: 1/3/6 h, POST /api/v1/predictions, consulta latest, estado PENDING/EVALUATED | `PredictionMapperTest` (4 tests) + 14 tests + APK en verde | Hecho (26/10/2026) |
 | S12 | Plan de datos de campo | Plantilla CSV, ejemplo, plan de muestreo (≥ 4 semanas), calibración de sensores y flujo de entrenamiento | `datos/`, `CAMPO.md`, SDD 29; campaña real pendiente | Hecho (26/10/2026) |
+| S13 | Google Maps opcional en Android | `maps-compose`, clave por `local.properties`, polígono y marcadores del veredicto, respaldo GeoJSON sin internet y refresco de 20 s | 15 tests + APK 12.4 MB en verde; falta la clave real y la prueba en emulador | Hecho (01/11/2026) |
 
 ## 19.1 Historias representativas
 

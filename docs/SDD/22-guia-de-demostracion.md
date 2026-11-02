@@ -39,7 +39,7 @@ cd ia-model
 .venv\Scripts\python.exe -m pytest -q
 ```
 
-**Qué decir:** «386 pruebas automatizadas; el backend tiene 91.7 % de cobertura
+**Qué decir:** «387 pruebas automatizadas; el backend tiene 91.7 % de cobertura
 de instrucciones».
 
 ## 22.3 Paso 2 · El modelo (2 min)
@@ -129,14 +129,15 @@ no abre el panel, y hay un test que lo fija».
 - `ia-model/lagunapaca_gnn/model.py` — TCN + GCN + atención.
 - `frontend/src/` — SPA React y cliente CSRF; el build está en
   `backend/src/main/resources/static/panel`.
-- `android-app/` — MVP Kotlin + Compose: login JWT, tablero, alertas, mapa y predicciones (14 tests).
+- `android-app/` — MVP Kotlin + Compose: login JWT, tablero, alertas, mapa y predicciones (15 tests).
 - `docs/SDD/` — esta documentación.
 - `compose.yaml`, `.github/workflows/ci.yml`.
 
 **App Android (opcional, 2 min).** Con el emulador y el backend demo arrancados,
 abrir `android-app`, ejecutar `.\gradlew.bat installDebug` e iniciar sesión con
 `10.0.2.2:8080`. Mostrar el tablero, la pestaña de alertas, la pestaña **Mapa**
-(contorno embebido, sin Google) y la pestaña **Predicciones** (elegir 6 h y
+(Google Maps si hay `MAPS_API_KEY` e internet; si no, el contorno embebido) y la
+pestaña **Predicciones** (elegir 6 h y
 pulsar Generar; la IA responde 4 filas, una por estación). Aclarar que FCM
 **no** está integrado. Si se pregunta por la CI, el job `android` corre los
 tests y genera el APK en GitHub Actions.
@@ -152,7 +153,7 @@ tests y genera el APK en GitHub Actions.
 | ¿Qué pasa si la IA falla? | La ingesta y las alertas no dependen de ella; solo se pierde la predicción |
 | ¿Los datos son reales? | No: son sintéticos y el sistema lo declara en la tabla, la API y el panel |
 | ¿La predicción cambia la alerta? | No: el veredicto es de la medición; la predicción es otra dimensión |
-| ¿Qué falta? | Datos de campo, coordenadas medidas, Docker/Sonar ejecutados, FCM y mapa interactivo Android |
+| ¿Qué falta? | Datos de campo, coordenadas medidas, Docker/Sonar ejecutados y FCM |
 
 ## 22.10 Tiempo total
 

@@ -530,3 +530,44 @@ Lo que **no** se ejecutó:
 - Conexión real contra un backend HTTPS ni contra un broker MQTTS.
 - Carga del certificado autofirmado en `secrets.h` y prueba en la placa.
 - Reverse proxy con TLS delante del backend y listener 8883 del broker.
+
+## 28.15 Google Maps opcional en la app Android (01/11/2026)
+
+Se agregó Google Maps a la pestaña Mapa con la misma filosofía del panel: **mejora
+opcional, nunca un requisito**. La app compone `GoogleMap` solo cuando hay clave,
+internet validado y Google Play Services; en cualquier otro caso dibuja el contorno
+GeoJSON embebido de siempre y lo avisa.
+
+Cambios:
+
+- `app/build.gradle.kts`: `com.google.maps.android:maps-compose:6.4.1`, clave leída de
+  `local.properties` (`MAPS_API_KEY`) o del entorno, inyectada como
+  `manifestPlaceholders` y `BuildConfig.MAPS_API_KEY`.
+- `AndroidManifest.xml`: `ACCESS_NETWORK_STATE` y meta-data
+  `com.google.android.geo.API_KEY`.
+- `ui/MapaGoogle.kt`: `GoogleMap` con polígono del lago, marcadores con el color del
+  veredicto persistido, encuadre a las cuatro estaciones, detección de red con
+  `NET_CAPABILITY_VALIDATED` y comprobación de Play Services.
+- `data/LagunaMapa.kt`: la proyección ahora conserva lat/lon y el contorno geográfico
+  para el SDK (el `Canvas` sigue usando x,y normalizados).
+- `MapaScreen`: refresca los colores cada 20 s con `dashboardVm.refrescar()` mientras
+  la pestaña está visible.
+
+Verificación local:
+
+```powershell
+cd android-app
+$env:JAVA_HOME="C:\Users\USER\.jdks\jbr-17.0.14"
+.\gradlew.bat testDebugUnitTest   # VERDE: 15 tests (14 previos + 1 de lat/lon)
+.\gradlew.bat assembleDebug       # VERDE: APK debug de 12.4 MB
+```
+
+La clave no estaba configurada en esta máquina (`MAPS_API_KEY` vacía), así que el APK
+compiló en modo respaldo y `BuildConfig.MAPS_API_KEY` quedó en `""`.
+
+Lo que **no** se ejecutó:
+
+- Render real de Google Maps: falta cargar la clave restringida por package/SHA-1 y
+  abrir la app en un emulador con Google APIs/Play.
+- Prueba del fallback apagando la red desde el emulador.
+- Verificación en el job `android` del CI (el build sin clave sí debe pasar).

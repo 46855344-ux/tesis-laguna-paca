@@ -9,9 +9,10 @@ sobre el grafo de estaciones).
 
 > **Estado:** backend, frontend, firmware, IA y **app Android MVP** funcionando de extremo
 > a extremo, con predicciones persistidas y evaluadas contra muestras posteriores.
-> **386 pruebas** verdes (145 backend, 17 frontend, 38 firmware, 172 IA, 14 Android).
+> **387 pruebas** verdes (145 backend, 17 frontend, 38 firmware, 172 IA, 15 Android).
 > La app Android ya permite iniciar sesión, consultar el tablero, revisar alertas,
-> abrir el **mapa de la laguna** (contorno real embebido, sin Google Maps) y
+> abrir el **mapa de la laguna** (Google Maps si hay clave e internet; si no, el contorno
+> real embebido) y
 > generar/consultar **predicciones** del ST-GNN (1, 3 o 6 h); falta FCM. Los
 > datos de entrenamiento del modelo son **sintéticos**: el resultado demuestra la
 > arquitectura, no el comportamiento real de la laguna. El despliegue con Docker
@@ -87,7 +88,7 @@ también llega persistido: la app no reevalúa el pH.
 | `frontend/` | ✅ Completo (17 tests) | SPA React + TypeScript: acceso, tablero, métricas, mapa, historial, alertas, predicciones, tema y accesibilidad |
 | `iot-firmware/` | ✅ Completo (38 tests) | Núcleo portable C++11, sensores, calibración, deep sleep, JWT cacheado, transporte HTTP y MQTT con TLS opcional, `sample_id` |
 | `ia-model/` | ✅ Completo (172 tests) | Grafo, ventanas, ST-GNN, normalización, entrenamiento, carga de CSV de campo, artefacto versionado y servicio FastAPI |
-| `android-app/` | 🟡 MVP (14 tests) | Login JWT, tablero de 24 h, estaciones, alertas, mapa (contorno GeoJSON embebido sin Google) y predicciones del ST-GNN (1/3/6 h) en Kotlin + Compose + Material 3; FCM pendiente |
+| `android-app/` | 🟡 MVP (15 tests) | Login JWT, tablero de 24 h, estaciones, alertas, mapa (Google Maps opcional con respaldo GeoJSON embebido) y predicciones del ST-GNN (1/3/6 h) en Kotlin + Compose + Material 3; FCM pendiente |
 | Docker | ⚙️ Configurado, no ejecutado | `compose.yaml` y Dockerfiles; `config` validado, imágenes no construidas (sin Docker en la máquina) |
 | CI | ✅ Ejecutada | GitHub Actions run `39881860494`: 7 jobs verdes; Sonar omitido sin secretos |
 
@@ -326,6 +327,8 @@ no las rutas del panel, y muestra el veredicto ECA-Agua persistido por el backen
 | Acceso | URL del backend editable, usuario y contraseña; `POST /api/v1/auth/token` |
 | Tablero | Ventana de 24 h: muestras, alertas, cumplimiento, estaciones `N1`…`N4` y última lectura |
 | Alertas | `GET /api/v1/telemetry?alert=true`, con el motivo redactado por el backend |
+| Mapa | Google Maps si hay clave, internet y Play Services; si no, el contorno GeoJSON embebido |
+| Predicciones | `POST/GET /api/v1/predictions` con horizontes de 1, 3 y 6 h |
 
 - El **JWT vive solo en memoria**; al cerrar la app hay que iniciar sesión otra vez. No se
   guarda la contraseña.
@@ -334,8 +337,13 @@ no las rutas del panel, y muestra el veredicto ECA-Agua persistido por el backen
 - El manifiesto de **release exige HTTPS**. Solo el manifiesto de **debug** permite HTTP
   local para la demo.
 - **No** se recalcula el pH en Kotlin: se muestra `alert` y `alert_reasons` de la API.
-- **FCM y Google Maps no están incluidos**: requieren `google-services.json` y una clave
-  restringida para Android. No se simulan notificaciones ni mapas.
+- **Mapa de Google opcional**: pon `MAPS_API_KEY=...` en `android-app/local.properties`
+  (ignorado por git) y restringe la clave por package
+  `pe.edu.continental.lagunapaca.mobile` + SHA-1 en Google Cloud (*Maps SDK for Android*).
+  Sin clave, sin internet o sin Play Services, la app dibuja el contorno embebido y lo
+  avisa; el APK del CI se compila igual porque la clave puede estar vacía.
+- **FCM no está incluido**: requiere `google-services.json` y credenciales. No se simulan
+  notificaciones.
 
 ```powershell
 cd android-app
@@ -447,8 +455,8 @@ describe ese conjunto, no la laguna en general.
 | Frontend | `npm test` (desde `frontend/`) | **17** |
 | Firmware | `pio test -e native` | **38** |
 | IA | `.venv\Scripts\python.exe -m pytest` | **172** |
-| Android | `gradlew.bat testDebugUnitTest` (desde `android-app/`) | **14** |
-| **Total** | | **386** |
+| Android | `gradlew.bat testDebugUnitTest` (desde `android-app/`) | **15** |
+| **Total** | | **387** |
 
 - Cobertura del backend (JaCoCo): **91.7 %** de instrucciones y **68.8 %** de ramas.
 - No hay Docker ni Testcontainers: la persistencia se prueba con **H2**.
@@ -456,8 +464,9 @@ describe ese conjunto, no la laguna en general.
   panel, mapa y predicciones), no solo pruebas por capa.
 - El frontend usa **Vitest + Testing Library**: cliente CSRF/401, componentes, mapa y
   las cuatro pantallas principales (tablero, métricas, historial y alertas).
-- La app Android usa tests unitarios JVM para el resumen del tablero y la normalización de
-  la URL. **No hay pruebas instrumentadas ni E2E de UI**.
+- La app Android usa tests unitarios JVM para el resumen del tablero, la normalización de
+  la URL y el mapa embebido. **No hay pruebas instrumentadas ni E2E de UI**: el mapa de
+  Google necesita Play Services y red, así que se valida a mano.
 - `train_stgnn.py` devuelve código de salida 1 si no se cumple el criterio, para encadenarlo
   al CI.
 - **No se ejecutaron** `docker compose build/up`, SonarQube real ni pruebas en hardware.
@@ -498,7 +507,7 @@ describe ese conjunto, no la laguna en general.
 ├── android-app/             Kotlin + Jetpack Compose (MVP)
 │   ├── app/src/main/        login, tablero, alertas, mapa y predicciones
 │   ├── app/src/main/assets/ contorno GeoJSON embebido
-│   ├── app/src/test/        14 tests unitarios
+│   ├── app/src/test/        15 tests unitarios
 │   └── README.md            conexión, build y limitaciones
 ├── deploy/                  configuración de Mosquitto
 ├── docs/SDD/                documentación de diseño (versionada)
@@ -553,9 +562,10 @@ en los ADR de `docs/SDD/`.
 4. **TLS en el despliegue**: el nodo ya soporta HTTPS y MQTTS; faltan el certificado, el
    reverse proxy del backend y el listener 8883 del broker, además de probarlo en la placa.
 5. **SonarQube** ejecutado sobre un servidor real (configuración lista).
-6. **App Android**: completar el mapa de estaciones y las notificaciones push (FCM), que
-   requieren una clave de Google Maps para Android y `google-services.json`. El MVP de
-   login, tablero y alertas ya funciona y está probado en el emulador.
+6. **App Android**: notificaciones push (FCM), que requieren `google-services.json`, y
+   persistencia del token. El mapa de Google ya está integrado y es opcional (clave por
+   `MAPS_API_KEY`); el MVP de login, tablero, alertas, mapa y predicciones funciona y está
+   probado en el emulador.
 7. **Notificaciones**: hoy la alerta solo se ve en el panel, en la app y en la API.
 8. **Rotar la clave de Google** compartida durante el desarrollo y restringirla por referente.
 9. Capítulos de la tesis y despliegue en producción.

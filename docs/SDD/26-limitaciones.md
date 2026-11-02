@@ -96,12 +96,12 @@ El firmware se compila y se prueba en el host con dobles. No se validó:
 ### L-10 · App Android acotada
 
 `android-app/` tiene un **MVP** con login JWT, tablero de 24 h, estaciones, alertas,
-mapa (contorno GeoJSON embebido, sin Google Maps) y predicciones del ST-GNN
-(1, 3 y 6 h), probado en el emulador `Pixel_9`. **No** incluye FCM, mapa
-interactivo de Google, caché offline ni persistencia del token. FCM requiere
-`google-services.json`; el mapa interactivo una clave restringida por
-package/SHA-1; no se simulan. Tampoco hay tests instrumentados ni E2E de UI,
-solo 14 tests unitarios JVM.
+mapa (Google Maps opcional con la clave por `MAPS_API_KEY`; sin clave, sin internet o
+sin Play Services se dibuja el contorno GeoJSON embebido) y predicciones del ST-GNN
+(1, 3 y 6 h), probado en el emulador `Pixel_9`. **No** incluye FCM, caché offline ni
+persistencia del token. FCM requiere `google-services.json`; no se simulan
+notificaciones. Tampoco hay tests instrumentados ni E2E de UI, solo 15 tests unitarios
+JVM; el mapa de Google necesita Play Services y red, así que se valida a mano.
 
 ### L-11 · Cargador de campo probado solo con *fixtures*
 
@@ -160,7 +160,7 @@ Para no dejar una impresión solo negativa:
 4. El ST-GNN se entrena, se guarda como artefacto y se sirve por HTTP.
 5. El backend integra la IA sin acoplarse: si falla, el monitoreo continúa.
 6. Las predicciones se evalúan contra muestras posteriores y guardan el error; en la demo esas muestras las genera el simulador.
-7. 386 pruebas automatizadas pasan en esta máquina (incluye 14 de Android).
+7. 387 pruebas automatizadas pasan en esta máquina (incluye 15 de Android).
 8. El canal de carga de CSV de campo existe, valida el contrato y produce un artefacto `field`; lo que falta son las mediciones reales.
 
 ## 26.8 Cómo citar estas limitaciones

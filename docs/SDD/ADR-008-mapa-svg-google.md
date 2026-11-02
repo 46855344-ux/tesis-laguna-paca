@@ -15,6 +15,9 @@ sin internet; con internet, un mapa interactivo sería una mejora.
 - Sin clave de Google **no se pide nada a Google**.
 - Con `GOOGLE_MAPS_API_KEY`, se carga Google Maps; si falla, el SVG queda como
   respaldo.
+- La app Android aplica la misma regla con `maps-compose`: la clave va en
+  `local.properties`/`MAPS_API_KEY`, y sin clave, red o Play Services se dibuja
+  el contorno embebido.
 - La clave se lee del entorno, se marca `@JsonIgnore` y no viaja en
   `/panel/api/datos` (y su alias `/panel/datos`).
 - Las coordenadas se importan de `ia-model/.../stations.py`, no se copian.

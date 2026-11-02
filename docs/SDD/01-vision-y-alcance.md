@@ -42,7 +42,7 @@ mediciones y de las predicciones.
 | Regla ECA-Agua de pH | Implementado | `EcaWaterQualityRule`, 4 tests |
 | Histórico con filtros y paginación | Implementado | `TelemetryService`, `PanelHistorialIntegrationTest` |
 | Panel React (acceso, tablero, métricas, historial, alertas, mapa) | Implementado | 66 tests de panel + 17 de frontend |
-| App Android (login, tablero, alertas, mapa sin Google y predicciones) | MVP implementado | `android-app/`, 14 tests unitarios |
+| App Android (login, tablero, alertas, mapa con Google opcional y predicciones) | MVP implementado | `android-app/`, 15 tests unitarios |
 | Predicciones 1/3/6 h | Implementado | `PredictionService`, `PredictionIntegrationTest` |
 | Servicio FastAPI + artefacto | Implementado | `ia-model/lagunapaca_gnn/api.py`, 172 tests de IA |
 | Evaluación posterior ±30 min | Implementado | `PredictionEvaluator`, tests |
@@ -51,10 +51,9 @@ mediciones y de las predicciones.
 
 ## 1.5 Fuera de alcance
 
-- Notificaciones push (FCM) y mapa interactivo de Google Maps dentro de la app
-  Android: el MVP actual permite login, tablero, alertas, mapa con contorno
-  embebido y predicciones, pero esas dos integraciones requieren credenciales
-  externas.
+- Notificaciones push (FCM) dentro de la app Android: el MVP actual permite login,
+  tablero, alertas, mapa (Google Maps opcional con respaldo embebido) y
+  predicciones, pero las notificaciones requieren credenciales externas.
 - Persistencia de la sesión y funcionamiento offline en Android: el JWT vive solo
   en memoria.
 - Analítica de otras variables distintas del pH. El modelo puede extenderse,
