@@ -415,6 +415,16 @@ private fun MainScaffold() {
 @Composable
 private fun DashboardScreen(state: DashboardState, onRetry: () -> Unit) {
     val dashboard = state
+
+    // Al entrar tras el login (o al volver al tablero) se pide la ventana de
+    // 24 h una sola vez. Sin esto el tablero quedaba en blanco hasta pulsar
+    // "Actualizar": el estado inicial no tiene datos ni isLoading.
+    LaunchedEffect(Unit) {
+        if (dashboard.summary == null && !dashboard.isLoading && dashboard.error == null) {
+            onRetry()
+        }
+    }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
@@ -1093,7 +1103,7 @@ private fun PrediccionCard(prediccion: PhPrediction) {
             Spacer(Modifier.height(8.dp))
             Text(
                 text = "Objetivo: ${formatoFecha.format(prediccion.targetAt)} " +
-                    "(${hace(prediccion.targetAt)})",
+                    "(${faltan(prediccion.targetAt)})",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -1311,9 +1321,26 @@ private fun entero(valor: Double): String =
 private fun hace(instante: Instant, ahora: Instant = Instant.now()): String {
     val minutos = Duration.between(instante, ahora).toMinutes()
     return when {
-        minutos <= 0 -> "ahora"
+        minutos < 0 -> faltan(instante, ahora)
+        minutos < 1 -> "ahora"
         minutos < 60 -> "hace $minutos min"
         minutos < 24 * 60 -> "hace ${minutos / 60} h"
+        else -> formatoFecha.format(instante)
+    }
+}
+
+/**
+ * Tiempo que falta hasta un instante futuro (el objetivo de una predicción).
+ *
+ * Sin esto, `hace()` devolvía "ahora" para cualquier instante futuro y la
+ * tarjeta de una predicción a 6 h parecía vencida.
+ */
+private fun faltan(instante: Instant, ahora: Instant = Instant.now()): String {
+    val minutos = -Duration.between(instante, ahora).toMinutes()
+    return when {
+        minutos < 1 -> "ahora"
+        minutos < 60 -> "en $minutos min"
+        minutos < 24 * 60 -> "en ${minutos / 60} h"
         else -> formatoFecha.format(instante)
     }
 }

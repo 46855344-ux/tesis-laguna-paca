@@ -571,3 +571,37 @@ Lo que **no** se ejecutó:
   abrir la app en un emulador con Google APIs/Play.
 - Prueba del fallback apagando la red desde el emulador.
 - Verificación en el job `android` del CI (el build sin clave sí debe pasar).
+
+## 28.16 Arranque completo de la demo (02/11/2026)
+
+Se levantó todo el sistema en esta máquina para una pasada de humo de extremo a
+extremo: backend con el perfil `demo` (H2 en memoria), servicio de IA con el
+artefacto `stgnn-synthetic-s42-i24-e150`, simulador del nodo y emulador `Pixel_9`
+con el APK debug instalado.
+
+| Comprobación | Resultado |
+|---|---|
+| `GET /actuator/health` | `UP` |
+| `GET /login` | 200 con el shell React (`id="root"`) |
+| `GET /panel` sin sesión | 302 a `/login` |
+| `GET /health` de la IA | `model_loaded: true`, horizontes 1/3/6, `data_source: synthetic` |
+| Simulador (30 muestras × 4 estaciones) | 120/120 aceptadas |
+| `GET /api/v1/telemetry` | 12 muestras por estación, alertas ECA-Agua persistidas |
+| `POST /api/v1/predictions` | 4 filas `PENDING` con `model_run_id` común |
+| App: tablero | 100 muestras, 27 alertas, 4/4 estaciones, 73 % de cumplimiento |
+| App: alertas | lista con el motivo redactado por el backend |
+| App: mapa | contorno embebido y las 4 estaciones (sin `MAPS_API_KEY`) |
+| App: predicciones | lote generado desde la app contra la IA (`85a8b0e1`) |
+
+Dos defectos de interfaz aparecieron en esta pasada y se corrigieron:
+
+1. **El tablero quedaba en blanco tras el login**: nada disparaba la primera
+   carga; solo se llenaba al pulsar "Actualizar" o al volver de otra pestaña. Se
+   añadió un `LaunchedEffect` en `DashboardScreen`, con la misma guarda que ya
+   tenía el mapa.
+2. **El objetivo de una predicción decía "(ahora)"** aunque faltaran 6 h:
+   `hace()` trataba cualquier instante futuro como pasado. Se añadió `faltan()`
+   y la tarjeta ahora escribe "(en 6 h)".
+
+Verificación: `testDebugUnitTest` (15 tests) y `assembleDebug` en verde; los
+cuatro tabs se recorrieron en el emulador con datos reales del backend.
