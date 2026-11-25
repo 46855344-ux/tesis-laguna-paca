@@ -1,0 +1,47 @@
+# Blueprint de Render para el backend de la Laguna de Paca.
+#
+# La base de datos NO se crea aquí: se usa Neon (PostgreSQL 16) y se conecta
+# con DB_URL / DB_USER / DB_PASSWORD. El servicio construye backend/Dockerfile,
+# que ya incluye el build de React en src/main/resources/static/panel.
+#
+# Pasos: subir este archivo al repositorio y en Render elegir
+# "New > Blueprint" apuntando a este repo. Los valores marcados con
+# `sync: false` se piden en el asistente y no se versionan.
+
+services:
+  - type: web
+    name: laguna-paca
+    runtime: docker
+    plan: free
+    region: ohio
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /actuator/health
+    autoDeploy: true
+    envVars:
+      # --- Neon (PostgreSQL 16) ---
+      # Cadena JDBC del endpoint DIRECTO de Neon (sin "-pooler"):
+      # jdbc:postgresql://ep-xxxx.us-east-2.aws.neon.tech/neondb?sslmode=require
+      - key: DB_URL
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+
+      # --- Seguridad del backend y del panel ---
+      - key: JWT_SECRET
+        generateValue: true
+      - key: APP_USER
+        value: admin
+      - key: APP_PASSWORD
+        sync: false
+
+      # --- Opcionales ---
+      # Clave de navegador restringida por referente a
+      # https://<servicio>.onrender.com/*. Sin clave, el panel usa el SVG.
+      - key: GOOGLE_MAPS_API_KEY
+        sync: false
+      # Sin broker en Render: la ingesta MQTT debe quedar deshabilitada.
+      - key: MQTT_ENABLED
+        value: "false"

@@ -48,8 +48,14 @@ class PostgresMigrationIT {
         try (Connection connection = DriverManager.getConnection(URL, USER, PASSWORD);
              Statement statement = connection.createStatement()) {
 
-            assertTrue(versionesAplicadas(statement).containsAll(List.of("1", "2", "3", "4", "5")),
+            assertTrue(versionesAplicadas(statement).containsAll(List.of("1", "2", "3", "4", "5", "6")),
                     "Faltan migraciones aplicadas");
+
+            // V6: las mediciones deben ser double precision, no NUMERIC, para que
+            // Hibernate (ddl-auto: validate) pueda arrancar contra PostgreSQL.
+            assertEquals("double precision",
+                    tipoDeColumna(statement, "water_quality_sample", "ph"),
+                    "ph debe ser double precision (V6)");
 
             for (String column : List.of("sample_id", "acknowledged_at", "acknowledged_by",
                     "acknowledge_note")) {

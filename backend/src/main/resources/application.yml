@@ -39,7 +39,8 @@ springdoc:
     tags-sorter: alpha
 
 server:
-  port: 8080
+  # Render (y otros PaaS) inyectan PORT. En local y en Docker se conserva 8080.
+  port: ${PORT:8080}
 
 management:
   endpoints:
